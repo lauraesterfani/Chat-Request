@@ -12,15 +12,15 @@ class AuthController extends Controller
   public function login(Request $request)
   {
     $validated = $request->validate([
-      'email' => 'required|email|max:255',
+      'cpf' => 'required|string|max:255',
       'password' => 'required|string|max:255'
     ]);
 
     if (Auth::attempt($validated)) {
-      $user = User::where('email', $validated['email'])->first();
+      $user = User::where('cpf', $validated['cpf'])->first();
 
       $token = $user
-        ->createToken('api-token', ['post:read', 'post:create'])
+        ->createToken('api-token', ['post:read', 'post:create', 'post:update'])
         ->plainTextToken;
 
       return response()->json(['token' => $token]);
