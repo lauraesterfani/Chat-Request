@@ -20,7 +20,7 @@ class AuthController extends Controller
       $user = User::where('email', $validated['email'])->first();
 
       $token = $user
-        ->createToken('api-token', ['post:read', 'post:create'])
+        ->createToken('api-token', ['post:read', 'post:create', 'post:update'])
         ->plainTextToken;
 
       return response()->json(['token' => $token]);
