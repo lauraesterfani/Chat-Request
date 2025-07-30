@@ -14,7 +14,6 @@ Route::get('/', function () {
 
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
 Route::middleware('auth:api')->group(function () {
   Route::get('/me', [AuthController::class, 'me']);
@@ -24,6 +23,6 @@ Route::middleware('auth:api')->group(function () {
 
   Route::apiResource('user', UserController::class)->except('store');
   Route::apiResource('enrollment', EnrollmentController::class);
-  Route::apiResource('request', RequestController::class);
+  // Route::apiResource('request', RequestController::class);
   
 });

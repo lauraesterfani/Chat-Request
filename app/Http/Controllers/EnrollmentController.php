@@ -6,7 +6,6 @@ use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class EnrollmentController extends Controller
 {
@@ -113,14 +112,4 @@ class EnrollmentController extends Controller
       ], 500);
     }
   }
-// Validar o token
-public function validateToken(Request $request)
-{
-    try {
-        $user = JWTAuth::parseToken()->authenticate();
-        return response()->json(['valid' => true, 'user' => $user], 200);
-    } catch (\Exception $e) {
-        return response()->json(['valid' => false, 'error' => $e->getMessage()], 401);
-    }
-}
 }
