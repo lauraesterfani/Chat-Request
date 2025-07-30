@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
 {
@@ -168,4 +169,14 @@ class UserController extends Controller
       ], 500);
     }
   }
+  // Validar o token
+public function validateToken(Request $request)
+{
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        return response()->json(['valid' => true, 'user' => $user], 200);
+    } catch (\Exception $e) {
+        return response()->json(['valid' => false, 'error' => $e->getMessage()], 401);
+    }
+}
 }
