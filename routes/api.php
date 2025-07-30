@@ -14,6 +14,7 @@ Route::get('/', function () {
 
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
 Route::middleware('auth:api')->group(function () {
   Route::get('/me', [AuthController::class, 'me']);
