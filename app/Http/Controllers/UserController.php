@@ -56,12 +56,7 @@ class UserController extends Controller
 
       return response()->json([
         'message' => 'User created successfully',
-        'user' => [
-          'id' => $user->id,
-          'name' => $user->name,
-          'email' => $user->email,
-          'user_type' => $user->user_type
-        ]
+        'user' => $user
       ], 201);
     } catch (\Exception $e) {
       Log::error('Error creating user: ' . $e->getMessage());
