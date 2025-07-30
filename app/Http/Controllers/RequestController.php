@@ -16,6 +16,8 @@ class RequestController extends Controller
   public function index()
   {
     try {
+      $requests = ModelsRequest::all();
+      return response()->json($requests, 200);
 
     } catch (\Exception $e) {
       Log::error('Error fetching requests: ' . $e->getMessage());
@@ -28,7 +30,22 @@ class RequestController extends Controller
    */
   public function store(Request $request)
   {
-    //
+     try {
+      $validated = $request->validate([
+        'protocol' => 'required|string|max:255',
+        'status' => 'required|string|max:50',
+         'observations' => 'nullable|string|max:1000',""
+      ]);
+
+      $requests = new ModelsRequest($validated);
+      $requests->enrollment = Auth::user()->enrollment;
+      $requests->save();
+
+      return response()->json($requests, 201);
+    } catch (\Exception $e) {
+      Log::error('Error creating enrollments: ' . $e->getMessage());
+      return response()->json(['msg' => 'Error creating enrollments'], 500);
+    }
   }
 
   /**

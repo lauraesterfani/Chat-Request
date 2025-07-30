@@ -15,6 +15,6 @@ class Request extends Model
     'protocol',
     'status',
     'observations',
-    'enrollments_id'
+    'enrollment'
   ];
 }
