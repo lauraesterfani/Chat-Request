@@ -33,10 +33,7 @@ class EnrollmentController extends Controller
       $validated = $request->validate([
         'enrollment' => 'required|string|max:255',
         'status' => 'required|in:active,locked,finished',
-        // 'user_id' => 'required|exists:users,id'
       ]);
-
-      // $enrollment = Enrollment::create($validated);
 
       $enrollment = new Enrollment($validated);
       $enrollment->user_id = Auth::user()->id;
