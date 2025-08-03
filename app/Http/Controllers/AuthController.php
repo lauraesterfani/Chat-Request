@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -28,13 +30,32 @@ class AuthController extends Controller
   public function changeEnrollment($enrollment)
   {
     $user = Auth::user();
-    $customClaims = ['enrollment' => $enrollment];
-    $newToken = JWTAuth::claims($customClaims)->fromUser($user);
 
-    return response()->json([
-      'msg' => 'Matrícula alterada com sucesso!',
-      'token' => $newToken,
-    ]);
+    try {
+      $enrollmentRecord = Enrollment::where('enrollment', $enrollment)->first();
+
+      if (!$enrollmentRecord) {
+        return response()->json(['msg' => 'Matrícula não encontrada!'], 404);
+      }
+
+      if ($enrollmentRecord->user_id !== $user->id) {
+        return response()->json(['msg' => 'Essa matrícula não pertence a esse usuário!'], 403);
+      }
+
+      $customClaims = ['enrollment' => $enrollment];
+      $newToken = JWTAuth::claims($customClaims)->fromUser($user);
+
+      return response()->json([
+        'msg' => 'Matrícula alterada com sucesso!',
+        'token' => $newToken,
+      ]);
+    } catch (\Exception $e) {
+      Log::error('Erro ao mudar matrícula: ' . $e->getMessage());
+
+      return response()->json([
+        'msg' => 'Erro interno. Tente novamente mais tarde.',
+      ], 500);
+    }
   }
 
   public function me()
