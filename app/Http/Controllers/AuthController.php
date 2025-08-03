@@ -25,7 +25,7 @@ class AuthController extends Controller
     ]);
   }
 
-  public function changeEnrollment(string $enrollment)
+  public function changeEnrollment($enrollment)
   {
     $user = Auth::user();
     $customClaims = ['enrollment' => $enrollment];

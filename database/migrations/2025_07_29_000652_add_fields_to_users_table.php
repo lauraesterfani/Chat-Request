@@ -14,7 +14,6 @@ return new class extends Migration
     Schema::table('users', function (Blueprint $table) {
       $table->string('cpf')->unique();
       $table->string('phone')->nullable();
-      $table->date('birthday')->nullable();
       $table->enum('user_type', ['student', 'staff']);
     });
   }

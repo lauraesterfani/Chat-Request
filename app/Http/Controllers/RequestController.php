@@ -6,7 +6,7 @@ use App\Models\Request as ModelsRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 
 class RequestController extends Controller
 {
@@ -36,6 +36,7 @@ class RequestController extends Controller
         'status' => 'required|string|max:50',
          'observations' => 'nullable|string|max:1000',""
       ]);
+      $validated['id'] = (string) Str::uuid();
 
       $requests = new ModelsRequest($validated);
       $requests->enrollment = Auth::user()->enrollment;

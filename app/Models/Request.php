@@ -6,12 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Request extends Model
 {
-  /**
-   * The attributes that are mass assignable.
-   *
-   * @var list<string>
-   */
+  protected $keyType = 'string';
+  public $incrementing = false;
   protected $fillable = [
+    'id',
     'protocol',
     'status',
     'observations',
