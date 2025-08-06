@@ -37,6 +37,8 @@ class EnrollmentController extends Controller
         'user_id' => 'required|uuid'
       ]);
 
+      $validated['id'] = (string) Str::uuid();
+
       $enrollment = Enrollment::create($validated);
 
       return response()->json($enrollment, 201);

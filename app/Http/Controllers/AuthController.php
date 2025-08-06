@@ -27,12 +27,12 @@ class AuthController extends Controller
     ]);
   }
 
-  public function changeEnrollment($enrollment)
+  public function changeEnrollment(string $enrollment_id)
   {
     $user = Auth::user();
 
     try {
-      $enrollmentRecord = Enrollment::where('enrollment', $enrollment)->first();
+      $enrollmentRecord = Enrollment::find($enrollment_id);
 
       if (!$enrollmentRecord) {
         return response()->json(['msg' => 'Matrícula não encontrada!'], 404);
@@ -42,7 +42,7 @@ class AuthController extends Controller
         return response()->json(['msg' => 'Essa matrícula não pertence a esse usuário!'], 403);
       }
 
-      $customClaims = ['enrollment' => $enrollment];
+      $customClaims = ['enrollment_id' => $enrollment_id];
       $newToken = JWTAuth::claims($customClaims)->fromUser($user);
 
       return response()->json([

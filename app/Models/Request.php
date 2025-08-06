@@ -13,6 +13,15 @@ class Request extends Model
     'protocol',
     'status',
     'observations',
-    'enrollment'
+    'enrollment_id',
+    'type_id'
   ];
+
+  public function enrollment() {
+    return $this->belongsTo(Enrollment::class, 'enrollment_id');
+  }
+
+  public function typeRequest() {
+    return $this->belongsTo(TypeRequests::class, 'type_id');
+  }
 }

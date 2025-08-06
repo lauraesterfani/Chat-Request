@@ -16,17 +16,18 @@ return new class extends Migration
       $table->string('protocol')->unique();
       $table->string('status');
       $table->text('observations')->nullable();
-      $table->string('enrollment');
-      // $table->unsignedBigInteger('type');
+      $table->uuid('enrollment_id');
+      $table->uuid('type_id');
 
-      $table->foreign('enrollment', 'fk_requests_enrollments')
-        ->references('enrollment')
+      $table->foreign('enrollment_id', 'fk_requests_enrollment_id')
+        ->references('id')
         ->on('enrollments')
         ->onDelete('cascade');
-      // $table->foreign('type', 'fk_requests_type_id')
-      //   ->references('id')
-      //   ->on('requests_type')
-      //   ->onDelete('cascade');
+
+      $table->foreign('type_id', 'fk_type_requests_request_id')
+        ->references('id')
+        ->on('type_requests')
+        ->onDelete('cascade');
 
       $table->timestamps();
     });

@@ -11,16 +11,9 @@ return new class extends Migration
    */
   public function up(): void
   {
-    Schema::create('enrollments', function (Blueprint $table) {
+    Schema::create('type_requests', function (Blueprint $table) {
       $table->uuid('id')->primary();
-      $table->string('enrollment');
-      $table->enum('status', ['active', 'locked', 'finished']);
-      $table->uuid('user_id');
-
-      $table->foreign('user_id', 'fk_enrollments_user_id')
-        ->references('id')
-        ->on('users')
-        ->onDelete('cascade');
+      $table->string("name")->unique();
       $table->timestamps();
     });
   }
@@ -30,6 +23,6 @@ return new class extends Migration
    */
   public function down(): void
   {
-    Schema::dropIfExists('enrollments');
+    Schema::dropIfExists('type_requests');
   }
 };
