@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash; // Adicione esta linha para usar o Hash
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,11 +13,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        
+        $this->call(RolesAndPermissionsSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Cria o usuário 'admin' com um CPF padrão.
+        $adminUser = User::factory()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'), // Define uma senha padrão
+            'cpf' => '12345678900', // Valor padrão para CPF
+            'user_type' => 'staff', // Exemplo de tipo de usuário
         ]);
+
+        // Atribui o papel 'admin' ao usuário criado.
+        $adminUser->assignRole('admin');
+
+        
     }
 }
