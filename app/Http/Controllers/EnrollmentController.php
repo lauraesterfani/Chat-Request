@@ -6,7 +6,6 @@ use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class EnrollmentController extends Controller
@@ -32,12 +31,14 @@ class EnrollmentController extends Controller
   {
     try {
       $validated = $request->validate([
-        'enrollment' => 'required|string|unique:enrollments,enrollment|max:31',
-        'status' => 'required|in:active,locked,finished',
-        'user_id' => 'required|uuid'
+        'enrollment' => 'required|string|max:255',
+        'status' => 'required|in:registered,graduate,unlinked',
+        'campus_name' => 'required|string|max:255',
+        'period' => 'required|string|max:255',
+        'turn' => 'required|in:matutino,vespertino,noturno',
+        'course_id' => 'required|integer',
+        'modality' => 'required|in:presencial,ead,hídrido',
       ]);
-
-      $validated['id'] = (string) Str::uuid();
 
       $enrollment = Enrollment::create($validated);
 

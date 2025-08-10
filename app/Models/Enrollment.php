@@ -10,7 +10,12 @@ class Enrollment extends Model
     'id',
     'enrollment',
     'status',
-    'user_id'
+    'user_id',
+    'campus_name',
+    'period',
+    'turn',
+    'course_id',
+    'modality',
   ];
 
   protected $keyType = 'string';

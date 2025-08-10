@@ -57,7 +57,7 @@ class AuthController extends Controller
       ], 500);
     }
   }
-
+ 
   public function me()
   {
     $user = Auth::user();
@@ -70,11 +70,7 @@ class AuthController extends Controller
     ]);
   }
 
-  public function logout()
-  {
-    JWTAuth::invalidate(JWTAuth::getToken());
-    return response()->json(['msg' => 'Logout realizado com sucesso']);
-  }
+  
 
   public function refresh()
   {

@@ -12,21 +12,20 @@ return new class extends Migration
   public function up(): void
   {
     Schema::create('requests', function (Blueprint $table) {
-      $table->uuid('id')->primary();
+      $table->id();
       $table->string('protocol')->unique();
       $table->string('status');
       $table->text('observations')->nullable();
-      $table->uuid('enrollment_id');
-      $table->uuid('type_id');
+      $table->string('enrollment');
+      $table->unsignedBigInteger('user_id'); // Adiciona o campo user_id
 
-      $table->foreign('enrollment_id', 'fk_requests_enrollment_id')
-        ->references('id')
+      $table->foreign('enrollment', 'fk_requests_enrollments')
+        ->references('enrollment')
         ->on('enrollments')
         ->onDelete('cascade');
-
-      $table->foreign('type_id', 'fk_type_requests_request_id')
+      $table->foreign('user_id')
         ->references('id')
-        ->on('type_requests')
+        ->on('users')
         ->onDelete('cascade');
 
       $table->timestamps();

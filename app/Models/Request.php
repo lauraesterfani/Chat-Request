@@ -6,22 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Request extends Model
 {
-  protected $keyType = 'string';
-  public $incrementing = false;
+  /**
+   * The attributes that are mass assignable.
+   *
+   * @var list<string>
+   */
   protected $fillable = [
-    'id',
     'protocol',
     'status',
     'observations',
-    'enrollment_id',
-    'type_id'
+    'enrollment'
   ];
-
-  public function enrollment() {
-    return $this->belongsTo(Enrollment::class, 'enrollment_id');
-  }
-
-  public function typeRequest() {
-    return $this->belongsTo(TypeRequests::class, 'type_id');
-  }
 }
