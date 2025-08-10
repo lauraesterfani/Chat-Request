@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,4 +36,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('enrollment', EnrollmentController::class);
     });
 
+    // Rotas de recurso para ServiceRequest.
+    // Essas rotas estão protegidas pela autenticação, e a autorização
+    // será definida pela sua ServiceRequestPolicy.
+    Route::apiResource('requests', ServiceRequestController::class);
 });
