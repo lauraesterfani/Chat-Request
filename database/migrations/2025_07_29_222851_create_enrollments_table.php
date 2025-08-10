@@ -13,9 +13,14 @@ return new class extends Migration
   {
     Schema::create('enrollments', function (Blueprint $table) {
       $table->id();
+      $table->unsignedBigInteger('course_id');
       $table->string('enrollment')->unique();
-      $table->enum('status', ['active', 'locked', 'finished']);
+      $table->enum('status', ['matriculado', 'graduado', 'desvinculado']);
       $table->unsignedBigInteger('user_id');
+      $table->string('campus_name');
+      $table->string('period');
+      $table->string('turn');
+      $table->string('modality');
 
       $table->foreign('user_id', 'fk_enrollments_user_id')
         ->references('id')

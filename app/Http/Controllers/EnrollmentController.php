@@ -33,11 +33,13 @@ class EnrollmentController extends Controller
 
       $validated = $request->validate([
         'enrollment' => 'required|string|max:255',
-        'status' => 'required|in:active,locked,finished',
-        // 'user_id' => 'required|exists:users,id'
+        'status' => 'required|in:registered,graduate,unlinked',
+        'campus_name' => 'required|string|max:255',
+        'period' => 'required|string|max:255',
+        'turn' => 'required|in:matutino,vespertino,noturno',
+        'course_id' => 'required|integer',
+        'modality' => 'required|in:presencial,ead,hídrido',
       ]);
-
-      // $enrollment = Enrollment::create($validated);
 
       $enrollment = new Enrollment($validated);
       $enrollment->user_id = Auth::user()->id;
