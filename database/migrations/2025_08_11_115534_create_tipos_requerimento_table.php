@@ -11,16 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('courses', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('description');
-            $table->timestamps();
+        Schema::create('tipos_requerimento', function (Blueprint $table) {
+            $table->id('id_tipo_requerimento');
+            $table->string('nome_requerimento', 150)->unique();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
-        Schema::dropIfExists('courses');
+        Schema::dropIfExists('tipos_requerimento');
     }
 };

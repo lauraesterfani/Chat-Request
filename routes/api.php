@@ -1,36 +1,46 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CoursesController;
-use App\Http\Controllers\EnrollmentController;
-use App\Http\Controllers\RequestController;
-use App\Http\Controllers\DocumentTypeController;
-use App\Http\Controllers\RequestTypeController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\V1\CursoController;
+use App\Http\Controllers\Api\V1\CampusController;
+use App\Http\Controllers\Api\V1\TipoAnexoController;
+use App\Http\Controllers\Api\V1\TipoRequerimentoController;
+use App\Http\Controllers\Api\V1\AlunoController;
+use App\Http\Controllers\Api\V1\MatriculaController;
+use App\Http\Controllers\Api\V1\RequerimentoController;
+use App\Http\Controllers\Api\V1\AuthController; // Importe o novo controller
 
-Route::get('/', function () {
-  return response()->json(["api" => "Ativa"]);
-});
+Route::prefix('v1')->group(function () {
+    // --- ROTAS PÚBLICAS ---
+
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+    
+    Route::get('/matriculas', [MatriculaController::class, 'index']);
+
+    // --- ROTAS PROTEGIDAS ---
+    // Todas as rotas dentro deste grupo exigirão um token válido.
+    // Alterado de 'sanctum' para 'api' para corresponder ao driver JWT.
+    Route::middleware('auth:api')->group(function () {
+        Route::post('/validate-token', [AuthController::class, 'validateToken']);
+
+        //Matriculas
+        // Route::get('/matriculas', [MatriculaController::class, 'index']);
 
 
+        // Rota para fazer logout
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/me', [AuthController::class, 'me']);
 
-Route::post('/register', [UserController::class, 'store']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
-Route::get('/list-users', [UserController::class, 'index']);
-Route::get('/list-enrollments', [EnrollmentController::class, 'index']);
-Route::get('/list-requests', [RequestController::class, 'index']);
-Route::get('/list-courses', [CoursesController::class, 'index']);
-
-Route::middleware('auth:api')->group(function () {
-  Route::get('/me', [AuthController::class, 'me']);
-  Route::get('/my-enrollments', [UserController::class, 'myEnrollments']);
-  Route::post('/refresh', [AuthController::class, 'refresh']);
-  Route::post('/change-enrollment/{id}', [AuthController::class, 'setEnrollment']);
-
-  Route::apiResource('user', UserController::class)->except('store');
-  Route::apiResource('enrollment', EnrollmentController::class);
-  // Route::apiResource('request', RequestController::class);
-
+        // Seus recursos de CRUD existentes agora estão protegidos
+        Route::apiResource('cursos', CursoController::class);
+        Route::apiResource('campus', CampusController::class);
+        Route::apiResource('tipos-anexo', TipoAnexoController::class);
+        Route::apiResource('tipos-requerimento', TipoRequerimentoController::class);
+        Route::apiResource('alunos', AlunoController::class);
+        Route::apiResource('matriculas', MatriculaController::class);
+        Route::apiResource('requerimentos', RequerimentoController::class);
+    });
 });

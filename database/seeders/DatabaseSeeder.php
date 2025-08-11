@@ -2,20 +2,41 @@
 
 namespace Database\Seeders;
 
-// Nenhuma declaração 'use' para os seus seeders é necessária aqui.
-// Apenas para classes de fora do namespace, como 'Seeder'.
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Esta chamada agora funcionará corretamente.
+        // 1. Limpeza Centralizada
+        Schema::disableForeignKeyConstraints();
+        DB::table('requerimentos')->truncate();
+        DB::table('requerimento_anexos_exigidos')->truncate();
+        DB::table('matriculas')->truncate();
+        DB::table('alunos')->truncate();
+        DB::table('tipos_requerimento')->truncate();
+        DB::table('tipos_anexo')->truncate();
+        DB::table('campus')->truncate();
+        DB::table('cursos')->truncate();
+        Schema::enableForeignKeyConstraints();
+
+        // 2. Ordem de Execução dos Seeders
         $this->call([
-            CourseSeeder::class,
-            UserSeeder::class,
-            EnrollmentsTableSeeder::class,
-            RequestsTableSeeder::class,
+            // Tabelas de domínio primárias
+            CursoSeeder::class,
+            CampusSeeder::class,
+            TipoAnexoSeeder::class,
+            TipoRequerimentoSeeder::class,
+            
+            // Tabela de ligação (pivô)
+            RequerimentoAnexosExigidosSeeder::class,
+
+            // Tabelas com dados de exemplo (em ordem de dependência)
+            AlunoSeeder::class,
+            MatriculaSeeder::class,      // <<< NOVO
+            RequerimentoSeeder::class,   // <<< NOVO
         ]);
     }
 }
