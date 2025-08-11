@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Tymon\JWTAuth\Contracts\JWTSubject;
+use App\Models\Enrollment;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -25,8 +25,7 @@ class User extends Authenticatable
         'birthday',
         'phone',
         'role_id',
-        // Adicione 'user_type' aqui para permitir o Mass Assignment
-        'user_type', 
+        'user_type', // permite mass assignment
     ];
 
     /**
@@ -59,5 +58,26 @@ class User extends Authenticatable
         ];
 
         return $roleMapping[$this->attributes['role_id']] ?? 'unknown';
+    }
+
+    // Métodos necessários para JWTAuth
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims()
+    {
+        return [];
+    }
+
+    // Relacionamento com Enrollment
+    public function enrollments()
+    {
+        return $this->hasMany(
+            Enrollment::class,
+            'user_id',
+            'id'
+        );
     }
 }
