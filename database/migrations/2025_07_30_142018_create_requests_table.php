@@ -16,16 +16,16 @@ return new class extends Migration
       $table->string('protocol')->unique();
       $table->string('status');
       $table->text('observations')->nullable();
-      $table->string('enrollment');
-      $table->unsignedBigInteger('user_id'); // Adiciona o campo user_id
+      $table->unsignedBigInteger('enrollment_id');
+      $table->unsignedBigInteger('request_type_id');
 
-      $table->foreign('enrollment', 'fk_requests_enrollments')
-        ->references('enrollment')
+      $table->foreign('enrollment_id')
+        ->references('id')
         ->on('enrollments')
         ->onDelete('cascade');
-      $table->foreign('user_id')
+      $table->foreign('request_type_id')
         ->references('id')
-        ->on('users')
+        ->on('request_types')
         ->onDelete('cascade');
 
       $table->timestamps();

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TypeRequests;
+use App\Models\RequestType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
-class TypeRequestsController extends Controller
+class RequestTypeController extends Controller
 {
   /**
    * Display a listing of the resource.
@@ -29,7 +29,7 @@ class TypeRequestsController extends Controller
 
       $validated['id'] = (string) Str::uuid();
 
-      $typeRequests = TypeRequests::create($validated);
+      $typeRequests = RequestType::create($validated);
 
       return response()->json($typeRequests);
     } catch (\Exception $e) {
@@ -39,7 +39,7 @@ class TypeRequestsController extends Controller
   /**
    * Display the specified resource.
    */
-  public function show(TypeRequests $typeRequest)
+  public function show(RequestType $typeRequest)
   {
     //
   }
@@ -47,7 +47,7 @@ class TypeRequestsController extends Controller
   /**
    * Update the specified resource in storage.
    */
-  public function update(Request $request, TypeRequests $typeRequest)
+  public function update(Request $request, RequestType $typeRequest)
   {
     //
   }
@@ -55,7 +55,7 @@ class TypeRequestsController extends Controller
   /**
    * Remove the specified resource from storage.
    */
-  public function destroy(TypeRequests $typeRequest)
+  public function destroy(RequestType $typeRequest)
   {
     //
   }
@@ -77,7 +77,7 @@ class TypeRequestsController extends Controller
     $validated = $validator->validated();
 
     try {
-      $requestType = TypeRequests::findOrFail($validated['request_type_id']);
+      $requestType = RequestType::findOrFail($validated['request_type_id']);
       $requestType->documentTypes()->attach($validated['document_type_id']);
 
       return response()->json(['message' => 'Documento associado com sucesso']);

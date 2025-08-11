@@ -13,19 +13,24 @@ return new class extends Migration
   {
     Schema::create('enrollments', function (Blueprint $table) {
       $table->id();
-      $table->unsignedBigInteger('course_id');
-      $table->string('enrollment')->unique();
+      $table->string('enrollment');
       $table->enum('status', ['matriculado', 'graduado', 'desvinculado']);
-      $table->unsignedBigInteger('user_id');
       $table->string('campus_name');
       $table->string('period');
       $table->string('turn');
       $table->string('modality');
+      $table->unsignedBigInteger('course_id');
+      $table->unsignedBigInteger('user_id');
 
-      $table->foreign('user_id', 'fk_enrollments_user_id')
+      $table->foreign('course_id')
+        ->references('id')
+        ->on('courses')
+        ->onDelete('cascade');
+      $table->foreign('user_id')
         ->references('id')
         ->on('users')
         ->onDelete('cascade');
+
       $table->timestamps();
     });
   }

@@ -15,6 +15,26 @@ class Request extends Model
     'protocol',
     'status',
     'observations',
-    'enrollment'
+    'enrollment_id',
+    'request_type_id',
   ];
+
+  public function enrollments()
+  {
+    return $this->belongsTo(Enrollment::class, 'enrollment_id');
+  }
+
+  public function requestTypes()
+  {
+    return $this->belongsTo(RequestType::class, 'request_type_id');
+  }
+
+  public function documents()
+  {
+    return $this->hasMany(
+      Document::class,
+      'request_id',
+      'id'
+    );
+  }
 }

@@ -11,8 +11,8 @@ return new class extends Migration
    */
   public function up(): void
   {
-    Schema::create('type_requests', function (Blueprint $table) {
-      $table->uuid('id')->primary();
+    Schema::create('request_types', function (Blueprint $table) {
+      $table->id();
       $table->string("name")->unique();
       $table->timestamps();
     });
@@ -23,6 +23,6 @@ return new class extends Migration
    */
   public function down(): void
   {
-    Schema::dropIfExists('type_requests');
+    Schema::dropIfExists('request_type');
   }
 };

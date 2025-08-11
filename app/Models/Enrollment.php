@@ -7,27 +7,32 @@ use Illuminate\Database\Eloquent\Model;
 class Enrollment extends Model
 {
   protected $fillable = [
-    'id',
     'enrollment',
     'status',
-    'user_id',
     'campus_name',
     'period',
     'turn',
-    'course_id',
     'modality',
+    'course_id',
+    'user_id',
   ];
 
-  protected $keyType = 'string';
-  public $incrementing = false;
-
-  public function user()
+  public function users()
   {
     return $this->belongsTo(User::class, 'user_id');
   }
 
+  public function courses()
+  {
+    return $this->belongsTo(Course::class, 'course_id');
+  }
+
   public function requests()
   {
-    return $this->hasMany(Request::class);
+    return $this->hasMany(
+      Request::class,
+      'erollment_id',
+      'id'
+    );
   }
 }

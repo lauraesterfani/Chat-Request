@@ -27,7 +27,7 @@ class AuthController extends Controller
     ]);
   }
 
-  public function changeEnrollment(string $enrollment_id)
+  public function setEnrollment(string $enrollment_id)
   {
     $user = Auth::user();
 
@@ -57,20 +57,20 @@ class AuthController extends Controller
       ], 500);
     }
   }
- 
+
   public function me()
   {
     $user = Auth::user();
     $payload = JWTAuth::parseToken()->getPayload();
-    $enrollment = $payload->get('enrollment', null);
+    $enrollment_id = $payload->get('enrollment_id', null);
 
     return response()->json([
       'user' => $user,
-      'enrollment' => $enrollment,
+      'enrollment_id' => $enrollment_id,
     ]);
   }
 
-  
+
 
   public function refresh()
   {

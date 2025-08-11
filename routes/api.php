@@ -4,8 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CoursesController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\RequestController;
-use App\Http\Controllers\TypeDocumentsController;
-use App\Http\Controllers\TypeRequestsController;
+use App\Http\Controllers\DocumentTypeController;
+use App\Http\Controllers\RequestTypeController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,9 +25,9 @@ Route::get('/list-courses', [CoursesController::class, 'index']);
 
 Route::middleware('auth:api')->group(function () {
   Route::get('/me', [AuthController::class, 'me']);
-  // Route::post('/logout', [AuthController::class, 'logout']); Não precisamos de uma rota de logout, no Front estou apagando o token do localStorage.
+  Route::get('/my-enrollments', [UserController::class, 'myEnrollments']);
   Route::post('/refresh', [AuthController::class, 'refresh']);
-  Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
+  Route::post('/change-enrollment/{id}', [AuthController::class, 'setEnrollment']);
 
   Route::apiResource('user', UserController::class)->except('store');
   Route::apiResource('enrollment', EnrollmentController::class);

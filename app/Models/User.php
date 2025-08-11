@@ -2,25 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use App\Models\Enrollment;
 
 class User extends Authenticatable implements JWTSubject
 {
   use HasFactory, Notifiable;
 
-  protected $keyType = 'string';
-  public $incrementing = false;
-
   protected $fillable = [
-    'id',
     'name',
     'email',
     'password',
     'cpf',
-    'birthday',
     'phone',
     'user_type',
   ];
@@ -48,8 +45,12 @@ class User extends Authenticatable implements JWTSubject
     return [];
   }
 
-  public function enrollment()
+  public function enrollments()
   {
-    return $this->hasMany(Enrollment::class);
+    return $this->hasMany(
+      Enrollment::class,
+      'user_id',
+      'id'
+    );
   }
 }

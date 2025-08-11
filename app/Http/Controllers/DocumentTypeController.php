@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TypeDocuments;
+use App\Models\DocumentType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-class TypeDocumentsController extends Controller
+class DocumentTypeController extends Controller
 {
   /**
    * Display a listing of the resource.
@@ -28,7 +28,7 @@ class TypeDocumentsController extends Controller
 
       $validated['id'] = (string) Str::uuid();
 
-      $typeDocuments = TypeDocuments::create($validated);
+      $typeDocuments = DocumentType::create($validated);
 
       return response()->json($typeDocuments);
     } catch (\Exception $e) {
@@ -38,7 +38,7 @@ class TypeDocumentsController extends Controller
   /**
    * Display the specified resource.
    */
-  public function show(TypeDocuments $typeDocuments)
+  public function show(DocumentType $typeDocuments)
   {
     //
   }
@@ -46,7 +46,7 @@ class TypeDocumentsController extends Controller
   /**
    * Update the specified resource in storage.
    */
-  public function update(Request $request, TypeDocuments $typeDocuments)
+  public function update(Request $request, DocumentType $typeDocuments)
   {
     //
   }
@@ -54,7 +54,7 @@ class TypeDocumentsController extends Controller
   /**
    * Remove the specified resource from storage.
    */
-  public function destroy(TypeDocuments $typeDocuments)
+  public function destroy(DocumentType $typeDocuments)
   {
     //
   }
