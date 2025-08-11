@@ -2,49 +2,89 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Http\Controllers\Controller;
+use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\Log;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
   public function login(Request $request)
   {
-    $validated = $request->validate([
-      'cpf' => 'required|string|max:255',
-      'password' => 'required|string|max:255'
-    ]);
+    $credentials = $request->only('cpf', 'password');
 
-    if (Auth::attempt($validated)) {
-      $user = User::where('cpf', $validated['cpf'])->first();
-
-      $token = $user
-        ->createToken('api-token', ['post:read', 'post:create', 'post:update'])
-        ->plainTextToken;
-
-      return response()->json(['token' => $token]);
+    if (!$token = JWTAuth::attempt($credentials)) {
+      return response()->json(['msg' => 'Credenciais inválidas'], 401);
     }
 
-    return response()->json(['msg' => 'Credenciais inválidas'],  401);
+    $user = Auth::user();
+
+    return response()->json([
+      'user' => $user,
+      'token' => $token
+    ]);
   }
 
-  public function logout(Request $request)
+  public function changeEnrollment(string $enrollment_id)
   {
-    $token = $request->bearerToken();
+    $user = Auth::user();
 
-    if (!$token) {
-      return response()->json(['msg' => 'Token não informado'], 400);
+    try {
+      $enrollmentRecord = Enrollment::find($enrollment_id);
+
+      if (!$enrollmentRecord) {
+        return response()->json(['msg' => 'Matrícula não encontrada!'], 404);
+      }
+
+      if ($enrollmentRecord->user_id !== $user->id) {
+        return response()->json(['msg' => 'Essa matrícula não pertence a esse usuário!'], 403);
+      }
+
+      $customClaims = ['enrollment_id' => $enrollment_id];
+      $newToken = JWTAuth::claims($customClaims)->fromUser($user);
+
+      return response()->json([
+        'msg' => 'Matrícula alterada com sucesso!',
+        'token' => $newToken,
+      ]);
+    } catch (\Exception $e) {
+      Log::error('Erro ao mudar matrícula: ' . $e->getMessage());
+
+      return response()->json([
+        'msg' => 'Erro interno. Tente novamente mais tarde.',
+      ], 500);
     }
+  }
 
-    $access_token = PersonalAccessToken::findToken($token);
+  public function me()
+  {
+    $user = Auth::user();
+    $payload = JWTAuth::parseToken()->getPayload();
+    $enrollment = $payload->get('enrollment', null);
 
-    if (!$access_token) {
-      return response()->json(['msg' => 'Token inválido'], 400);
-    }
+    return response()->json([
+      'user' => $user,
+      'enrollment' => $enrollment,
+    ]);
+  }
 
-    $access_token->delete();
+  public function logout()
+  {
+    JWTAuth::invalidate(JWTAuth::getToken());
+    return response()->json(['msg' => 'Logout realizado com sucesso']);
+  }
 
-    return response()->json(['msg' => 'Logout realizado com sucesso'], 200);
+  public function refresh()
+  {
+    $token = JWTAuth::getToken();
+    $payload = JWTAuth::getPayload($token);
+    $enrollment = $payload->get('enrollment');
+    $newToken = JWTAuth::claims(['enrollment' => $enrollment])->refresh($token);
+
+    return response()->json([
+      'token' => $newToken
+    ]);
   }
 }

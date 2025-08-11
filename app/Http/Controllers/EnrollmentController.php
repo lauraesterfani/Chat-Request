@@ -6,6 +6,8 @@ use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class EnrollmentController extends Controller
 {
@@ -29,18 +31,15 @@ class EnrollmentController extends Controller
   public function store(Request $request)
   {
     try {
-
       $validated = $request->validate([
-        'enrollment' => 'required|string|max:255',
+        'enrollment' => 'required|string|unique:enrollments,enrollment|max:31',
         'status' => 'required|in:active,locked,finished',
-        // 'user_id' => 'required|exists:users,id'
+        'user_id' => 'required|uuid'
       ]);
 
-      // $enrollment = Enrollment::create($validated);
+      $validated['id'] = (string) Str::uuid();
 
-      $enrollment = new Enrollment($validated);
-      $enrollment->user_id = Auth::user()->id;
-      $enrollment->save();
+      $enrollment = Enrollment::create($validated);
 
       return response()->json($enrollment, 201);
     } catch (\Exception $e) {
@@ -115,4 +114,14 @@ class EnrollmentController extends Controller
       ], 500);
     }
   }
+// Validar o token
+public function validateToken(Request $request)
+{
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        return response()->json(['valid' => true, 'user' => $user], 200);
+    } catch (\Exception $e) {
+        return response()->json(['valid' => false, 'error' => $e->getMessage()], 401);
+    }
+}
 }

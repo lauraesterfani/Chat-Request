@@ -12,10 +12,10 @@ return new class extends Migration
   public function up(): void
   {
     Schema::create('enrollments', function (Blueprint $table) {
-      $table->id();
-      $table->string('enrollment')->unique();
+      $table->uuid('id')->primary();
+      $table->string('enrollment');
       $table->enum('status', ['active', 'locked', 'finished']);
-      $table->unsignedBigInteger('user_id');
+      $table->uuid('user_id');
 
       $table->foreign('user_id', 'fk_enrollments_user_id')
         ->references('id')

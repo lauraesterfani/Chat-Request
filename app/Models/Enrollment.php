@@ -6,18 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class Enrollment extends Model
 {
-  /**
-   * The attributes that are mass assignable.
-   *
-   * @var list<string>
-   */
   protected $fillable = [
+    'id',
     'enrollment',
     'status',
     'user_id'
   ];
 
-  public function user() {
-    return $this->belongsTo(User::class);
+  protected $keyType = 'string';
+  public $incrementing = false;
+
+  public function user()
+  {
+    return $this->belongsTo(User::class, 'user_id');
+  }
+
+  public function requests()
+  {
+    return $this->hasMany(Request::class);
   }
 }

@@ -11,10 +11,10 @@ return new class extends Migration
    */
   public function up(): void
   {
-    Schema::table('users', function (Blueprint $table) {
-      $table->string('cpf')->unique();
-      $table->string('phone')->nullable();
-      $table->enum('user_type', ['student', 'staff']);
+    Schema::create('type_requests', function (Blueprint $table) {
+      $table->uuid('id')->primary();
+      $table->string("name")->unique();
+      $table->timestamps();
     });
   }
 
@@ -23,8 +23,6 @@ return new class extends Migration
    */
   public function down(): void
   {
-    Schema::table('users', function (Blueprint $table) {
-      $table->dropColumn(['cpf', 'birthday', 'phone', 'user_type']);
-    });
+    Schema::dropIfExists('type_requests');
   }
 };

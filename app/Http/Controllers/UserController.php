@@ -6,8 +6,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
 {
@@ -30,38 +32,33 @@ class UserController extends Controller
    */
   public function store(Request $request)
   {
-    $validated = $request->validate([
-      'name' => 'required|string|max:255',
-      'email' => 'required|email|unique:users,email',
-      'password' => [
-        'required',
-        'string',
-        'confirmed',
-        Password::min(8)
-          ->mixedCase()
-          ->numbers()
-          ->symbols()
-          ->uncompromised()
-      ],
-      'cpf' => 'required|string|size:11|unique:users,cpf',
-      'birthday' => 'required|date',
-      'phone' => 'required|string|size:11',
-      'user_type' => 'required|in:student,staff'
-    ]);
-
     try {
+      $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email|max:255',
+        'password' => [
+          'required',
+          'string',
+          'confirmed',
+          Password::min(8)
+            ->mixedCase()
+            ->numbers()
+            ->symbols()
+            ->uncompromised()
+        ], 'max:255',
+        'cpf' => 'required|string|size:11|unique:users,cpf',
+        'phone' => 'required|string|size:11',
+        'user_type' => 'required|in:student,staff'
+      ]);
+
+      $validated['id'] = (string) Str::uuid();
       $validated['password'] = Hash::make($validated['password']);
 
       $user = User::create($validated);
 
       return response()->json([
         'message' => 'User created successfully',
-        'user' => [
-          'id' => $user->id,
-          'name' => $user->name,
-          'email' => $user->email,
-          'user_type' => $user->user_type
-        ]
+        'user' => $user
       ], 201);
     } catch (\Exception $e) {
       Log::error('Error creating user: ' . $e->getMessage());
@@ -129,7 +126,6 @@ class UserController extends Controller
           'size:11',
           Rule::unique('users')->ignore($user->id),
         ],
-        'birthday' => 'sometimes|required|date',
         'phone' => 'sometimes|required|string|size:11',
         'user_type' => 'sometimes|required|in:student,staff'
       ]);
@@ -170,6 +166,16 @@ class UserController extends Controller
         'message' => 'Error deleting user.',
         'error' => $e->getMessage()
       ], 500);
+    }
+  }
+  // Validar o token
+  public function validateToken(Request $request)
+  {
+    try {
+      $user = JWTAuth::parseToken()->authenticate();
+      return response()->json(['valid' => true, 'user' => $user], 200);
+    } catch (\Exception $e) {
+      return response()->json(['valid' => false, 'error' => $e->getMessage()], 401);
     }
   }
 }
