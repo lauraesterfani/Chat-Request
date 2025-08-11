@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aluno;

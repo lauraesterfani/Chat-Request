@@ -1,12 +1,11 @@
 <?php
-
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Requerimento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Requerimento;
 
 class RequerimentoController extends Controller
 {
@@ -16,18 +15,46 @@ class RequerimentoController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
+
+    public function index(Request $request)
+    {
+        // Inicia a query com o carregamento dos relacionamentos para evitar N+1 queries
+        $query = Requerimento::with([
+            'matricula.aluno',
+            'matricula.curso',
+            'tipoRequerimento',
+        ]);
+
+        // Filtro opcional por status
+        if ($request->has('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Filtro opcional por nome do aluno ou CPF
+        if ($request->has('search')) {
+            $searchTerm = $request->input('search');
+            $query->whereHas('matricula.aluno', function ($q) use ($searchTerm) {
+                $q->where('nome_completo', 'like', "%{$searchTerm}%")
+                    ->orWhere('cpf', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Ordena pelos mais recentes e retorna com paginação
+        return $query->latest()->paginate(15);
+    }
+
     public function store(Request $request)
     {
         // 1. VALIDAÇÃO
         // A validação permanece a mesma, pois é robusta.
         // Se falhar, o Laravel automaticamente retorna uma resposta 422 com os erros.
         $validatedData = $request->validate([
-            'id_matricula' => 'required|exists:matriculas,id_matricula',
-            'id_tipo_requerimento' => 'required|exists:tipos_requerimento,id_tipo_requerimento',
-            'observacoes' => 'nullable|string',
-            'anexos' => 'nullable|array', // 'nullable' em vez de 'required' para permitir requerimentos sem anexos
-            'anexos.*.file' => 'required_with:anexos|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
-            'anexos.*.id_tipo_anexo' => 'required_with:anexos|exists:tipos_anexo,id_tipo_anexo'
+            'id_matricula'           => 'required|exists:matriculas,id_matricula',
+            'id_tipo_requerimento'   => 'required|exists:tipos_requerimento,id_tipo_requerimento',
+            'observacoes'            => 'nullable|string',
+            'anexos'                 => 'nullable|array',                                            // 'nullable' em vez de 'required' para permitir requerimentos sem anexos
+            'anexos.*.file'          => 'required_with:anexos|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
+            'anexos.*.id_tipo_anexo' => 'required_with:anexos|exists:tipos_anexo,id_tipo_anexo',
         ]);
 
         // 2. TRANSAÇÃO E LÓGICA DE CRIAÇÃO
@@ -37,11 +64,11 @@ class RequerimentoController extends Controller
             $requerimento = DB::transaction(function () use ($request, $validatedData) {
                 // Cria o registro principal do requerimento
                 $requerimento = Requerimento::create([
-                    'id_matricula' => $validatedData['id_matricula'],
+                    'id_matricula'         => $validatedData['id_matricula'],
                     'id_tipo_requerimento' => $validatedData['id_tipo_requerimento'],
-                    'observacoes' => $validatedData['observacoes'],
-                    'protocolo' => date('Ymd') . '-' . mt_rand(1000, 9999), // Protocolo único
-                    'status' => 'Aberto',
+                    'observacoes'          => $validatedData['observacoes'],
+                    'protocolo'            => date('Ymd') . '-' . mt_rand(1000, 9999), // Protocolo único
+                    'status'               => 'Aberto',
                 ]);
 
                 // Processa e salva cada anexo, se houver
@@ -55,9 +82,9 @@ class RequerimentoController extends Controller
 
                         // Cria o registro do anexo associado ao requerimento
                         $requerimento->anexos()->create([
-                            'id_tipo_anexo' => $idTipoAnexo,
+                            'id_tipo_anexo'   => $idTipoAnexo,
                             'caminho_arquivo' => $path,
-                            'nome_original' => $file->getClientOriginalName(),
+                            'nome_original'   => $file->getClientOriginalName(),
                         ]);
                     }
                 }
@@ -77,7 +104,7 @@ class RequerimentoController extends Controller
 
             // Retorna uma resposta de erro genérica para o cliente da API
             return response()->json([
-                'message' => 'Ocorreu um erro interno ao processar a solicitação.'
+                'message' => 'Ocorreu um erro interno ao processar a solicitação.',
             ], 500);
         }
     }

@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
         DB::table('tipos_anexo')->truncate();
         DB::table('campus')->truncate();
         DB::table('cursos')->truncate();
+        DB::table('admins')->truncate();
+        
         Schema::enableForeignKeyConstraints();
 
         // 2. Ordem de Execução dos Seeders
@@ -37,6 +39,7 @@ class DatabaseSeeder extends Seeder
             AlunoSeeder::class,
             MatriculaSeeder::class,      // <<< NOVO
             RequerimentoSeeder::class,   // <<< NOVO
+            AdminSeeder::class,
         ]);
     }
 }

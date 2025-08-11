@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\TipoRequerimento;
@@ -11,7 +11,7 @@ class TipoRequerimentoController extends Controller
     public function index()
     {
         // Retorna os tipos e a contagem de anexos exigidos
-        return TipoRequerimento::withCount('anexosExigidos')->paginate(10);
+        return TipoRequerimento::with('anexosExigidos')->orderBy('nome_requerimento')->get();
     }
 
     public function store(Request $request)

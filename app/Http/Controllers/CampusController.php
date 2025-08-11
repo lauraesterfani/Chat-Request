@@ -1,18 +1,21 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campus;
 use Illuminate\Http\Request;
 
-class TipoAnexoController extends Controller
+class CampusController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+
+        return response()->json(Campus::all());
+
     }
 
     /**
@@ -20,7 +23,13 @@ class TipoAnexoController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'nome_campus' => 'required|string|max:255',
+            'cidade' => 'required|string|max:50',
+        ]);
+
+        $campus = Campus::create($validated);
+        return response()->json($campus, 201);
     }
 
     /**

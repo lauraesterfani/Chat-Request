@@ -15,6 +15,7 @@ class Matricula extends Model
         'numero_matricula', 'periodo_ingresso', 'turno', 'status_matricula', 
         'id_aluno', 'id_campus', 'id_curso'
     ];
+    
 
     // Uma matrícula pertence a um Aluno, um Campus e um Curso
     public function aluno(): BelongsTo { return $this->belongsTo(Aluno::class, 'id_aluno'); }
