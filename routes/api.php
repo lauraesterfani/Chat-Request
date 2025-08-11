@@ -28,6 +28,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/validate-token', [AuthController::class, 'validateToken']);
     Route::get('/my-registrations', [MatriculaController::class, 'myRegistrations']);
     Route::get('/requerimentos/{id}', [RequerimentoController::class, 'show']);
+    Route::apiResource('requerimentos', RequerimentoController::class);
     Route::apiResource('alunos', AlunoController::class);
     Route::apiResource('matriculas', MatriculaController::class);
     Route::apiResource('cursos', CursoController::class);
