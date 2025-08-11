@@ -30,7 +30,6 @@ class EnrollmentController extends Controller
   public function store(Request $request)
   {
     try {
-
       $validated = $request->validate([
         'enrollment' => 'required|string|max:255',
         'status' => 'required|in:registered,graduate,unlinked',
@@ -41,9 +40,7 @@ class EnrollmentController extends Controller
         'modality' => 'required|in:presencial,ead,hídrido',
       ]);
 
-      $enrollment = new Enrollment($validated);
-      $enrollment->user_id = Auth::user()->id;
-      $enrollment->save();
+      $enrollment = Enrollment::create($validated);
 
       return response()->json($enrollment, 201);
     } catch (\Exception $e) {

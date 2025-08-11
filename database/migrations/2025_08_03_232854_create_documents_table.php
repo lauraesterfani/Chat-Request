@@ -11,21 +11,19 @@ return new class extends Migration
    */
   public function up(): void
   {
-    Schema::create('requests', function (Blueprint $table) {
+    Schema::create('documents', function (Blueprint $table) {
       $table->id();
-      $table->string('protocol')->unique();
-      $table->string('status');
-      $table->text('observations')->nullable();
-      $table->unsignedBigInteger('enrollment_id');
-      $table->unsignedBigInteger('request_type_id');
+      $table->string('url')->unique();
+      $table->unsignedBigInteger('request_id');
+      $table->unsignedBigInteger('document_type_id');
 
-      $table->foreign('enrollment_id')
+      $table->foreign('request_id')
         ->references('id')
-        ->on('enrollments')
+        ->on('requests')
         ->onDelete('cascade');
-      $table->foreign('request_type_id')
+      $table->foreign('document_type_id')
         ->references('id')
-        ->on('request_types')
+        ->on('document_types')
         ->onDelete('cascade');
 
       $table->timestamps();
@@ -37,6 +35,6 @@ return new class extends Migration
    */
   public function down(): void
   {
-    Schema::dropIfExists('requests');
+    Schema::dropIfExists('documents');
   }
 };

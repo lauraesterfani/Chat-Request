@@ -12,11 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('courses', function (Blueprint $table) {
-            $table->id(); // Chave primária padrão
-            $table->string('name')->nullable();
-            $table->string('description')->nullable();
-            $table->timestamps(); // Cria os campos created_at e updated_at corretamente
-            
+            $table->id();
+            $table->string('name');
+            $table->string('description');
+            $table->timestamps();
         });
     }
 
