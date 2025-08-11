@@ -3,22 +3,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Requerimento;
-use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class RequerimentoController extends Controller
 {
-    /**
-     * Lista todos os requerimentos com filtros e paginação.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function index(Request $request)
     {
         // Inicia a query com o carregamento dos relacionamentos para evitar N+1 queries
@@ -46,12 +38,6 @@ class RequerimentoController extends Controller
         return $query->latest()->paginate(15);
     }
 
-    /**
-     * Cria um novo requerimento com seus anexos.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -99,17 +85,10 @@ class RequerimentoController extends Controller
         }
     }
 
-    /**
-     * Exibe um requerimento específico com todos os seus relacionamentos.
-     *
-     * @param  int  $id O ID do requerimento a ser buscado.
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function show($id)
     {
         try {
-            // Busca o requerimento pelo ID com todos os relacionamentos necessários.
-            // O with() evita o problema de N+1 queries, carregando tudo de uma vez.
+
             $requerimento = Requerimento::with([
                 'matricula.aluno',
                 'matricula.curso',
@@ -131,6 +110,7 @@ class RequerimentoController extends Controller
             return response()->json(['message' => 'Ocorreu um erro interno ao buscar o requerimento.'], 500);
         }
     }
+
     public function updateStatus(Request $request, Requerimento $requerimento)
     {
         // 1. Valida o novo status recebido

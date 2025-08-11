@@ -13,7 +13,6 @@ use App\Http\Controllers\TipoAnexoController;
 use App\Http\Controllers\TipoRequerimentoController;
 use Illuminate\Support\Facades\Route;
 
-
 // --- ROTAS PÚBLICAS DE AUTENTICAÇÃO ---
 // Acessíveis sem token
 Route::post('/register', [AuthController::class, 'register']);
@@ -23,14 +22,12 @@ Route::get('/requerimentos', [RequerimentoController::class, 'index']);
 
 // --- ROTAS PROTEGIDAS PARA ALUNOS (exigem token de aluno) ---
 Route::middleware('auth:api')->group(function () {
+    Route::get('/requerimentos/{id}', [RequerimentoController::class, 'show']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/requerimentos', [RequerimentoController::class, 'index']);
     Route::patch('/requerimentos/{requerimento}/status', [RequerimentoController::class, 'updateStatus']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/validate-token', [AuthController::class, 'validateToken']);
     Route::get('/my-registrations', [MatriculaController::class, 'myRegistrations']);
-    Route::get('/requerimentos/{id}', [RequerimentoController::class, 'show']);
-    Route::apiResource('requerimentos', RequerimentoController::class);
     Route::apiResource('alunos', AlunoController::class);
     Route::apiResource('matriculas', MatriculaController::class);
     Route::apiResource('cursos', CursoController::class);
@@ -39,3 +36,4 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('tipos-requerimento', TipoRequerimentoController::class);
 });
 
+// Route::apiResource('requerimentos', RequerimentoController::class);
