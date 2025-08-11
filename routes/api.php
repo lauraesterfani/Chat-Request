@@ -24,6 +24,8 @@ Route::get('/requerimentos', [RequerimentoController::class, 'index']);
 // --- ROTAS PROTEGIDAS PARA ALUNOS (exigem token de aluno) ---
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/requerimentos', [RequerimentoController::class, 'index']);
+    Route::patch('/requerimentos/{requerimento}/status', [RequerimentoController::class, 'updateStatus']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/validate-token', [AuthController::class, 'validateToken']);
     Route::get('/my-registrations', [MatriculaController::class, 'myRegistrations']);

@@ -21,9 +21,13 @@ class CursoSeeder extends Seeder
 
         // Insere os novos dados
         Curso::insert([
-            ['nome_curso' => 'Análise e Desenvolvimento de Sistemas', 'modalidade' => 'Presencial'],
-            ['nome_curso' => 'Engenharia de Software', 'modalidade' => 'Presencial'],
-            ['nome_curso' => 'Gestão de Recursos Humanos', 'modalidade' => 'EAD'],
+            ['nome_curso' => 'Informática para internet', 'modalidade' => 'Presencial'],
+            ['nome_curso' => 'Logística', 'modalidade' => 'Presencial'],
+            ['nome_curso' => 'Almoxarife', 'modalidade' => 'Presencial'],
+            ['nome_curso' => 'Operador de Computador', 'modalidade' => 'Presencial'],
+            ['nome_curso' => 'Gestão da Qualidade', 'modalidade' => 'Presencial'],
+            ['nome_curso' => 'Tecnologia em Sistemas para Internet', 'modalidade' => 'Presencial'],
+            ['nome_curso' => 'Administração', 'modalidade' => 'Presencial'],
         ]);
     }
 }

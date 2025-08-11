@@ -1,13 +1,15 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Requerimento;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
 class RequerimentoController extends Controller
 {
@@ -53,11 +55,11 @@ class RequerimentoController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'id_matricula'         => 'required|exists:matriculas,id_matricula',
-            'id_tipo_requerimento' => 'required|exists:tipos_requerimento,id_tipo_requerimento',
-            'observacoes'          => 'nullable|string',
-            'anexos'               => 'nullable|array',
-            'anexos.*.file'        => 'required_with:anexos|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
+            'id_matricula'           => 'required|exists:matriculas,id_matricula',
+            'id_tipo_requerimento'   => 'required|exists:tipos_requerimento,id_tipo_requerimento',
+            'observacoes'            => 'nullable|string',
+            'anexos'                 => 'nullable|array',
+            'anexos.*.file'          => 'required_with:anexos|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
             'anexos.*.id_tipo_anexo' => 'required_with:anexos|exists:tipos_anexo,id_tipo_anexo',
         ]);
 
@@ -73,9 +75,9 @@ class RequerimentoController extends Controller
 
                 if ($request->hasFile('anexos')) {
                     foreach ($request->file('anexos') as $index => $fileData) {
-                        $file = $fileData['file'];
+                        $file        = $fileData['file'];
                         $idTipoAnexo = $request->input("anexos.$index.id_tipo_anexo");
-                        $path = $file->store('anexos', 'public');
+                        $path        = $file->store('anexos', 'public');
 
                         $requerimento->anexos()->create([
                             'id_tipo_anexo'   => $idTipoAnexo,
@@ -113,7 +115,7 @@ class RequerimentoController extends Controller
                 'matricula.curso',
                 'matricula.campus',
                 'tipoRequerimento',
-                'anexos.tipoAnexo' // Carrega os anexos e o tipo de cada anexo
+                'anexos.tipoAnexo', // Carrega os anexos e o tipo de cada anexo
             ])->findOrFail($id);
 
             // Retorna o requerimento encontrado como JSON com status 200 (OK)
@@ -129,6 +131,35 @@ class RequerimentoController extends Controller
             return response()->json(['message' => 'Ocorreu um erro interno ao buscar o requerimento.'], 500);
         }
     }
+    public function updateStatus(Request $request, Requerimento $requerimento)
+    {
+        // 1. Valida o novo status recebido
+        $validated = $request->validate([
+            'status' => 'required|in:Aberto,Em Análise,Deferido,Indeferido,Pendente',
+        ]);
 
-    // ... outros métodos do controller (update, destroy) ...
+        try {
+            // 2. Atualiza o status do requerimento
+            $requerimento->status = $validated['status'];
+
+            // 3. Se o status for finalizado, adiciona a data de finalização
+            if (in_array($validated['status'], ['Deferido', 'Indeferido'])) {
+                $requerimento->data_finalizacao = now();
+            } else {
+                // Caso o status seja revertido, limpa a data de finalização
+                $requerimento->data_finalizacao = null;
+            }
+
+            // 4. Salva as alterações no banco de dados
+            $requerimento->save();
+
+            // 5. Retorna o requerimento atualizado com sucesso
+            return response()->json($requerimento);
+
+        } catch (\Exception $e) {
+            Log::error("Erro ao atualizar status do requerimento ID {$requerimento->id_requerimento}: " . $e->getMessage());
+            return response()->json(['message' => 'Ocorreu um erro interno ao atualizar o status.'], 500);
+        }
+    }
+
 }
