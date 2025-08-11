@@ -1,36 +1,38 @@
 <?php
 
+use App\Http\Controllers\AdminAuthController;
+
+// Namespaces dos seus controllers
+use App\Http\Controllers\AlunoController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CoursesController;
-use App\Http\Controllers\EnrollmentController;
-use App\Http\Controllers\RequestController;
-use App\Http\Controllers\DocumentTypeController;
-use App\Http\Controllers\RequestTypeController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\CampusController;
+use App\Http\Controllers\CursoController;
+use App\Http\Controllers\MatriculaController;
+use App\Http\Controllers\RequerimentoController;
+use App\Http\Controllers\TipoAnexoController;
+use App\Http\Controllers\TipoRequerimentoController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-  return response()->json(["api" => "Ativa"]);
-});
 
-
-
-Route::post('/register', [UserController::class, 'store']);
+// --- ROTAS PÚBLICAS DE AUTENTICAÇÃO ---
+// Acessíveis sem token
+Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
-Route::get('/list-users', [UserController::class, 'index']);
-Route::get('/list-enrollments', [EnrollmentController::class, 'index']);
-Route::get('/list-requests', [RequestController::class, 'index']);
-Route::get('/list-courses', [CoursesController::class, 'index']);
+Route::post('/login-adm', [AdminAuthController::class, 'login']);
+Route::get('/requerimentos', [RequerimentoController::class, 'index']);
 
+// --- ROTAS PROTEGIDAS PARA ALUNOS (exigem token de aluno) ---
 Route::middleware('auth:api')->group(function () {
-  Route::get('/me', [AuthController::class, 'me']);
-  Route::get('/my-enrollments', [UserController::class, 'myEnrollments']);
-  Route::post('/refresh', [AuthController::class, 'refresh']);
-  Route::post('/change-enrollment/{id}', [AuthController::class, 'setEnrollment']);
-
-  Route::apiResource('user', UserController::class)->except('store');
-  Route::apiResource('enrollment', EnrollmentController::class);
-  // Route::apiResource('request', RequestController::class);
-
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/validate-token', [AuthController::class, 'validateToken']);
+    Route::get('/my-registrations', [MatriculaController::class, 'myRegistrations']);
+    Route::get('/requerimentos/{id}', [RequerimentoController::class, 'show']);
+    Route::apiResource('alunos', AlunoController::class);
+    Route::apiResource('matriculas', MatriculaController::class);
+    Route::apiResource('cursos', CursoController::class);
+    Route::apiResource('campus', CampusController::class);
+    Route::apiResource('tipos-anexo', TipoAnexoController::class);
+    Route::apiResource('tipos-requerimento', TipoRequerimentoController::class);
 });
+
