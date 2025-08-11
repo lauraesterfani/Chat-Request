@@ -21,6 +21,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Rota para logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // AQUI: As rotas de requests foram movidas para cá.
+    // Agora, qualquer usuário autenticado (staff, student ou admin) pode acessá-las.
+    Route::apiResource('requests', ServiceRequestController::class);
+
     // Grupo de rotas protegidas APENAS para o admin
     // O middleware 'admin' verifica se o usuário autenticado tem o papel de admin.
     Route::middleware('admin')->group(function () {
@@ -30,14 +34,8 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         // Rotas de recursos de usuário e matrícula, exclusivas para admins.
-        // O Route::apiResource gerencia automaticamente as rotas GET, PUT e DELETE.
-        // O método 'store' já está na rota pública de registro, então o removemos daqui.
         Route::apiResource('users', UserController::class)->except('store');
         Route::apiResource('enrollment', EnrollmentController::class);
     });
 
-    // Rotas de recurso para ServiceRequest.
-    // Essas rotas estão protegidas pela autenticação, e a autorização
-    // será definida pela sua ServiceRequestPolicy.
-    Route::apiResource('requests', ServiceRequestController::class);
 });

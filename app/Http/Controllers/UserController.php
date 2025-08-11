@@ -81,8 +81,9 @@ class UserController extends Controller
         } catch (\Exception $e) {
             Log::error('Error creating user: ' . $e->getMessage());
 
+            // Alterado para retornar o erro detalhado da exceção
             return response()->json([
-                'message' => 'Internal error while creating user. Please try again later.'
+                'message' => 'Internal Server Error: ' . $e->getMessage()
             ], 500);
         }
     }

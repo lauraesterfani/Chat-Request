@@ -9,42 +9,43 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
-  public function login(Request $request)
-  {
-    $validated = $request->validate([
-      'cpf' => 'required|string|max:255',
-      'password' => 'required|string|max:255'
-    ]);
+    public function login(Request $request)
+    {
+        $validated = $request->validate([
+            'cpf' => 'required|string|max:255',
+            'password' => 'required|string|max:255'
+        ]);
 
-    if (Auth::attempt($validated)) {
-      $user = User::where('cpf', $validated['cpf'])->first();
+        if (Auth::attempt($validated)) {
+            $user = User::where('cpf', $validated['cpf'])->first();
 
-      $token = $user
-        ->createToken('api-token', ['post:read', 'post:create', 'post:update'])
-        ->plainTextToken;
+            // Adicione as permissões ou escopos se necessário
+            $token = $user
+                ->createToken('api-token')
+                ->plainTextToken;
 
-      return response()->json(['token' => $token]);
+            return response()->json(['token' => $token]);
+        }
+
+        return response()->json(['msg' => 'Credenciais inválidas'], 401);
     }
 
-    return response()->json(['msg' => 'Credenciais inválidas'],  401);
-  }
+    public function logout(Request $request)
+    {
+        $token = $request->bearerToken();
 
-  public function logout(Request $request)
-  {
-    $token = $request->bearerToken();
+        if (!$token) {
+            return response()->json(['msg' => 'Token não informado'], 400);
+        }
 
-    if (!$token) {
-      return response()->json(['msg' => 'Token não informado'], 400);
+        $access_token = PersonalAccessToken::findToken($token);
+
+        if (!$access_token) {
+            return response()->json(['msg' => 'Token inválido'], 400);
+        }
+
+        $access_token->delete();
+
+        return response()->json(['msg' => 'Logout realizado com sucesso'], 200);
     }
-
-    $access_token = PersonalAccessToken::findToken($token);
-
-    if (!$access_token) {
-      return response()->json(['msg' => 'Token inválido'], 400);
-    }
-
-    $access_token->delete();
-
-    return response()->json(['msg' => 'Logout realizado com sucesso'], 200);
-  }
 }
