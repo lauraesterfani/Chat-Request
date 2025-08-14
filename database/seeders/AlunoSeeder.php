@@ -14,7 +14,17 @@ class AlunoSeeder extends Seeder
     {
         // Dados dos alunos para popular a tabela
         $alunos = [
-            [
+            // [
+            //     'nome_completo' => 'Admin',
+            //     'email' => 'admin@admin.com',
+            //     'password' => bcrypt('senha123'),
+            //     'cpf' => '44556612880',
+            //     'telefone' => '11966665455',
+            //     'identidade' => '1455667',
+            //     'orgao_expedidor' => 'SSP/PE',
+            //     'tipo_usuario' => 'Estudante',
+            // ],
+                        [
                 'nome_completo' => 'Catarina Silva',
                 'email' => 'catarina.silva@example.com',
                 'password' => bcrypt('senha123'), // Use bcrypt para hashear a senha

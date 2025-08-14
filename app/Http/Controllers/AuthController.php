@@ -63,6 +63,25 @@ class AuthController extends Controller
         return $this->respondWithToken($token);
     }
 
+public function loginWithEmail(Request $request)
+    {
+        // 1. Valida os campos recebidos: email e password
+        $credentials = $request->validate([
+            'email'    => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        // 2. Tenta autenticar usando o guard 'api'
+        // A biblioteca buscará o usuário pelo campo 'email' por padrão
+        if (! $token = auth('api')->attempt($credentials)) {
+            // 3. Se a autenticação falhar, retorna um erro
+            return response()->json(['error' => 'Credenciais inválidas.'], 401);
+        }
+
+        // 4. Se for bem-sucedida, retorna a resposta com o token
+        return $this->respondWithToken($token);
+    }
+
     /**
      * Retorna os dados do usuário autenticado.
      */

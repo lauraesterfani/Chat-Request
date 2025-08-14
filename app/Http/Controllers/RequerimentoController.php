@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Aluno;
 use App\Models\Requerimento;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -56,7 +57,7 @@ class RequerimentoController extends Controller
                     'id_tipo_requerimento' => $validatedData['id_tipo_requerimento'],
                     'observacoes'          => $validatedData['observacoes'] ?? null,
                     'protocolo'            => date('Ymd') . '-' . mt_rand(1000, 9999),
-                    'status'               => 'Aberto',
+                    'status'               => 'Em análise',
                 ]);
 
                 if ($request->hasFile('anexos')) {
@@ -85,6 +86,48 @@ class RequerimentoController extends Controller
         }
     }
 
+    public function myRequerimentos(Request $request)
+    {
+        try {
+            $alunoId = auth('api')->id();
+
+            // Pega os IDs de todas as matrículas do aluno
+            $matriculaIds = \App\Models\Matricula::where('id_aluno', $alunoId)->pluck('id_matricula');
+
+            // Busca todos os requerimentos que pertencem a essas matrículas
+            $requerimentos = Requerimento::whereIn('id_matricula', $matriculaIds)
+                ->with(['matricula.curso', 'tipoRequerimento']) // Carrega os dados relacionados
+                ->latest() // Ordena pelos mais recentes
+                ->get();
+
+            return response()->json($requerimentos);
+
+        } catch (\Exception $e) {
+            Log::error("Erro ao listar requerimentos do aluno ID {$alunoId}: " . $e->getMessage());
+            return response()->json(['message' => 'Ocorreu um erro interno ao buscar os requerimentos.'], 500);
+        }
+    }
+
+    public function listByAluno(Aluno $aluno)
+    {
+        try {
+            // Pega os IDs de todas as matrículas do aluno
+            $matriculaIds = $aluno->matriculas()->pluck('id_matricula');
+
+            // Busca todos os requerimentos que pertencem a essas matrículas
+            $requerimentos = Requerimento::whereIn('id_matricula', $matriculaIds)
+                ->with(['matricula.curso', 'tipoRequerimento']) // Carrega os dados relacionados
+                ->latest() // Ordena pelos mais recentes
+                ->get();
+
+            return response()->json($requerimentos);
+
+        } catch (\Exception $e) {
+            Log::error("Erro ao listar requerimentos do aluno ID {$aluno->id_aluno}: " . $e->getMessage());
+            return response()->json(['message' => 'Ocorreu um erro interno ao buscar os requerimentos.'], 500);
+        }
+    }
+    
     public function show($id)
     {
         try {
@@ -113,27 +156,31 @@ class RequerimentoController extends Controller
 
     public function updateStatus(Request $request, Requerimento $requerimento)
     {
-        // 1. Valida o novo status recebido
         $validated = $request->validate([
             'status' => 'required|in:Aberto,Em Análise,Deferido,Indeferido,Pendente',
         ]);
 
         try {
-            // 2. Atualiza o status do requerimento
             $requerimento->status = $validated['status'];
 
-            // 3. Se o status for finalizado, adiciona a data de finalização
             if (in_array($validated['status'], ['Deferido', 'Indeferido'])) {
                 $requerimento->data_finalizacao = now();
             } else {
-                // Caso o status seja revertido, limpa a data de finalização
                 $requerimento->data_finalizacao = null;
             }
 
-            // 4. Salva as alterações no banco de dados
             $requerimento->save();
 
-            // 5. Retorna o requerimento atualizado com sucesso
+            // **CORREÇÃO APLICADA AQUI**
+            // Recarrega todas as relações necessárias antes de retornar a resposta.
+            $requerimento->load([
+                'matricula.aluno',
+                'matricula.curso',
+                'matricula.campus',
+                'tipoRequerimento',
+                'anexos.tipoAnexo',
+            ]);
+
             return response()->json($requerimento);
 
         } catch (\Exception $e) {

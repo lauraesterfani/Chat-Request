@@ -30,7 +30,7 @@ class MatriculaSeeder extends Seeder
                 'turno' => ['Manhã', 'Tarde', 'Noite'][rand(0, 2)], // Escolhe um turno aleatório
                 'status_matricula' => 'Matriculado',
                 'id_aluno' => $aluno->id_aluno,
-                'id_curso' => $cursos->random()->id_curso, // Pega um curso aleatório
+                'id_curso' => '1',
                 'id_campus' => $campus->random()->id_campus, // Pega um campus aleatório
             ]);
         }

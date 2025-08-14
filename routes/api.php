@@ -17,9 +17,12 @@ use Illuminate\Support\Facades\Route;
 // Acessíveis sem token
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/login-adm', [AdminAuthController::class, 'login']);
+Route::post('/login-adm', [AdminAuthController::class, 'loginWithEmail']);
+// Route::post('/login-adm', [AdminAuthController::class, 'login']);
 Route::get('/requerimentos', [RequerimentoController::class, 'index']);
-
+Route::post('/requerimentos', [RequerimentoController::class, 'store']);
+Route::get('/alunos/{aluno}/requerimentos', [RequerimentoController::class, 'listByAluno']);
+Route::get('/my-requerimentos', [RequerimentoController::class, 'myRequerimentos']);
 // --- ROTAS PROTEGIDAS PARA ALUNOS (exigem token de aluno) ---
 Route::middleware('auth:api')->group(function () {
     Route::get('/requerimentos/{id}', [RequerimentoController::class, 'show']);

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('requerimentos', function (Blueprint $table) {
             $table->id('id_requerimento');
             $table->string('protocolo', 30)->unique();
-            $table->enum('status', ['Aberto', 'Em Análise', 'Deferido', 'Indeferido', 'Pendente'])->default('Aberto');
+            $table->enum('status', ['Em Análise', 'Deferido', 'Indeferido'])->default('Em Análise');
             $table->text('observacoes')->nullable();
 
             $table->foreignId('id_matricula')->constrained('matriculas', 'id_matricula');
