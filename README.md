@@ -19,7 +19,7 @@ Este sistema tem como objetivo facilitar o processo de solicitação de requerim
 
 *Front*: Next + tailwind.css + ts-> [https://github.com/victorgustavodev/chat-request]
 
-*Back*: Laravel
+*Back*: Laravel + Sanctum
 
 *Banco*: MySQL
 
