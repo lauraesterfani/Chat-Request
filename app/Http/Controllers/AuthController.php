@@ -3,88 +3,170 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Enrollment;
+// REMOVIDO: use App\Models\Enrollment;
+use App\Models\User; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator; 
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Illuminate\Support\Facades\Hash; 
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-  public function login(Request $request)
-  {
-    $credentials = $request->only('cpf', 'password');
-
-    if (!$token = JWTAuth::attempt($credentials)) {
-      return response()->json(['msg' => 'Credenciais inválidas'], 401);
+    public function __construct()
+    {
+        // Aplica o middleware de autenticação, exceto para login E register
+        $this->middleware('auth:api', ['except' => ['login', 'register']]); 
     }
 
-    $user = Auth::user();
-
-    return response()->json([
-      'user' => $user,
-      'token' => $token
-    ]);
-  }
-
-  public function changeEnrollment(string $enrollment_id)
-  {
-    $user = Auth::user();
-
-    try {
-      $enrollmentRecord = Enrollment::find($enrollment_id);
-
-      if (!$enrollmentRecord) {
-        return response()->json(['msg' => 'Matrícula não encontrada!'], 404);
-      }
-
-      if ($enrollmentRecord->user_id !== $user->id) {
-        return response()->json(['msg' => 'Essa matrícula não pertence a esse usuário!'], 403);
-      }
-
-      $customClaims = ['enrollment_id' => $enrollment_id];
-      $newToken = JWTAuth::claims($customClaims)->fromUser($user);
-
-      return response()->json([
-        'msg' => 'Matrícula alterada com sucesso!',
-        'token' => $newToken,
-      ]);
-    } catch (\Exception $e) {
-      Log::error('Erro ao mudar matrícula: ' . $e->getMessage());
-
-      return response()->json([
-        'msg' => 'Erro interno. Tente novamente mais tarde.',
-      ], 500);
+    protected function respondWithToken($token)
+    {
+        // REMOVIDO: Lógica de active_enrollment_id
+        
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'user' => Auth::user(),
+        ]);
     }
-  }
 
-  public function me()
-  {
-    $user = Auth::user();
-    $payload = JWTAuth::parseToken()->getPayload();
-    $enrollment = $payload->get('enrollment', null);
+    /**
+     * Lida com o registro de um novo usuário (sem criação de matrícula).
+     */
+    public function register(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'cpf' => 'required|string|unique:users|max:14',
+            'email' => 'required|string|email|unique:users|max:255',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
 
-    return response()->json([
-      'user' => $user,
-      'enrollment' => $enrollment,
-    ]);
-  }
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
-  public function logout()
-  {
-    JWTAuth::invalidate(JWTAuth::getToken());
-    return response()->json(['msg' => 'Logout realizado com sucesso']);
-  }
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'cpf' => $request->cpf,
+                'email' => $request->email,
+                'password' => $request->password,
+            ]);
 
-  public function refresh()
-  {
-    $token = JWTAuth::getToken();
-    $payload = JWTAuth::getPayload($token);
-    $enrollment = $payload->get('enrollment');
-    $newToken = JWTAuth::claims(['enrollment' => $enrollment])->refresh($token);
+            // REMOVIDO: Lógica de criação de Matrícula Padrão
 
-    return response()->json([
-      'token' => $newToken
-    ]);
-  }
+            return response()->json([
+                'msg' => 'Usuário criado com sucesso.',
+                'user_id' => $user->id,
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Erro ao registrar usuário: ' . $e->getMessage());
+            return response()->json(['msg' => 'Erro interno ao criar usuário. Detalhe: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    /**
+     * Lida com o login do usuário.
+     */
+    public function login(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'cpf' => 'required|string|max:14',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $credentials = $request->only('cpf', 'password');
+        $token = null; 
+
+        try {
+            // Tenta logar e gerar o token
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response()->json(['msg' => 'Credenciais inválidas'], 401);
+            }
+        } catch (JWTException $e) {
+            Log::error('Erro ao tentar gerar token JWT: ' . $e->getMessage());
+            return response()->json(['msg' => 'Não foi possível criar o token no servidor.'], 500);
+        }
+        
+        // REMOVIDO: Toda a lógica de verificação de matrícula ativa e invalidação de token.
+        
+        // Login bem-sucedido. Retorna o token.
+        return $this->respondWithToken($token);
+    }
+    
+    /**
+     * REMOVIDO: O método changeEnrollment foi removido por não ser mais necessário.
+     */
+
+    /**
+     * Obtém o usuário autenticado.
+     */
+    public function me()
+    {
+        $user = Auth::user();
+        
+        // REMOVIDO: Lógica para pegar o activeEnrollmentId do payload
+        
+        return response()->json([
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Faz logout (invalida o token).
+     */
+    public function logout()
+    {
+        try {
+            $token = JWTAuth::getToken();
+            
+            if ($token) {
+                 JWTAuth::invalidate($token);
+            }
+            return response()->json(['msg' => 'Logout realizado com sucesso']);
+
+        } catch (TokenExpiredException | TokenInvalidException $e) {
+            return response()->json(['msg' => 'Logout realizado com sucesso (Token expirado/inválido)']);
+        } catch (JWTException $e) {
+            return response()->json(['msg' => 'Logout realizado com sucesso (Token ausente)']);
+        }
+    }
+
+    /**
+     * Renova um token.
+     */
+    public function refresh()
+    {
+        try {
+            // Renova o token existente
+            $newToken = JWTAuth::refresh(JWTAuth::getToken());
+
+            return $this->respondWithToken($newToken);
+        } catch (TokenInvalidException $e) {
+            return response()->json(['msg' => 'O token é inválido. Por favor, faça login novamente.'], 401);
+        } catch (TokenExpiredException $e) {
+            // Tenta renovar mesmo que esteja expirado
+            try {
+                $newToken = JWTAuth::refresh(JWTAuth::getToken());
+                return $this->respondWithToken($newToken);
+            } catch (JWTException $e) {
+                 return response()->json(['msg' => 'O token não pode ser renovado. Por favor, faça login novamente.'], 401);
+            }
+        } catch (JWTException $e) {
+             return response()->json(['msg' => 'Acesso não autorizado. Token ausente.'], 401);
+        }
+    }
 }

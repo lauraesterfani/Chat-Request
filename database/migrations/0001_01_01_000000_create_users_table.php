@@ -11,16 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Criação da tabela de usuários com todos os campos personalizados
         Schema::create('users', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->uuid('id')->primary(); // Chave primária UUID
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            // --- CAMPOS PERSONALIZADOS ---
+            $table->string('cpf', 11)->unique(); 
+            $table->string('phone', 15);
+            $table->enum('user_type', ['student', 'admin', 'teacher'])->default('student');
+            $table->date('birthday');
+            // --- FIM DOS CAMPOS PERSONALIZADOS ---
+
             $table->rememberToken();
             $table->timestamps();
         });
 
+        // Migrations padrão do Laravel (mantidas)
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
