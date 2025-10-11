@@ -31,7 +31,8 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            // ESTA LINHA JÁ ESTAVA CORRETA
+            'expires_in' => JWTAuth::factory()->getTTL() * 60, 
             'user' => Auth::user(),
         ]);
     }
@@ -93,7 +94,8 @@ class AuthController extends Controller
                 return response()->json([
                     'access_token' => $token,
                     'token_type' => 'bearer',
-                    'expires_in' => auth('api')->factory()->getTTL() * 60,
+                    // CORREÇÃO: Usando JWTAuth::factory() para evitar o erro Undefined method
+                    'expires_in' => JWTAuth::factory()->getTTL() * 60, 
                     'user' => auth('api')->user()
                 ], 200);
 
@@ -112,7 +114,8 @@ class AuthController extends Controller
                     return response()->json([
                         'access_token' => $token,
                         'token_type' => 'bearer',
-                        'expires_in' => auth('api')->factory()->getTTL() * 60,
+                        // CORREÇÃO: Usando JWTAuth::factory() para evitar o erro Undefined method
+                        'expires_in' => JWTAuth::factory()->getTTL() * 60, 
                         'user' => $user
                     ], 200);
                 }

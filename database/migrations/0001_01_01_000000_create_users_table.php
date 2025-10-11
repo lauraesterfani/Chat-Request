@@ -21,10 +21,11 @@ return new class extends Migration
 
             // --- CAMPOS PERSONALIZADOS ---
             $table->string('cpf', 11)->unique(); 
-            // Você usa size:11 na validação, mas 15 na migração é mais seguro, vou manter 15:
             $table->string('phone', 15); 
-            // CORREÇÃO: Sincronizado com a validação do Controller (student, staff)
-            $table->enum('user_type', ['student', 'staff'])->default('student'); 
+            
+            // ALTERAÇÃO CRUCIAL: Renomeado para 'role' e adicionado 'admin'
+            $table->enum('role', ['admin', 'student', 'staff'])->default('student'); 
+            
             $table->date('birthday');
             // --- FIM DOS CAMPOS PERSONALIZADOS ---
 
@@ -32,7 +33,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Migrations padrão do Laravel (mantidas, mas você pode ter estas em arquivos separados)
+        // (Mantendo as outras migrations para tokens e sessions)
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
@@ -41,7 +42,10 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
+            // Assumindo que você usa UUIDs, o foreignId pode ser um pouco diferente.
+            // Para simplificar, vou manter a estrutura básica, mas você pode ter que ajustar 
+            // a declaração da chave estrangeira se o Laravel não reconhecer o UUID nativamente aqui.
+            $table->foreignId('user_id')->nullable()->index(); 
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');

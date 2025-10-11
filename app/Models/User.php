@@ -2,21 +2,27 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
-use Illuminate\Database\Eloquent\Concerns\HasUuids; // Importar a trait para UUIDs
-use Illuminate\Database\Eloquent\Relations\HasMany; // Importar a classe para relações
-use App\Models\Enrollment; // Importar o Model Enrollment para a relação
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Tymon\JWTAuth\Contracts\JWTSubject; // CORREÇÃO CRÍTICA: Importação da interface JWT
 
-class User extends Authenticatable implements JWTSubject
+/**
+ * O modelo User implementa JWTSubject para ser compatível com Tymon\JWTAuth.
+ * HasApiTokens (Sanctum) foi removido, pois está sendo usado JWT.
+ */
+class User extends Authenticatable implements JWTSubject // CORREÇÃO CRÍTICA: Implementa a interface
 {
-    // Usamos HasUuids, HasFactory, e Notifiable. Removemos as propriedades manuais de UUID.
+    // Removido HasApiTokens, pois estamos usando JWT Auth (Tymon)
     use HasFactory, Notifiable, HasUuids; 
 
-    // O Eloquent já sabe que a chave é string e não incrementa por causa do HasUuids, 
-    // mas vamos manter para clareza, caso o HasUuids não esteja disponível em todas as versões.
+    // --- Definição de Papéis (Roles) ---
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_STUDENT = 'student';
+    public const ROLE_STAFF = 'staff'; 
+
     public $incrementing = false;
     protected $keyType = 'string';
     
@@ -33,7 +39,7 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'cpf',
         'phone', 
-        'user_type', 
+        'role',
         'birthday', 
     ];
 
@@ -55,14 +61,13 @@ class User extends Authenticatable implements JWTSubject
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'birthday' => 'date', 
     ];
 
-    // Removido o método boot() manual, pois o HasUuids cuida da geração do ID.
-
-    // --- JWTSubject interface methods ---
+    // --- IMPLEMENTAÇÃO JWTSubject (MÉTODOS OBRIGATÓRIOS) ---
 
     /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
+     * Retorna o identificador único para ser armazenado no payload do token.
      *
      * @return mixed
      */
@@ -71,9 +76,45 @@ class User extends Authenticatable implements JWTSubject
         return $this->getKey();
     }
 
+    /**
+     * Retorna um array de custom claims a serem adicionados ao token.
+     * Adicionamos a 'role' aqui para uso no RoleMiddleware.
+     *
+     * @return array
+     */
     public function getJWTCustomClaims()
     {
-        return [];
+        // Adicionando a 'role' ao payload do token
+        return [
+            'user_id' => $this->id,
+            'role' => $this->role,
+        ];
+    }
+    
+    // --- Métodos de Checagem de Papel (Role Checkers) ---
+    
+    /**
+     * Checa se o usuário é um administrador.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+    
+    /**
+     * Checa se o usuário é um estudante.
+     */
+    public function isStudent(): bool
+    {
+        return $this->role === self::ROLE_STUDENT;
+    }
+    
+    /**
+     * Checa se o usuário é um funcionário (staff).
+     */
+    public function isStaff(): bool
+    {
+        return $this->role === self::ROLE_STAFF;
     }
     
     // --- Relações ---
@@ -83,6 +124,8 @@ class User extends Authenticatable implements JWTSubject
      */
     public function enrollments(): HasMany
     {
+        // NOTA: Certifique-se de que a classe Enrollment foi importada ou está no mesmo namespace,
+        // ou inclua o 'use App\Models\Enrollment;' no topo do arquivo.
         return $this->hasMany(Enrollment::class, 'user_id'); 
     }
 }
