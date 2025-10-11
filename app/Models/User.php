@@ -2,22 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-use Illuminate\Support\Str; // Importar a classe Str para gerar o UUID
+use Illuminate\Database\Eloquent\Concerns\HasUuids; // Importar a trait para UUIDs
+use Illuminate\Database\Eloquent\Relations\HasMany; // Importar a classe para relações
+use App\Models\Enrollment; // Importar o Model Enrollment para a relação
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, Notifiable;
+    // Usamos HasUuids, HasFactory, e Notifiable. Removemos as propriedades manuais de UUID.
+    use HasFactory, Notifiable, HasUuids; 
 
-    // --- CORREÇÃO UUID ---
-    // Indica ao Eloquent que a chave primária não é um inteiro auto-incrementável
+    // O Eloquent já sabe que a chave é string e não incrementa por causa do HasUuids, 
+    // mas vamos manter para clareza, caso o HasUuids não esteja disponível em todas as versões.
     public $incrementing = false;
     protected $keyType = 'string';
-    // ----------------------
+    
 
     /**
      * The attributes that are mass assignable.
@@ -25,14 +27,14 @@ class User extends Authenticatable implements JWTSubject
      * @var array<int, string>
      */
     protected $fillable = [
-        'id', // Incluímos o ID para ser preenchido, seja pelo Controller ou pelo boot()
+        'id',
         'name',
         'email',
         'password',
         'cpf',
-        'phone',        // <-- CAMPO ADICIONADO
-        'user_type',    // <-- CAMPO ADICIONADO
-        'birthday',     // <-- CAMPO ADICIONADO
+        'phone', 
+        'user_type', 
+        'birthday', 
     ];
 
     /**
@@ -55,25 +57,9 @@ class User extends Authenticatable implements JWTSubject
         'password' => 'hashed',
     ];
 
-    /**
-     * Método de inicialização do Model, usado para injetar o UUID
-     * antes de criar o registro.
-     */
-    protected static function boot()
-    {
-        parent::boot();
+    // Removido o método boot() manual, pois o HasUuids cuida da geração do ID.
 
-        static::creating(function ($model) {
-            // Se o ID não estiver definido (o que é o caso na maioria dos creates),
-            // gera um UUID
-            if (empty($model->id)) {
-                $model->id = (string) Str::uuid();
-            }
-        });
-    }
-
-
-    // JWTSubject interface methods
+    // --- JWTSubject interface methods ---
 
     /**
      * Get the identifier that will be stored in the subject claim of the JWT.
@@ -85,13 +71,18 @@ class User extends Authenticatable implements JWTSubject
         return $this->getKey();
     }
 
-    /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
-     *
-     * @return array
-     */
     public function getJWTCustomClaims()
     {
         return [];
+    }
+    
+    // --- Relações ---
+    
+    /**
+     * Define a relação: Um Usuário tem Muitas Matrículas (Enrollments)
+     */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class, 'user_id'); 
     }
 }

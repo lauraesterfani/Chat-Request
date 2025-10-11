@@ -4,124 +4,109 @@ namespace App\Http\Controllers;
 
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class EnrollmentController extends Controller
 {
-  /**
-   * Display a listing of the resource.
-   */
-  public function index()
-  {
-    try {
-      $enrollments = Enrollment::all();
-      return response()->json($enrollments, 200);
-    } catch (\Exception $e) {
-      Log::error('Error fetching enrollments: ' . $e->getMessage());
-      return response()->json(['msg' => 'Error fetching enrollments'], 500);
+    public function index()
+    {
+        try {
+            $enrollments = Enrollment::with(['user'])->get(); 
+            return response()->json($enrollments, 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching enrollments: ' . $e->getMessage());
+            return response()->json(['msg' => 'Error fetching enrollments'], 500);
+        }
     }
-  }
 
-  /**
-   * Store a newly created resource in storage.
-   */
-  public function store(Request $request)
-  {
-    try {
-      $validated = $request->validate([
-        'enrollment' => 'required|string|unique:enrollments,enrollment|max:31',
-        'status' => 'required|in:active,locked,finished',
-        'user_id' => 'required|uuid'
-      ]);
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'enrollment' => 'required|string|unique:enrollments,enrollment|max:31',
+                'status' => 'required|in:active,locked,finished',
+                'user_id' => 'required|uuid|exists:users,id',
+                'course_id' => 'required|uuid', 
+            ]);
 
-      $validated['id'] = (string) Str::uuid();
+            $validated['id'] = (string) Str::uuid();
 
-      $enrollment = Enrollment::create($validated);
+            $enrollment = Enrollment::create($validated);
 
-      return response()->json($enrollment, 201);
-    } catch (\Exception $e) {
-      Log::error('Error creating enrollments: ' . $e->getMessage());
-      return response()->json(['msg' => 'Error creating enrollments'], 500);
+            return response()->json($enrollment, 201);
+        } catch (\Exception $e) {
+            Log::error('Error creating enrollments: ' . $e->getMessage());
+            return response()->json(['msg' => 'Error creating enrollments'], 500);
+        }
     }
-  }
 
-  /**
-   * Display the specified resource.
-   */
-  public function show($id)
-  {
-    try {
-      $enrollment = Enrollment::find($id);
+    public function show($id)
+    {
+        try {
+            $enrollment = Enrollment::with(['user'])->find($id); 
 
-      if (!$enrollment) {
-        return response()->json(['msg' => 'Enrollment not found.'], 404);
-      }
+            if (!$enrollment) {
+                return response()->json(['msg' => 'Enrollment not found.'], 404);
+            }
 
-      return response()->json($enrollment, 200);
-    } catch (\Exception $e) {
-      Log::error('Error fetching enrollment: ' . $e->getMessage());
-      return response()->json(['msg' => 'Error fetching enrollment'], 500);
+            return response()->json($enrollment, 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching enrollment: ' . $e->getMessage());
+            return response()->json(['msg' => 'Error fetching enrollment'], 500);
+        }
     }
-  }
 
-  /**
-   * Update the specified resource in storage.
-   */
-  public function update(Request $request, $id)
-  {
-    try {
+    public function update(Request $request, $id)
+    {
+        try {
+            $enrollment = Enrollment::findOrFail($id);
 
-      $enrollment = Enrollment::findOrFail($id);
+            $data = $request->validate([
+                'enrollment' => 'sometimes|required|string|max:255',
+                'status' => 'sometimes|required|in:active,locked,finished',
+                'user_id' => 'sometimes|required|uuid|exists:users,id',
+                'course_id' => 'sometimes|required|uuid', 
+            ]);
 
-      $data = $request->validate([
-        'enrollment' => 'sometimes|required|string|max:255',
-        'status' => 'sometimes|required|in:active,locked,finished',
-        'user_id' => 'sometimes|required|exists:users,id',
-      ]);
+            $enrollment->update($data);
 
-      $enrollment->update($data);
-
-      return response()->json($enrollment);
-    } catch (\Exception $e) {
-      Log::error('Error updating enrollment: ' . $e->getMessage());
-      return response()->json(['msg' => 'Error updating enrollment'], 500);
+            return response()->json($enrollment);
+        } catch (\Exception $e) {
+            Log::error('Error updating enrollment: ' . $e->getMessage());
+            return response()->json(['msg' => 'Error updating enrollment'], 500);
+        }
     }
-  }
 
-  /**
-   * Remove the specified resource from storage.
-   */
-  public function destroy($id)
-  {
-    try {
-      $enrollment = Enrollment::find($id);
+    public function destroy($id)
+    {
+        try {
+            $enrollment = Enrollment::find($id);
 
-      if (!$enrollment) {
-        return response()->json(['msg' => 'Enrollment not found.'], 404);
-      }
+            if (!$enrollment) {
+                return response()->json(['msg' => 'Enrollment not found.'], 404);
+            }
 
-      $enrollment->delete();
+            $enrollment->delete();
 
-      return response()->json(null, 204);
-    } catch (\Exception $e) {
-      Log::error('Error deleting enrollment: ' . $e->getMessage());
-      return response()->json([
-        'msg' => 'Error deleting enrollment.',
-        'error' => $e->getMessage()
-      ], 500);
+            return response()->json(null, 204);
+        } catch (\Exception $e) {
+            Log::error('Error deleting enrollment: ' . $e->getMessage());
+            return response()->json([
+                'msg' => 'Error deleting enrollment.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-  }
-// Validar o token
-public function validateToken(Request $request)
-{
-    try {
-        $user = JWTAuth::parseToken()->authenticate();
-        return response()->json(['valid' => true, 'user' => $user], 200);
-    } catch (\Exception $e) {
-        return response()->json(['valid' => false, 'error' => $e->getMessage()], 401);
+    
+    public function validateToken(Request $request)
+    {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            return response()->json(['valid' => true, 'user' => $user], 200);
+        } catch (\Exception $e) {
+            return response()->json(['valid' => false, 'error' => $e->getMessage()], 401);
+        }
     }
-}
 }

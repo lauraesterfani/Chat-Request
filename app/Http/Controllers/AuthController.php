@@ -79,34 +79,58 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'cpf' => 'required|string|max:14',
-            'password' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
-
-        $credentials = $request->only('cpf', 'password');
-        $token = null; 
-
         try {
-            // Tenta logar e gerar o token
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json(['msg' => 'Credenciais inválidas'], 401);
+            // 1. Validação
+            $credentials = $request->validate([
+                'cpf' => 'required|string|size:11',
+                'password' => 'required|string|min:6',
+            ]);
+            
+            // 2. Tenta obter o token usando o guard 'api' (JWT)
+            if ($token = auth('api')->attempt($credentials)) {
+                
+                // Sucesso na Autenticação JWT
+                return response()->json([
+                    'access_token' => $token,
+                    'token_type' => 'bearer',
+                    'expires_in' => auth('api')->factory()->getTTL() * 60,
+                    'user' => auth('api')->user()
+                ], 200);
+
             }
-        } catch (JWTException $e) {
-            Log::error('Erro ao tentar gerar token JWT: ' . $e->getMessage());
-            return response()->json(['msg' => 'Não foi possível criar o token no servidor.'], 500);
+            
+            // 3. FALLBACK: Se o JWT falhou (ex: config errada), tentamos uma busca manual
+            $user = User::where('cpf', $credentials['cpf'])->first();
+
+            if ($user && Hash::check($credentials['password'], $user->password)) {
+                
+                // Se a senha estiver correta, tentamos gerar o token diretamente do usuário
+                if ($token = JWTAuth::fromUser($user)) {
+                    
+                    Log::warning("JWT 'attempt' falhou, mas autenticação manual funcionou. Configuração JWT requer revisão.");
+
+                    return response()->json([
+                        'access_token' => $token,
+                        'token_type' => 'bearer',
+                        'expires_in' => auth('api')->factory()->getTTL() * 60,
+                        'user' => $user
+                    ], 200);
+                }
+            }
+
+
+            // Se tudo falhar
+            return response()->json([
+                'message' => 'Credenciais Inválidas ou Erro na Geração do Token.'
+            ], 401);
+
+
+        } catch (\Exception $e) {
+            Log::error('Login Error: ' . $e->getMessage());
+            // O 500 agora só deve ocorrer se houver um erro de PHP, não de credencial
+            return response()->json(['message' => 'Erro interno ao tentar autenticar. Verifique o log do Laravel.'], 500);
         }
-        
-        // REMOVIDO: Toda a lógica de verificação de matrícula ativa e invalidação de token.
-        
-        // Login bem-sucedido. Retorna o token.
-        return $this->respondWithToken($token);
     }
-    
     /**
      * REMOVIDO: O método changeEnrollment foi removido por não ser mais necessário.
      */

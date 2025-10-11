@@ -21,8 +21,10 @@ return new class extends Migration
 
             // --- CAMPOS PERSONALIZADOS ---
             $table->string('cpf', 11)->unique(); 
-            $table->string('phone', 15);
-            $table->enum('user_type', ['student', 'admin', 'teacher'])->default('student');
+            // Você usa size:11 na validação, mas 15 na migração é mais seguro, vou manter 15:
+            $table->string('phone', 15); 
+            // CORREÇÃO: Sincronizado com a validação do Controller (student, staff)
+            $table->enum('user_type', ['student', 'staff'])->default('student'); 
             $table->date('birthday');
             // --- FIM DOS CAMPOS PERSONALIZADOS ---
 
@@ -30,7 +32,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Migrations padrão do Laravel (mantidas)
+        // Migrations padrão do Laravel (mantidas, mas você pode ter estas em arquivos separados)
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');

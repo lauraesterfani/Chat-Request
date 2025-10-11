@@ -14,8 +14,9 @@ return new class extends Migration
     Schema::create('enrollments', function (Blueprint $table) {
       $table->uuid('id')->primary();
       $table->string('enrollment');
-      $table->enum('status', ['active', 'locked', 'finished']);
+      $table->enum('status', ['active', 'locked', 'finished'])->default('active');
       $table->uuid('user_id');
+      $table->uuid('course_id');
 
       $table->foreign('user_id', 'fk_enrollments_user_id')
         ->references('id')

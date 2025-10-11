@@ -2,39 +2,42 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids; // IMPORTAÇÃO NECESSÁRIA
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\User; 
 
-/**
- * Representa a Matrícula (Enrollment) de um Usuário.
- * Usa ID do tipo UUID como chave primária.
- */
 class Enrollment extends Model
 {
-    use HasFactory, HasUuids; // AGORA INCLUI O TRAIT HasUuids
-
-    // Configuração para usar UUID como chave primária (string)
+    use HasUuids;
+    
     protected $keyType = 'string';
-    // Desativa o auto-incremento
     public $incrementing = false;
+    protected $fillable = ['enrollment', 'status', 'user_id', 'course_id']; 
 
-    // Colunas que podem ser atribuídas em massa.
-    protected $fillable = [
-        'id', // Permite que o AuthController atribua o UUID gerado
-        'user_id',
-        'enrollment', // O número/código da matrícula
-        'status', // e.g., 'ativo', 'inativo'
+    const FIXED_COURSES = [
+
+        '8e6a2b9f-d0e5-4c1a-8b3d-7f4c5e0d9b1a' => 'Bacharelado em Administração',
+        'c7d3f2e1-a0b9-4c8d-7e6f-5d4c3b2a1e0f' => 'Tecnologia em Sistemas para Internet',
+        'e843b022-772c-4903-a4e2-d44a1e9411f1' => 'Tecnologia em Gestão da Qualidade',
+        '83f5e1a3-2c1b-4d7f-a96e-0f8a7c6d5b4e' => 'Técnico em Logística',
+        'c1d4e7a2-f6b9-4a0e-9c8d-7b6a5f4e3d2c' => 'Técnico em Informática para Internet',
     ];
     
-    /**
-     * Relacionamento: Uma Matrícula pertence a um Usuário.
-     * @return BelongsTo
-     */
-    public function user(): BelongsTo
+    
+    public function user()
     {
-        // Usa a chave user_id para referenciar o UUID do modelo User.
-        return $this->belongsTo(User::class, 'user_id', 'id');
+        return $this->belongsTo(User::class, 'user_id');
+    }
+    
+    // Acessor que simula o relacionamento 'course' (usado pelo DashboardController)
+    public function getCourseAttribute()
+    {
+        $courseName = self::FIXED_COURSES[$this->course_id] ?? 'Curso Desconhecido';
+
+        
+        return (object) [
+            'id' => $this->course_id,
+            'name' => $courseName
+        ];
     }
 }
