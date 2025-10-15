@@ -24,7 +24,7 @@ Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 // ----------------------------------------------------------------------
 // --- GRUPO 1: ROTAS AUTENTICADAS (Acessível por Admin, Staff e Student)
 // ----------------------------------------------------------------------
-// ALTERADO: De 'auth:sanctum' para 'auth:api' para usar o JWT
+// O middleware 'auth:api' garante que o usuário está logado.
 Route::middleware('auth:api')->group(function () {
     // --- Rotas de Autenticação e Usuário Existentes ---
     Route::get('/me', [AuthController::class, 'me']);
@@ -35,19 +35,23 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
 
     // --- Rotas de Comunicação e Uso Comum ---
-    // Todos os usuários podem enviar mensagens e fazer upload de documentos (do próprio usuário)
     Route::post('/documents/upload', [DocumentController::class, 'upload']);
     Route::post('/messages', [MessageController::class, 'store']);
     
-    // Rotas de Requerimento
-    Route::apiResource('requests', RequestController::class); 
+    // Rotas de Requerimento:
+    // 1. Definição da rota de Listagem (index) separadamente.
+    // Isso garante que o index seja executado sem o bloqueio automático de policy
+    // que estava sendo aplicado pelo Route::apiResource.
+    Route::get('/requests', [RequestController::class, 'index']); 
+
+    // 2. O restante do recurso (store, show, update, destroy) usa o Policy padrão.
+    Route::apiResource('requests', RequestController::class)->except(['index']);
 });
 
 
 // ----------------------------------------------------------------------
 // --- GRUPO 2: ROTAS DE GESTÃO (Acessível por Admin e Staff)
 // ----------------------------------------------------------------------
-// ALTERADO: De 'auth:sanctum' para 'auth:api' para usar o JWT
 Route::middleware(['auth:api', 'role:admin,staff'])->group(function () {
     // Gestão de Matrículas (Enrollments)
     Route::apiResource('enrollment', EnrollmentController::class)->except(['destroy']);
@@ -65,7 +69,6 @@ Route::middleware(['auth:api', 'role:admin,staff'])->group(function () {
 // ----------------------------------------------------------------------
 // --- GRUPO 3: ROTAS ADMINISTRATIVAS (Exclusivo para Admin)
 // ----------------------------------------------------------------------
-// ALTERADO: De 'auth:sanctum' para 'auth:api' para usar o JWT
 Route::middleware(['auth:api', 'role:admin'])->group(function () {
     // Gestão de Usuários (CRUD completo, exceto o 'store' que é a rota pública de /register)
     Route::apiResource('user', UserController::class)->except('store');

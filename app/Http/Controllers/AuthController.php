@@ -141,15 +141,36 @@ class AuthController extends Controller
     /**
      * Obtém o usuário autenticado.
      */
-    public function me()
+    public function me(Request $request) // <-- Adicione (Request $request)
     {
-        $user = Auth::user();
+        // 1. Loga o header de autorização recebido
+        $authHeader = $request->header('Authorization');
+        Log::info('*** DIAGNÓSTICO JWT ***');
+        Log::info('Header Authorization Recebido: ' . $authHeader);
         
-        // REMOVIDO: Lógica para pegar o activeEnrollmentId do payload
-        
-        return response()->json([
-            'user' => $user,
-        ]);
+        try {
+            // Tenta forçar a busca do token
+            $token = JWTAuth::parseToken();
+            $user = $token->authenticate();
+
+            if (!$user) {
+                // Caso o token seja válido, mas o usuário não seja encontrado (ex: provider errado)
+                Log::error("ERRO FATAL: Token válido, mas usuário não encontrado no DB. Verifique config/auth.php.");
+                return response()->json(['msg' => 'Unauthorized - User not found in DB.'], 401);
+            }
+            
+            Log::info('SUCESSO: Usuário ID ' . $user->id . ' autenticado.');
+
+            // Lógica de resposta original
+            return response()->json([
+                'user' => $user,
+            ]);
+
+        } catch (\Exception $e) {
+            // Este catch pega TokenExpired, TokenInvalid, TokenBlacklisted, ou TokenNotPresent
+            Log::error("ERRO 401 Detalhe: " . $e->getMessage() . ". O token não passou na validação.");
+            return response()->json(['msg' => 'Acesso não autorizado. O token está ausente ou inválido.'], 401);
+        }
     }
 
     /**

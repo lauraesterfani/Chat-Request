@@ -14,57 +14,40 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class UserController extends Controller
 {
     // ... (Método index() não alterado)
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+public function index(Request $request)
     {
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email|max:255',
-                'password' => [
-                    'required',
-                    'string',
-                    'confirmed',
-                    'max:255',
-                    Password::min(8)
-                        ->mixedCase()
-                        ->numbers()
-                        ->symbols()
-                        ->uncompromised()
-                ],
-                'cpf' => 'required|string|size:11|unique:users,cpf',
-                'phone' => 'required|string|size:11',
-                'user_type' => 'required|in:student,staff',
-                'birthday' => 'required|date_format:Y-m-d',
-            ]);
+        $user = Auth::user();
 
-            // Cria o UUID para o ID
-            $validated['id'] = (string) Str::uuid();
-            
-            // GARANTINDO QUE CAMPOS NULOS NÃO CAUSEM ERRO
-            // O hash da senha é feito automaticamente pelo Modelo
-            $validated['email_verified_at'] = null; // Garante que campos não nulos sejam preenchidos corretamente
-
-            // Cria o usuário (Mass Assignment)
-            $user = User::create($validated);
-
-            return response()->json([
-                'message' => 'User created successfully',
-                'user' => $user
-            ], 201);
-        } catch (\Exception $e) {
-            // ESTE É O PONTO MAIS IMPORTANTE: VERIFIQUE O ARQUIVO DE LOG!
-            Log::error('Error creating user: ' . $e->getMessage());
-
-            return response()->json([
-                'message' => 'Internal error while creating user. Please try again later.'
-            ], 500);
+        // Se o diagnóstico não pegou 401, removemos os dd()
+        if (!$user) {
+             // Retorno padrão para não autenticado (401)
+             return response()->json(['message' => 'Usuário não autenticado.'], 401);
         }
-    }
 
+        // --- LÓGICA DE FILTRAGEM BASEADA NO PAPEL (Sem Policy, 100% no Controller) ---
+        
+        // 1. Inicia a query
+        $requestsQuery = RequestModel::query()->with('user');
+        
+        // 2. Filtra baseado no papel
+        if ($user->isStudent()) {
+            // Se for Student, aplica o filtro RIGOROSO: só vê os próprios requerimentos
+            $requestsQuery->where('user_id', $user->id);
+            
+        } elseif (!$user->isAdmin() && !$user->isStaff()) {
+            // Se o papel não for reconhecido (nem Student, nem Staff, nem Admin)
+            return response()->json(['message' => 'Acesso negado. Papel de usuário inválido.'], 403);
+        }
+        
+        // Se for Admin ou Staff, a query continua sem filtro, permitindo que eles vejam todos os requerimentos.
+
+        // 3. Aplica paginação e retorna
+        // ... (resto da sua lógica de listagem)
+
+        $requests = $requestsQuery->paginate(10);
+        
+        return RequestResource::collection($requests);
+    }
     /**
      * Update the specified resource in storage.
      */

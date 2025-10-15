@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Request as RequestModel;
-use App\Models\User; // NOVO: Importa o modelo User
+use App\Models\User;
+use App\Http\Resources\RequestResource; // Certifique-se de que este Resource existe
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -17,51 +18,44 @@ class RequestController extends Controller
      */
     public function __construct()
     {
-        // Força o uso do guard 'api' (auth:api)
+        // Restaurando o middleware de autenticação
         $this->middleware('auth:api'); 
     }
 
     /**
      * Display a listing of the resource.
+     * Esta rota foi isolada no arquivo de rotas e agora verifica a autorização internamente.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Obtém o ID do usuário autenticado, que é necessário para a Policy e a filtragem.
-        $authenticatedUser = Auth::guard('api')->user();
+        $user = Auth::user();
 
-        if (!$authenticatedUser) {
-            return response()->json(['msg' => 'Acesso negado. Token inválido ou expirado.'], 401);
-        }
-        
-        // NOVO: Busca o modelo completo do usuário para ter acesso a métodos customizados (isStudent) e relations.
-        $user = User::find($authenticatedUser->id);
-
+        // Se o usuário não estiver autenticado (o middleware auth:api no construtor já deveria pegar isso, 
+        // mas é um bom backup, embora não deva ser alcançado)
         if (!$user) {
-            return response()->json(['msg' => 'Usuário autenticado não encontrado no banco de dados.'], 404);
+             return response()->json(['message' => 'Usuário não autenticado.'], 401);
+        }
+
+        // Garante que o usuário tem um papel reconhecido (Student, Admin ou Staff)
+        if (!$user->isStudent() && !$user->isAdmin() && !$user->isStaff()) {
+            return response()->json(['message' => 'Acesso negado. Papel de usuário inválido.'], 403);
         }
         
-        // Autorização: Usa o método viewAny() da RequestPolicy.
-        $this->authorize('viewAny', RequestModel::class);
+        // --- LÓGICA DE FILTRAGEM BASEADA NO PAPEL ---
         
-        try {
-            // Inicia a query builder com EAGER LOADING (Carregamento Antecipado)
-            // Carrega 'user' (quem fez a requisição) e 'typeRequest' (tipo de requerimento)
-            $requestsQuery = RequestModel::query()->with(['user', 'typeRequest']);
+        $requestsQuery = RequestModel::query()->with('user');
+        
+        // Se for Student, aplica o filtro: só vê os próprios requerimentos
+        if ($user->isStudent()) {
+            $requestsQuery->where('user_id', $user->id);
+        } 
+        
+        // Se for Admin ou Staff, a query continua sem filtro, vendo todos.
 
-            // Se for Student, aplica o filtro: ele só pode ver as requisições dele.
-            if ($user->isStudent()) {
-                $requestsQuery->where('user_id', $user->id);
-            }
-            
-            // Para Admin e Staff, a query retorna todas as requisições (sem filtro).
-            $requests = $requestsQuery->get();
-
-            return response()->json($requests, 200);
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching requests list: ' . $e->getMessage());
-            return response()->json(['msg' => 'Error fetching requests list'], 500);
-        }
+        // Aplica paginação e retorna
+        $requests = $requestsQuery->paginate(10);
+        
+        return RequestResource::collection($requests);
     }
 
     /**
@@ -69,17 +63,16 @@ class RequestController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Autorização: Apenas Students podem criar requisições (Policy::create).
+        // Autorização: Policy::create (apenas Student pode criar).
         $this->authorize('create', RequestModel::class);
         
-        // Obtém o ID do usuário autenticado, que é necessário para a Policy e a criação.
         $authenticatedUser = Auth::guard('api')->user();
-
+        // Lógica de Store (criação) ...
+        
         if (!$authenticatedUser) {
             return response()->json(['msg' => 'Usuário não autenticado via token.'], 401);
         }
 
-        // NOVO: Busca o modelo completo do usuário para ter acesso ao relacionamento enrollments().
         $user = User::find($authenticatedUser->id);
 
         if (!$user) {
@@ -87,25 +80,20 @@ class RequestController extends Controller
         }
 
         try {
-            // 2. Validação dos dados que VÊM do Postman (JSON)
             $validated = $request->validate([
                 'type_id' => 'required|uuid|exists:type_requests,id',
                 'subject' => 'required|string|max:255',
                 'description' => 'required|string|max:1000',
             ]);
 
-            // 3. Pega o ID da Matrícula (Enrollment) do usuário logado.
-            // O método enrollments() agora existe porque $user é o modelo Eloquent completo.
             $enrollment = $user->enrollments()->where('status', 'active')->first();
 
             if (!$enrollment) {
                 return response()->json(['msg' => 'Matrícula ativa não encontrada para o usuário.'], 400);
             }
             
-            // 4. Cria o número de protocolo 
             $protocol = date('Y-m-d') . '-' . Str::random(8); 
 
-            // 5. Cria o requerimento no banco de dados
             $requestModel = RequestModel::create([
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->id, 
@@ -117,7 +105,6 @@ class RequestController extends Controller
                 'status' => 'pending',
             ]);
 
-            // Carrega os dados relacionados antes de retornar a resposta
             $requestModel->load(['user', 'typeRequest']);
 
             return response()->json($requestModel, 201);
@@ -139,21 +126,18 @@ class RequestController extends Controller
     public function show($id)
     {
         try {
-            // Usa EAGER LOADING (Carregamento Antecipado) ao buscar a requisição
             $requestModel = RequestModel::with(['user', 'typeRequest'])->find($id);
 
             if (!$requestModel) {
                 return response()->json(['msg' => 'Request not found'], 404);
             }
             
-            // Autorização: Usa o método view(User $user, Request $request) da RequestPolicy.
-            // Admin/Staff veem todas. Student só vê a dele.
+            // Autorização: Policy::view (Student só vê o dele, Admin/Staff veem todos).
             $this->authorize('view', $requestModel);
 
             return response()->json($requestModel, 200);
 
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            // Exceção lançada se a Policy negar o acesso (ex: Student tentando ver requisição de outro)
             return response()->json(['msg' => 'Você não tem permissão para visualizar esta requisição.'], 403);
         } catch (\Exception $e) {
             Log::error('Error fetching request: ' . $e->getMessage());
@@ -167,26 +151,22 @@ class RequestController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // 1. Encontra o modelo
         $requestModel = RequestModel::find($id);
 
         if (!$requestModel) {
             return response()->json(['msg' => 'Request not found'], 404);
         }
 
-        // 2. Autorização: Apenas Admin/Staff podem atualizar (Policy::update).
+        // Autorização: Policy::update (apenas Admin/Staff podem atualizar).
         $this->authorize('update', $requestModel);
 
         try {
-            // 3. Validação: Apenas permitindo a alteração do status por enquanto
             $validated = $request->validate([
                 'status' => 'required|in:pending,in_progress,completed,rejected,cancelled',
-                // Se desejar permitir editar subject/description, adicione-os aqui
             ]);
 
             $requestModel->update($validated);
             
-            // Carrega os dados relacionados antes de retornar a resposta
             $requestModel->load(['user', 'typeRequest']);
 
             return response()->json($requestModel, 200);
@@ -206,14 +186,13 @@ class RequestController extends Controller
     public function destroy($id)
     {
         try {
-            // CORREÇÃO: Usando RequestModel::find($id)
             $requestModel = RequestModel::find($id);
 
             if (!$requestModel) {
                 return response()->json(['msg' => 'Request not found'], 404);
             }
             
-            // Autorização: Apenas Admin podem deletar (Policy::delete).
+            // Autorização: Policy::delete (apenas Admin pode deletar).
             $this->authorize('delete', $requestModel);
 
             $requestModel->delete();
@@ -221,7 +200,6 @@ class RequestController extends Controller
             return response()->json(['msg' => 'Request deleted successfully'], 200);
 
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            // Exceção lançada se a Policy negar o acesso (ex: Staff/Student tentando deletar)
             return response()->json(['msg' => 'Você não tem permissão para deletar esta requisição.'], 403);
         } catch (\Exception $e) {
             Log::error('Error deleting request: ' . $e->getMessage());

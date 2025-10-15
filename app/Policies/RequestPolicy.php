@@ -5,90 +5,82 @@ namespace App\Policies;
 use App\Models\Request as RequestModel;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Support\Facades\Log;
 
 class RequestPolicy
 {
     /**
-     * Permite que o Admin tenha acesso total, ignorando os outros métodos da Policy.
-     * Isso resolve o problema de autorização (403) para o Admin.
+     * Determine whether the user can view any models (for the index method).
      */
-    public function before(User $user, string $ability): ?bool
+    public function viewAny(User $user): Response
     {
-        if ($user->role === 'admin') {
-            return true;
+        // --- DIAGNÓSTICO CRÍTICO: VERIFICA QUAL ROLE ESTÁ CHEGANDO NA POLICY ---
+        // Se este dd() for acionado, o acesso negado não é de rota, mas sim de papel.
+        dd('DIAGNÓSTICO DA POLICY (viewAny):', [
+            'ID do Usuário' => $user->id,
+            'Role Lida do Token' => $user->role,
+            'isStudent()' => $user->isStudent(),
+            'isAdmin()' => $user->isAdmin(),
+            'isStaff()' => $user->isStaff(),
+        ]);
+        // ---------------------------------------------------------------------
+
+        // Lógica de autorização (só será alcançada se o dd() for removido):
+        if ($user->isAdmin() || $user->isStaff() || $user->isStudent()) {
+            return Response::allow();
         }
 
-        return null; // Deixa os métodos viewAny, view, etc., decidirem o resto
+        return Response::deny('Você não tem permissão para visualizar a lista de requerimentos.');
     }
 
     /**
-     * Determina se o usuário pode visualizar qualquer requisição.
-     * Permitido para Staff e Estudantes (que verão apenas as suas).
+     * Determine whether the user can view the model (for the show method).
      */
-    public function viewAny(User $user): bool
+    public function view(User $user, RequestModel $requestModel): Response
     {
-        return in_array($user->role, ['staff', 'student']);
-    }
-
-    /**
-     * Determina se o usuário pode visualizar uma requisição específica.
-     * Staff pode ver qualquer requisição. Estudante só pode ver a sua.
-     */
-    public function view(User $user, RequestModel $request): bool
-    {
-        if ($user->role === 'staff') {
-            return true;
+        // Admin e Staff podem ver qualquer requerimento
+        if ($user->isAdmin() || $user->isStaff()) {
+            return Response::allow();
         }
 
-        // Se for estudante, checa se ele é o criador da requisição
-        return $user->id === $request->user_id;
-    }
-
-    /**
-     * Determina se o usuário pode criar requisições (apenas Estudantes).
-     */
-    public function create(User $user): bool
-    {
-        return $user->role === 'student';
-    }
-
-    /**
-     * Determina se o usuário pode atualizar a requisição.
-     * Permissão baseada na lógica de negócio: Staff pode atualizar.
-     * Estudante só pode atualizar se o status for rascunho (pending) ou se a requisição ainda não foi processada.
-     */
-    public function update(User $user, RequestModel $request): bool
-    {
-        if ($user->role === 'staff') {
-            return true;
+        // Student só pode ver o seu próprio requerimento
+        if ($user->isStudent() && $user->id === $requestModel->user_id) {
+            return Response::allow();
         }
         
-        // Estudante só pode atualizar se for o dono E o status não for finalizado.
-        return $user->id === $request->user_id && $request->status === 'pending';
+        return Response::deny('Você não tem permissão para visualizar este requerimento.');
     }
 
     /**
-     * Determina se o usuário pode deletar a requisição (apenas Staff/Admin em rascunho).
-     * Como o Admin já tem acesso total via before(), focamos no Staff.
+     * Determine whether the user can create models (for the store method).
      */
-    public function delete(User $user, RequestModel $request): bool
+    public function create(User $user): Response
     {
-        return $user->role === 'staff' && $request->status === 'pending';
+        // Apenas Students podem criar novos requerimentos.
+        return $user->isStudent()
+            ? Response::allow()
+            : Response::deny('Apenas alunos podem criar requerimentos.');
     }
 
     /**
-     * Determina se o usuário pode restaurar requisições.
+     * Determine whether the user can update the model (for the update method).
      */
-    public function restore(User $user, RequestModel $request): bool
+    public function update(User $user, RequestModel $requestModel): Response
     {
-        return $user->role === 'admin';
+        // Apenas Admin e Staff podem atualizar o status de um requerimento.
+        return ($user->isAdmin() || $user->isStaff())
+            ? Response::allow()
+            : Response::deny('Apenas Admin e Staff podem alterar requerimentos.');
     }
 
     /**
-     * Determina se o usuário pode forçar a exclusão de requisições.
+     * Determine whether the user can delete the model (for the destroy method).
      */
-    public function forceDelete(User $user, RequestModel $request): bool
+    public function delete(User $user, RequestModel $requestModel): Response
     {
-        return $user->role === 'admin';
+        // Apenas Admin pode deletar requerimentos.
+        return $user->isAdmin()
+            ? Response::allow()
+            : Response::deny('Apenas o Administrador pode deletar requerimentos.');
     }
 }

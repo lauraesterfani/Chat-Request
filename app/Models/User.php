@@ -76,6 +76,7 @@ class User extends Authenticatable implements JWTSubject // CORREÇÃO CRÍTICA:
         return $this->getKey();
     }
 
+    
     /**
      * Retorna um array de custom claims a serem adicionados ao token.
      * Adicionamos a 'role' aqui para uso no RoleMiddleware.
@@ -98,23 +99,18 @@ class User extends Authenticatable implements JWTSubject // CORREÇÃO CRÍTICA:
      */
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        // Garante que a comparação ignore maiúsculas/minúsculas
+        return strtolower($this->role) === 'admin';
     }
-    
-    /**
-     * Checa se o usuário é um estudante.
-     */
-    public function isStudent(): bool
-    {
-        return $this->role === self::ROLE_STUDENT;
-    }
-    
-    /**
-     * Checa se o usuário é um funcionário (staff).
-     */
+
     public function isStaff(): bool
     {
-        return $this->role === self::ROLE_STAFF;
+        return strtolower($this->role) === 'staff';
+    }
+
+    public function isStudent(): bool
+    {
+        return strtolower($this->role) === 'student'; 
     }
     
     // --- Relações ---
