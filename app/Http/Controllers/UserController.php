@@ -4,60 +4,126 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
 {
-    // ... (Método index() não alterado)
-public function index(Request $request)
+    /**
+     * Exibe a lista de usuários.
+     * Admins veem todos; Staff e Student têm acesso restrito.
+     */
+    public function index()
     {
         $user = Auth::user();
 
-        // Se o diagnóstico não pegou 401, removemos os dd()
         if (!$user) {
-             // Retorno padrão para não autenticado (401)
-             return response()->json(['message' => 'Usuário não autenticado.'], 401);
+            return response()->json(['message' => 'Usuário não autenticado.'], 401);
         }
 
-        // --- LÓGICA DE FILTRAGEM BASEADA NO PAPEL (Sem Policy, 100% no Controller) ---
-        
-        // 1. Inicia a query
-        $requestsQuery = RequestModel::query()->with('user');
-        
-        // 2. Filtra baseado no papel
-        if ($user->isStudent()) {
-            // Se for Student, aplica o filtro RIGOROSO: só vê os próprios requerimentos
-            $requestsQuery->where('user_id', $user->id);
-            
-        } elseif (!$user->isAdmin() && !$user->isStaff()) {
-            // Se o papel não for reconhecido (nem Student, nem Staff, nem Admin)
-            return response()->json(['message' => 'Acesso negado. Papel de usuário inválido.'], 403);
+        if ($user->isAdmin()) {
+            $users = User::paginate(10);
+        } elseif ($user->isStaff()) {
+            $users = User::where('role', 'student')->paginate(10);
+        } else {
+            return response()->json(['message' => 'Acesso negado.'], 403);
         }
-        
-        // Se for Admin ou Staff, a query continua sem filtro, permitindo que eles vejam todos os requerimentos.
 
-        // 3. Aplica paginação e retorna
-        // ... (resto da sua lógica de listagem)
-
-        $requests = $requestsQuery->paginate(10);
-        
-        return RequestResource::collection($requests);
+        return response()->json($users);
     }
+
     /**
-     * Update the specified resource in storage.
+     * Cadastra um novo usuário (para admins ou cadastro público).
+     */
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => [
+                    'required',
+                    'string',
+                    'confirmed',
+                    Password::min(8)
+                        ->mixedCase()
+                        ->numbers()
+                        ->symbols()
+                        ->uncompromised()
+                ],
+                'cpf' => 'required|string|size:11|unique:users',
+                'phone' => 'required|string|size:11',
+                'birthday' => 'required|date_format:Y-m-d',
+                'role' => 'nullable|in:student,staff,admin',
+            ]);
+
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'cpf' => $validated['cpf'],
+                'phone' => $validated['phone'],
+                'birthday' => $validated['birthday'],
+                'role' => $validated['role'] ?? 'student',
+            ]);
+
+            return response()->json([
+                'message' => 'Usuário criado com sucesso!',
+                'user' => $user,
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Erro ao criar usuário: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro ao criar usuário.'], 500);
+        }
+    }
+
+    /**
+     * Exibe os dados de um usuário específico.
+     */
+    public function show($id)
+    {
+        $authUser = Auth::user();
+
+        if (!$authUser) {
+            return response()->json(['message' => 'Usuário não autenticado.'], 401);
+        }
+
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(['message' => 'Usuário não encontrado.'], 404);
+        }
+
+        // Somente Admin pode ver qualquer usuário; staff/students apenas eles mesmos
+        if (!$authUser->isAdmin() && $authUser->id !== $user->id) {
+            return response()->json(['message' => 'Acesso negado.'], 403);
+        }
+
+        return response()->json($user);
+    }
+
+    /**
+     * Atualiza um usuário (Admin ou o próprio usuário).
      */
     public function update(Request $request, $id)
     {
         try {
-            $user = User::find($id);
+            $authUser = Auth::user();
 
+            if (!$authUser) {
+                return response()->json(['message' => 'Usuário não autenticado.'], 401);
+            }
+
+            $user = User::find($id);
             if (!$user) {
-                return response()->json(['message' => 'User not found.'], 404);
+                return response()->json(['message' => 'Usuário não encontrado.'], 404);
+            }
+
+            if (!$authUser->isAdmin() && $authUser->id !== $user->id) {
+                return response()->json(['message' => 'Acesso negado.'], 403);
             }
 
             $validated = $request->validate([
@@ -67,14 +133,12 @@ public function index(Request $request)
                     'required',
                     'email',
                     Rule::unique('users')->ignore($user->id),
-                    'max:255'
                 ],
                 'password' => [
                     'sometimes',
                     'required',
                     'string',
                     'confirmed',
-                    'max:255',
                     Password::min(8)
                         ->mixedCase()
                         ->numbers()
@@ -89,19 +153,63 @@ public function index(Request $request)
                     Rule::unique('users')->ignore($user->id),
                 ],
                 'phone' => 'sometimes|required|string|size:11',
-                'user_type' => 'sometimes|required|in:student,staff',
                 'birthday' => 'sometimes|required|date_format:Y-m-d',
+                'role' => 'sometimes|required|in:student,staff,admin',
             ]);
 
-            // REMOVIDO: Hash::make() manual. O 'password' => 'hashed' no Modelo cuida disso.
+            if (isset($validated['password'])) {
+                $validated['password'] = Hash::make($validated['password']);
+            }
 
             $user->update($validated);
 
-            return response()->json($user, 200);
+            return response()->json([
+                'message' => 'Usuário atualizado com sucesso!',
+                'user' => $user,
+            ], 200);
         } catch (\Exception $e) {
-            Log::error('Error updating user: ' . $e->getMessage());
-            return response()->json(['message' => 'Error updating user'], 500);
+            Log::error('Erro ao atualizar usuário: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro ao atualizar usuário.'], 500);
         }
     }
-    // ... (Métodos show(), destroy() e validateToken() não alterados)
+
+    /**
+     * Exclui um usuário (somente Admin).
+     */
+    public function destroy($id)
+    {
+        $authUser = Auth::user();
+
+        if (!$authUser || !$authUser->isAdmin()) {
+            return response()->json(['message' => 'Acesso negado. Somente administradores podem excluir usuários.'], 403);
+        }
+
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(['message' => 'Usuário não encontrado.'], 404);
+        }
+
+        $user->delete();
+
+        return response()->json(['message' => 'Usuário excluído com sucesso.'], 200);
+    }
+
+    /**
+     * Valida se o token JWT ainda é válido.
+     */
+    public function validateToken()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['message' => 'Token inválido ou expirado.'], 401);
+            }
+
+            return response()->json(['message' => 'Token válido.', 'user' => $user], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erro ao validar token.'], 500);
+        }
+    }
 }
+
