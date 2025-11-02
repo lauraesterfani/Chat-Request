@@ -1,19 +1,29 @@
 <?php
 
-namespace App\Models;
+namespace App\Http\Resources;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class TypeRequestDocument extends Model
+class TypeDocumentResource extends JsonResource
 {
-  protected $keyType = 'string';
-  public $incrementing = false;
-  protected $fillable = [
-    'id',
-    'type_request_id',
-    'type_document_id'
-  ];
-
-  protected $table = 'type_requests_documents';
+    /**
+     * Transforma o recurso em um array.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'required' => (bool) $this->required, // Garantindo que 'required' seja booleano
+            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
+            
+            // Relacionamento inverso Many-to-Many (opcional, mas útil)
+            'type_requests' => TypeRequestResource::collection($this->whenLoaded('typeRequests')),
+        ];
+    }
 }
-

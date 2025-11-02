@@ -40,8 +40,6 @@ Route::middleware('auth:api')->group(function () {
     
     // Rotas de Requerimento:
     // 1. Definição da rota de Listagem (index) separadamente.
-    // Isso garante que o index seja executado sem o bloqueio automático de policy
-    // que estava sendo aplicado pelo Route::apiResource.
     Route::get('/requests', [RequestController::class, 'index']); 
 
     // 2. O restante do recurso (store, show, update, destroy) usa o Policy padrão.
@@ -74,11 +72,12 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::apiResource('user', UserController::class)->except('store');
     
     // Gestão dos Tipos de Documentos e Requerimentos
-    Route::apiResource('type_requests', TypeRequestsController::class);
-    Route::apiResource('type_documents', TypeDocumentsController::class);
+    Route::apiResource('type-requests', TypeRequestsController::class); // ATUALIZADO
+    Route::apiResource('type-documents', TypeDocumentsController::class); // ATUALIZADO
     
     // Rota de vinculação de tipos de documentos a tipos de requerimentos
-    Route::post('/request-types/{id}/document-types', [TypeRequestsController::class, 'attachDocumentType']);
+    // ATUALIZADO: Usando o nome "sync-documents" para a URL
+    Route::post('/type-requests/{id}/sync-documents', [TypeRequestsController::class, 'syncDocumentTypes']);
 
     // O Admin pode deletar matrículas
     Route::delete('enrollment/{enrollment}', [EnrollmentController::class, 'destroy']);

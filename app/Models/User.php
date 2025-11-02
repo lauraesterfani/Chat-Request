@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Tymon\JWTAuth\Contracts\JWTSubject; // CORREÇÃO CRÍTICA: Importação da interface JWT
+use Tymon\JWTAuth\Contracts\JWTSubject;
+use App\Models\Enrollment; // Adicionado para a relação
+use Illuminate\Support\Str; // Adicionado Str, caso seja usado
 
 /**
  * O modelo User implementa JWTSubject para ser compatível com Tymon\JWTAuth.
- * HasApiTokens (Sanctum) foi removido, pois está sendo usado JWT.
  */
-class User extends Authenticatable implements JWTSubject // CORREÇÃO CRÍTICA: Implementa a interface
+class User extends Authenticatable implements JWTSubject
 {
     // Removido HasApiTokens, pois estamos usando JWT Auth (Tymon)
     use HasFactory, Notifiable, HasUuids; 
@@ -100,17 +101,23 @@ class User extends Authenticatable implements JWTSubject // CORREÇÃO CRÍTICA:
     public function isAdmin(): bool
     {
         // Garante que a comparação ignore maiúsculas/minúsculas
-        return strtolower($this->role) === 'admin';
+        return strtolower($this->role) === self::ROLE_ADMIN;
     }
 
+    /**
+     * Checa se o usuário é um membro do staff.
+     */
     public function isStaff(): bool
     {
-        return strtolower($this->role) === 'staff';
+        return strtolower($this->role) === self::ROLE_STAFF;
     }
 
+    /**
+     * Checa se o usuário é um estudante.
+     */
     public function isStudent(): bool
     {
-        return strtolower($this->role) === 'student'; 
+        return strtolower($this->role) === self::ROLE_STUDENT; 
     }
     
     // --- Relações ---
@@ -120,8 +127,7 @@ class User extends Authenticatable implements JWTSubject // CORREÇÃO CRÍTICA:
      */
     public function enrollments(): HasMany
     {
-        // NOTA: Certifique-se de que a classe Enrollment foi importada ou está no mesmo namespace,
-        // ou inclua o 'use App\Models\Enrollment;' no topo do arquivo.
+        // Usa a classe importada Enrollment
         return $this->hasMany(Enrollment::class, 'user_id'); 
     }
 }

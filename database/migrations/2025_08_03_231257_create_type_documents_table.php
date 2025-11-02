@@ -12,8 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('type_documents', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('name')->unique();
+            $table->uuid('id')->primary(); // Chave primária UUID
+            $table->string('name', 63)->unique();
+            $table->string('description', 255)->nullable();
+            $table->boolean('required')->default(true); // Indica se é obrigatório
             $table->timestamps();
         });
     }

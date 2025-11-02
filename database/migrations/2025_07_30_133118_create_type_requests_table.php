@@ -6,24 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-  /**
-   * Run the migrations.
-   */
-  public function up(): void
-  {
-    Schema::create('type_requests', function (Blueprint $table) {
-      $table->uuid('id')->primary();
-      $table->string("name")->unique();
-      $table->text('description')->nullable();
-      $table->timestamps();
-    });
-  }
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('type_requests', function (Blueprint $table) {
+            $table->uuid('id')->primary(); // Chave primária UUID
+            $table->string('name', 63)->unique();
+            $table->string('description', 255)->nullable();
+            $table->boolean('status')->default(true); // Exemplo de campo booleano
+            $table->timestamps();
+        });
+    }
 
-  /**
-   * Reverse the migrations.
-   */
-  public function down(): void
-  {
-    Schema::dropIfExists('type_requests');
-  }
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('type_requests');
+    }
 };

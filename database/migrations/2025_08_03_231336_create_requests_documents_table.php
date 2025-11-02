@@ -11,8 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('type_requests_documents', function (Blueprint $table) {
-            $table->id();
+        // Tabela pivô para o relacionamento Many-to-Many
+        Schema::create('document_type_request', function (Blueprint $table) {
+            // Chave estrangeira para TypeRequest
+            $table->uuid('type_request_id');
+            $table->foreign('type_request_id')
+                  ->references('id')
+                  ->on('type_requests')
+                  ->onDelete('cascade'); // Exclui a associação se o requerimento for excluído
+
+            // Chave estrangeira para TypeDocument
+            $table->uuid('type_document_id');
+            $table->foreign('type_document_id')
+                  ->references('id')
+                  ->on('type_documents')
+                  ->onDelete('cascade'); // Exclui a associação se o documento for excluído
+
+            // Define a chave primária composta (evita duplicidade de associações)
+            $table->primary(['type_request_id', 'type_document_id']);
+
             $table->timestamps();
         });
     }
@@ -22,6 +39,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('type_requests_documents');
+        Schema::dropIfExists('document_type_request');
     }
 };
