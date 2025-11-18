@@ -46,7 +46,7 @@ export default function MeusRequerimentosPage() {
       if (!token) return; // Espera o token estar disponível
 
       try {
-        const response = await fetch('http://localhost:8000/api/requests', {
+        const response = await fetch('http://localhost:8002/api/requests', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',

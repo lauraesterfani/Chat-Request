@@ -39,71 +39,49 @@ class UserController extends Controller
      * Cadastra um novo usuário (para admins ou cadastro público).
      */
     public function store(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => [
-                    'required',
-                    'string',
-                    'confirmed',
-                    Password::min(8)
-                        ->mixedCase()
-                        ->numbers()
-                        ->symbols()
-                        ->uncompromised()
-                ],
-                'cpf' => 'required|string|size:11|unique:users',
-                'phone' => 'required|string|size:11',
-                'birthday' => 'required|date_format:Y-m-d',
-                'role' => 'nullable|in:student,staff,admin',
-            ]);
+{
+    try {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised()
+            ],
+            'cpf' => 'required|string|size:11|unique:users',
+            'phone' => 'required|string|size:11',
+            'birthday' => 'required|date_format:Y-m-d',
+            'role' => 'nullable|in:student,staff,admin',
+        ]);
 
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'cpf' => $validated['cpf'],
-                'phone' => $validated['phone'],
-                'birthday' => $validated['birthday'],
-                'role' => $validated['role'] ?? 'student',
-            ]);
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'cpf' => $validated['cpf'],
+            'phone' => $validated['phone'],
+            'birthday' => $validated['birthday'],
+            'role' => $validated['role'] ?? 'student',
+        ]);
 
-            return response()->json([
-                'message' => 'Usuário criado com sucesso!',
-                'user' => $user,
-            ], 201);
-        } catch (\Exception $e) {
-            Log::error('Erro ao criar usuário: ' . $e->getMessage());
-            return response()->json(['message' => 'Erro ao criar usuário.'], 500);
+        // 🚨 CORREÇÃO CRUCIAL: Retornar apenas um subconjunto de atributos (toArray())
+        // Isto impede que o Laravel tente carregar relações (como 'enrollments') que possam estar a falhar a serialização.
+             return response()->json([
+                   'message' => 'Usuário criado com sucesso!',
+                    'user' => $user->only(['id', 'name', 'email', 'role', 'cpf']), 
+             ], 201);
+         } catch (\Exception $e) {
+                Log::error('Erro ao criar usuário: ' . $e->getMessage());
+                // Se este bloco fosse executado, você não veria o 500 HTML
+                return response()->json(['message' => 'Erro ao criar usuário.'], 500);
+             }
         }
-    }
-
-    /**
-     * Exibe os dados de um usuário específico.
-     */
-    public function show($id)
-    {
-        $authUser = Auth::user();
-
-        if (!$authUser) {
-            return response()->json(['message' => 'Usuário não autenticado.'], 401);
-        }
-
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json(['message' => 'Usuário não encontrado.'], 404);
-        }
-
-        // Somente Admin pode ver qualquer usuário; staff/students apenas eles mesmos
-        if (!$authUser->isAdmin() && $authUser->id !== $user->id) {
-            return response()->json(['message' => 'Acesso negado.'], 403);
-        }
-
-        return response()->json($user);
-    }
 
     /**
      * Atualiza um usuário (Admin ou o próprio usuário).

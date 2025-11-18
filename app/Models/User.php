@@ -8,8 +8,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-use App\Models\Enrollment; // Adicionado para a relação
-use Illuminate\Support\Str; // Adicionado Str, caso seja usado
+use App\Models\Enrollment; 
+use Illuminate\Support\Str; 
 
 /**
  * O modelo User implementa JWTSubject para ser compatível com Tymon\JWTAuth.
