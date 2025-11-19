@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 // Caminho de importação corrigido (Ajustado para '../context/AuthContext')
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../app/context/AuthContext'; 
 
 // =================================================================================
 // MOCK DO ROUTER (Necessário para a navegação)

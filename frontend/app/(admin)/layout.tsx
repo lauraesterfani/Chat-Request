@@ -1,7 +1,7 @@
 'use client' // Layouts com botões (logout) precisam ser Client Components
 
 import { ReactNode } from 'react';
-import { useAuth } from '@/context/AuthContext'; // Para o logout
+import { useAuth } from '@/app/context/AuthContext'; // Para o logout
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';

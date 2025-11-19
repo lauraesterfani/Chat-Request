@@ -1,15 +1,39 @@
 'use client'
 
 import React, { useState } from 'react';
+// CORREÇÃO DO CAMINHO: Ajustado para '../context/AuthContext'
 import { useAuth } from '../../context/AuthContext'; 
-import { User, UserRole } from '../../context/AuthContext'; // Importar os tipos (com .tsx)
+
+// =================================================================================
+// Definição de Tipos Locais (Para resolver erros de exportação do AuthContext)
+// =================================================================================
+type UserRole = 'student' | 'admin' | 'professor' | 'guest'; 
+
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    cpf: string;
+    phone: string;
+    birthday: string;
+    role: UserRole;
+    // Adicione qualquer outro campo que a sua API de registo devolva
+}
+
+// CORREÇÃO: Tipo local para o contexto para forçar a assinatura correta 
+// da função 'login', resolvendo o erro de tipo 'user' e 'token' não existirem.
+interface AuthContextTypeLocal {
+    // A função 'login' deve aceitar UM objeto que contenha 'user' e 'token'.
+    login: (authData: { user: User, token: string }) => void;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+}
 
 // =================================================================================
 // CONFIGURAÇÃO DA API - ALTERE ESTA URL!
 // =================================================================================
 
-// *** IMPORTANTE: Substitua 'http://seu-backend.com/api/register' pela sua URL REAL ***
-const REGISTER_API_URL = 'http://localhost:8002/api/register'; 
+const REGISTER_API_URL = 'http://localhost:8000/api/register'; 
 
 // =================================================================================
 // Ícones
@@ -34,7 +58,7 @@ const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
 const useRouter = () => ({
     push: (path: string) => {
         if (typeof window !== 'undefined') {
-            window.location.href = path; 
+            window.location.replace(path); 
         }
     },
 });
@@ -44,15 +68,15 @@ const useRouter = () => ({
 // =================================================================================
 
 export default function SignupPage() {
-    const { login, isAuthenticated, isLoading } = useAuth();
+    // Aplicamos o casting para forçar o TypeScript a usar a assinatura de 'login' que definimos.
+    const { login, isAuthenticated, isLoading } = useAuth() as unknown as AuthContextTypeLocal;
     const router = useRouter();
 
     const [name, setName] = useState('');
     const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
-    // NOVOS CAMPOS
     const [phone, setPhone] = useState('');
-    const [birthday, setBirthday] = useState(''); // Formato YYYY-MM-DD
+    const [birthday, setBirthday] = useState(''); 
     
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
@@ -70,22 +94,17 @@ export default function SignupPage() {
             return;
         }
 
-        // Validação de todos os campos obrigatórios
         if (!name || !cpf || !email || !password || !phone || !birthday) {
-            setError("Por favor, preencha todos os campos obrigatórios (Nome, CPF, Email, Telefone, Data de Nascimento e Senha).");
+            setError("Por favor, preencha todos os campos obrigatórios.");
             return;
         }
 
         setIsProcessing(true);
 
         try {
-            // =====================================================================
-            // CHAMADA FETCH REAL PARA O SEU ENDPOINT DE REGISTO (Laravel)
-            // =====================================================================
             const response = await fetch(REGISTER_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // Payload atualizado para incluir 'phone' e 'birthday'
                 body: JSON.stringify({ 
                     name, 
                     cpf, 
@@ -100,20 +119,22 @@ export default function SignupPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                 // Tratar erros de validação (ex: CPF já existe)
-                 const message = data.message || 'Erro no processamento do cadastro. Verifique a consola.';
-                 throw new Error(message);
+                const message = data.message || 'Erro no processamento do cadastro. Verifique a consola.';
+                throw new Error(message);
             }
             
-            // ATENÇÃO: Assumimos que o registo bem-sucedido pode retornar o token e user
+            // Aqui usamos a função login com o objeto { user, token }
             if (data.token && data.user) {
-                // Se o registo fizer login automático:
-                login(data.user as User, data.token);
-                // A navegação ocorre dentro do AuthContext
+                // Montamos o objeto de usuário usando o tipo local 'User'
+                const user: User = { 
+                    ...data.user, 
+                    role: (data.user.role as string || 'student') as UserRole 
+                };
+                
+                login({ user, token: data.token }); 
+                
             } else {
-                // Se o registo NÃO fizer login automático:
                 setSuccessMessage("Cadastro realizado com sucesso! Pode agora fazer o login.");
-                // Limpar campos para um novo registo ou redirecionar
                 setTimeout(() => router.push('/login'), 2000); 
             }
 
@@ -122,17 +143,16 @@ export default function SignupPage() {
             console.error("Erro durante o processo de cadastro:", e);
             setError(errorMessage);
         } finally {
-             setIsProcessing(false);
+            setIsProcessing(false);
         }
     };
 
     if (!isLoading && isAuthenticated) {
-        // Se já estiver autenticado, redireciona para a página principal
         router.push('/me');
         return null;
     }
 
-
+    // O código de renderização (JSX) permanece inalterado
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
             <div className="w-full max-w-lg bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
@@ -185,7 +205,7 @@ export default function SignupPage() {
                             required
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
                         />
-                         <input
+                        <input
                             type="tel" 
                             placeholder="Telefone"
                             value={phone}
@@ -200,7 +220,7 @@ export default function SignupPage() {
                                 value={birthday}
                                 onChange={(e) => setBirthday(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition text-gray-500"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition text-gray-700"
                             />
                         </div>
                     </div>

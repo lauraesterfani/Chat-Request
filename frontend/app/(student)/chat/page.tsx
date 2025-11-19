@@ -1,7 +1,7 @@
 'use client' // Esta página é interativa (botões, estado do chat)
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 // Interface para a matrícula (vamos usar dados mockados por agora)

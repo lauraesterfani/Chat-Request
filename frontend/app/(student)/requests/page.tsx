@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/context/AuthContext';
 import Link from 'next/link'; // Para o botão "Solicitar Novo"
 
 // 1. Interface para os dados do Requerimento
@@ -46,7 +46,7 @@ export default function MeusRequerimentosPage() {
       if (!token) return; // Espera o token estar disponível
 
       try {
-        const response = await fetch('http://localhost:8002/api/requests', {
+        const response = await fetch('http://localhost:8000/api/requests', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',

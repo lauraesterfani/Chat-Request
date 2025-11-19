@@ -1,7 +1,7 @@
 'use client' // Página que vai buscar dados (fetch)
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/context/AuthContext';
 
 // 1. Interface para os dados da matrícula
 // (Combinei o teu protótipo com o teu Model do Laravel)
