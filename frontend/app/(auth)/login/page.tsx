@@ -18,16 +18,10 @@ const LoginPage = () => {
   const redirectToMe = () => {
     if (typeof window !== 'undefined') {
       // Para next.js, o push via window.location.href é o mais seguro no Canvas
-      window.location.href = '/me'; 
+      window.location.href = '/chat'; 
     }
   };
 
-  // Se já estiver autenticado E não estiver a carregar, redireciona.
-  // Usamos 'user' aqui, que é a fonte de verdade do contexto.
-  if (!isLoading && user) {
-    redirectToMe();
-    return null; 
-  }
 
   // Tipando 'e' como React.FormEvent<HTMLFormElement>
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -54,7 +48,8 @@ const LoginPage = () => {
         // window.location.reload(); 
         
         // Apenas para feedback imediato na console:
-        console.log("Login OK. Estado de autenticação deve ter sido atualizado.");
+        window.location.href = '/chat';
+        return;
         
       } else {
         // Exibe a mensagem de erro que veio do contexto 
