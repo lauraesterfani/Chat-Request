@@ -1,52 +1,13 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react';
-// CORREÇÃO DO CAMINHO: Ajustado para '../context/AuthContext'
-import { useAuth } from '../../context/AuthContext'; 
-
-// =================================================================================
-// Definição de Tipos Locais (Para resolver erros de exportação do AuthContext)
-// =================================================================================
-type UserRole = 'student' | 'admin' | 'professor' | 'guest'; 
-
-interface User {
-    id: number;
-    name: string;
-    email: string;
-    cpf: string;
-    phone: string;
-    birthday: string;
-    role: UserRole;
-    // Adicione qualquer outro campo que a sua API de registo devolva
-}
-
-// CORREÇÃO: Tipo local para o contexto para forçar a assinatura correta 
-// da função 'login', resolvendo o erro de tipo 'user' e 'token' não existirem.
-interface AuthContextTypeLocal {
-    // A função 'login' deve aceitar UM objeto que contenha 'user' e 'token'.
-    login: (authData: { user: User, token: string }) => void;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-}
-
-// =================================================================================
-// CONFIGURAÇÃO DA API - ALTERE ESTA URL!
-// =================================================================================
-
-const REGISTER_API_URL = 'http://localhost:8000/api/register'; 
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext'; // Caminho correto
+import Link from 'next/link';
+import Image from 'next/image';
 
 // =================================================================================
 // Ícones
 // =================================================================================
-
-const UserPlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <line x1="17" x2="17" y1="10" y2="16" />
-        <line x1="14" x2="20" y1="13" y2="13" />
-    </svg>
-);
 
 const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
@@ -54,24 +15,15 @@ const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-// MOCK DO ROUTER
-const useRouter = () => ({
-    push: (path: string) => {
-        if (typeof window !== 'undefined') {
-            window.location.replace(path); 
-        }
-    },
-});
-
 // =================================================================================
 // COMPONENTE PRINCIPAL: SignupPage
 // =================================================================================
 
 export default function SignupPage() {
-    // Aplicamos o casting para forçar o TypeScript a usar a assinatura de 'login' que definimos.
-    const { login, isAuthenticated, isLoading } = useAuth() as unknown as AuthContextTypeLocal;
-    const router = useRouter();
-
+    // 1. Usamos o hook normalmente, sem 'as unknown as...'
+    // O AuthContext já exporta a função 'register' corretamente.
+    const { register, isAuthenticated, isLoading } = useAuth();
+    
     const [name, setName] = useState('');
     const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
@@ -82,12 +34,19 @@ export default function SignupPage() {
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    // Redirecionamento automático se já estiver logado
+    // (Nota: Em Next.js 13+ com App Router, o ideal é usar useRouter do 'next/navigation')
+    // Mas manteremos simples aqui conforme o seu padrão.
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            window.location.href = '/me'; // Ou use router.push('/me') se importar o useRouter
+        }
+    }, [isLoading, isAuthenticated]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setSuccessMessage(null);
 
         if (password !== passwordConfirmation) {
             setError("As senhas não correspondem.");
@@ -101,174 +60,221 @@ export default function SignupPage() {
 
         setIsProcessing(true);
 
+        // 2. Montamos o objeto com os dados
+        const userData = { 
+            name, 
+            cpf, 
+            email, 
+            phone,
+            birthday,
+            password, 
+            password_confirmation: passwordConfirmation 
+        };
+
         try {
-            const response = await fetch(REGISTER_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    name, 
-                    cpf, 
-                    email, 
-                    phone,
-                    birthday,
-                    password, 
-                    password_confirmation: passwordConfirmation 
-                }) 
-            });
+            // 3. Chamamos a função register do Contexto
+            // Ela já faz o fetch, e se der certo, já salva o token e o user no estado.
+            const result = await register(userData);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                const message = data.message || 'Erro no processamento do cadastro. Verifique a consola.';
-                throw new Error(message);
-            }
-            
-            // Aqui usamos a função login com o objeto { user, token }
-            if (data.token && data.user) {
-                // Montamos o objeto de usuário usando o tipo local 'User'
-                const user: User = { 
-                    ...data.user, 
-                    role: (data.user.role as string || 'student') as UserRole 
-                };
-                
-                login({ user, token: data.token }); 
-                
+            if (result.success) {
+                // Sucesso! O AuthContext já atualizou o estado 'user' e 'token'.
+                // O useEffect acima vai detetar 'isAuthenticated' como true e redirecionar.
+                console.log("Cadastro realizado com sucesso!");
             } else {
-                setSuccessMessage("Cadastro realizado com sucesso! Pode agora fazer o login.");
-                setTimeout(() => router.push('/login'), 2000); 
+                // Erro retornado pela API (ex: CPF duplicado)
+                setError(result.message || "Erro ao realizar cadastro.");
             }
-
-        } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : "Ocorreu um erro ao comunicar com o servidor. Verifique a URL e CORS.";
-            console.error("Erro durante o processo de cadastro:", e);
-            setError(errorMessage);
+        } catch (err) {
+            console.error(err);
+            setError("Ocorreu um erro inesperado.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    if (!isLoading && isAuthenticated) {
-        router.push('/me');
-        return null;
+    // Se estiver a carregar ou já autenticado, não mostra o form (evita flash)
+    if (isLoading || isAuthenticated) {
+        return null; 
     }
 
-    // O código de renderização (JSX) permanece inalterado
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-            <div className="w-full max-w-lg bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
-                <div className="flex flex-col items-center mb-6">
-                    <UserPlusIcon className="w-10 h-10 text-[#1a472a] mb-2" />
-                    <h1 className="text-3xl font-extrabold text-[#1a472a]">Novo Cadastro de Aluno (Signup)</h1>
-                    <p className="text-sm text-gray-500 mt-1">Endpoint: {REGISTER_API_URL}</p>
+        <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white font-sans">
+            
+            {/* LADO ESQUERDO: BRANDING (Apenas Desktop) */}
+            <div className="hidden lg:flex lg:w-[45%] xl:w-[40%] bg-[#15803d] relative flex-col justify-between p-12 overflow-hidden h-screen sticky top-0">
+                <div className="relative z-10 flex items-center gap-3">
+                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center text-white font-bold">CR</div>
+                   <span className="text-white font-bold text-xl tracking-tight">Chat Request</span>
                 </div>
 
-                {error && (
-                    <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-400">
-                        {error}
-                    </div>
-                )}
+                <div className="relative z-10 flex flex-col items-start">
+                   <div className="w-64 h-64 relative mb-8 self-center">
+                     <Image 
+                        src="/mascote.png" 
+                        alt="Mascote" 
+                        fill
+                        className="object-contain drop-shadow-2xl"
+                        priority
+                     />
+                   </div>
+                   <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
+                     Sua jornada acadêmica,<br/>simplificada.
+                   </h2>
+                   <p className="text-green-100 text-lg leading-relaxed max-w-md">
+                     Crie sua conta em segundos e tenha acesso direto à secretaria sem filas e sem burocracia.
+                   </p>
+                </div>
 
-                {successMessage && (
-                    <div className="p-3 mb-4 text-sm text-green-700 bg-green-100 rounded-lg border border-green-400">
-                        {successMessage}
-                    </div>
-                )}
+                <div className="relative z-10 text-sm text-green-200/80">
+                  © 2025 Chat Request Inc.
+                </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Linha 1: Nome e Email */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                            type="text" 
-                            placeholder="Nome Completo"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
-                        />
-                        <input
-                            type="email" 
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
-                        />
+                {/* Elementos Decorativos de Fundo */}
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('/grid-pattern.svg')]"></div>
+                <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-green-400 rounded-full blur-[120px] opacity-20 translate-x-1/3 translate-y-1/3"></div>
+            </div>
+
+            {/* LADO DIREITO: FORMULÁRIO */}
+            <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 md:px-12 lg:px-16 xl:px-24 overflow-y-auto">
+                <div className="w-full max-w-xl">
+                    
+                    <div className="lg:hidden mb-10 text-center">
+                       <Link href="/" className="inline-flex items-center gap-2 justify-center mb-4">
+                          <div className="w-10 h-10 bg-[#15803d] rounded-xl flex items-center justify-center">
+                            <span className="text-white font-bold">CR</span>
+                          </div>
+                          <span className="text-2xl font-bold text-[#0f172a]">Chat Request</span>
+                       </Link>
+                       <h1 className="text-3xl font-bold text-[#0f172a] mt-2">Criar conta</h1>
                     </div>
 
-                    {/* Linha 2: CPF, Telefone e Data de Nascimento */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <input
-                            type="text" 
-                            placeholder="CPF (apenas números)"
-                            value={cpf}
-                            onChange={(e) => setCpf(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
-                        />
-                        <input
-                            type="tel" 
-                            placeholder="Telefone"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
-                        />
-                        <div className="relative">
+                    <div className="hidden lg:block mb-10">
+                      <h1 className="text-3xl font-bold text-[#0f172a]">Criar conta</h1>
+                      <p className="text-gray-500 mt-2 text-lg">Preencha seus dados para começar.</p>
+                    </div>
+
+                    {error && (
+                      <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-700">
+                        <span>{error}</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        
+                        {/* Nome */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Nome Completo</label>
                             <input
-                                type="date" 
-                                placeholder="Data Nasc."
-                                value={birthday}
-                                onChange={(e) => setBirthday(e.target.value)}
+                                type="text" 
+                                placeholder="Ex: Maria Oliveira"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition text-gray-700"
+                                className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-800 font-medium"
                             />
                         </div>
-                    </div>
 
-                    {/* Linha 3: Senhas */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                            type="password"
-                            placeholder="Senha"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
-                        />
-                        <input
-                            type="password"
-                            placeholder="Confirmar Senha"
-                            value={passwordConfirmation}
-                            onChange={(e) => setPasswordConfirmation(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#388e3c] focus:border-transparent transition"
-                        />
-                    </div>
-                    
-                    <button
-                        type="submit"
-                        disabled={isProcessing}
-                        className={`w-full py-3 mt-6 rounded-lg text-white font-bold transition duration-300 flex items-center justify-center ${
-                            isProcessing ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1a472a] hover:bg-[#388e3c] shadow-lg'
-                        }`}
-                    >
-                        {isProcessing ? (
-                            <>
-                                <LoaderCircle className="w-5 h-5 mr-2 text-white" />
-                                A Cadastrar...
-                            </>
-                        ) : (
-                            'Criar Conta'
-                        )}
-                    </button>
-                </form>
+                        {/* Grid Email + Tel */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">E-mail</label>
+                                <input
+                                  type="email"
+                                  value={email}
+                                  onChange={(e) => setEmail(e.target.value)}
+                                  className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-800 font-medium"
+                                  placeholder="email@exemplo.com"
+                                  required
+                                />
+                             </div>
+                             <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Telefone</label>
+                                <input
+                                  type="tel"
+                                  value={phone}
+                                  onChange={(e) => setPhone(e.target.value)}
+                                  className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-800 font-medium"
+                                  placeholder="(00) 00000-0000"
+                                  required
+                                />
+                             </div>
+                        </div>
 
-                <p className="mt-6 text-center text-sm text-gray-500">
-                    Já tem uma conta? 
-                    <a onClick={() => router.push('/login')} className="text-[#388e3c] hover:underline cursor-pointer font-medium ml-1">
-                        Fazer Login
-                    </a>
-                </p>
+                        {/* Grid CPF + Data */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">CPF</label>
+                              <input
+                                type="text"
+                                value={cpf}
+                                onChange={(e) => setCpf(e.target.value)}
+                                className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-800 font-medium"
+                                placeholder="000.000.000-00"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Data de Nascimento</label>
+                              <input
+                                type="date"
+                                value={birthday}
+                                onChange={(e) => setBirthday(e.target.value)}
+                                className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-600 font-medium"
+                                required
+                              />
+                            </div>
+                        </div>
+
+                        {/* Senhas */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Senha</label>
+                            <input
+                                type="password"
+                                placeholder="Mínimo 8 caracteres"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-800 font-medium"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Confirmar Senha</label>
+                            <input
+                                type="password"
+                                placeholder="Repita a senha"
+                                value={passwordConfirmation}
+                                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                required
+                                className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all text-gray-800 font-medium"
+                            />
+                        </div>
+                        
+                        <button
+                            type="submit"
+                            disabled={isProcessing}
+                            className={`w-full py-4 rounded-2xl text-white font-bold text-lg transition duration-300 flex items-center justify-center mt-6 shadow-lg shadow-green-700/20 hover:shadow-green-700/40 active:scale-[0.98] ${
+                                isProcessing ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#15803d] hover:bg-[#166534]'
+                            }`}
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <LoaderCircle className="w-5 h-5 mr-2 text-white" />
+                                    A Cadastrar...
+                                </>
+                            ) : (
+                                'Criar minha conta'
+                            )}
+                        </button>
+                    </form>
+
+                    <p className="mt-10 text-center text-gray-600">
+                        Já tem uma conta? 
+                        <Link href="/login" className="text-[#15803d] hover:underline hover:text-[#166534] font-bold ml-1">
+                            Fazer Login
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );
