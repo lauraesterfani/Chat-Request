@@ -1,48 +1,42 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext'; // Caminho correto
+import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
-// =================================================================================
-// Ícones
-// =================================================================================
-
+// Ícone loader
 const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" 
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" 
+        strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
 );
 
-// =================================================================================
-// COMPONENTE PRINCIPAL: SignupPage
-// =================================================================================
-
 export default function SignupPage() {
-    // 1. Usamos o hook normalmente, sem 'as unknown as...'
-    // O AuthContext já exporta a função 'register' corretamente.
+
+    const router = useRouter();
     const { register, isAuthenticated, isLoading } = useAuth();
     
     const [name, setName] = useState('');
     const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
-    const [birthday, setBirthday] = useState(''); 
-    
+    const [birthday, setBirthday] = useState('');
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
+    
     const [error, setError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Redirecionamento automático se já estiver logado
-    // (Nota: Em Next.js 13+ com App Router, o ideal é usar useRouter do 'next/navigation')
-    // Mas manteremos simples aqui conforme o seu padrão.
+    // 🔥 Redirecionamento após autenticação
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            window.location.href = '/me'; // Ou use router.push('/me') se importar o useRouter
+            router.push('/me');
         }
-    }, [isLoading, isAuthenticated]);
+    }, [isAuthenticated, isLoading, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -60,43 +54,35 @@ export default function SignupPage() {
 
         setIsProcessing(true);
 
-        // 2. Montamos o objeto com os dados
         const userData = { 
             name, 
             cpf, 
             email, 
             phone,
             birthday,
-            password, 
+            password,
             password_confirmation: passwordConfirmation 
         };
 
         try {
-            // 3. Chamamos a função register do Contexto
-            // Ela já faz o fetch, e se der certo, já salva o token e o user no estado.
             const result = await register(userData);
 
             if (result.success) {
-                // Sucesso! O AuthContext já atualizou o estado 'user' e 'token'.
-                // O useEffect acima vai detetar 'isAuthenticated' como true e redirecionar.
-                console.log("Cadastro realizado com sucesso!");
+                router.push('/login');   // 👈 Redirecionamento 100% funcional
+                return;
             } else {
-                // Erro retornado pela API (ex: CPF duplicado)
                 setError(result.message || "Erro ao realizar cadastro.");
             }
+
         } catch (err) {
-            console.error(err);
             setError("Ocorreu um erro inesperado.");
-        } finally {
-            setIsProcessing(false);
         }
+
+        setIsProcessing(false);
     };
 
+    if (isLoading || isAuthenticated) return null;
     // Se estiver a carregar ou já autenticado, não mostra o form (evita flash)
-    if (isLoading || isAuthenticated) {
-        return null; 
-    }
-
     return (
         <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white font-sans">
             

@@ -95,7 +95,7 @@ export default function MeusRequerimentosPage() {
           </p>
           <div className="mt-6 flex justify-center gap-4">
              <Link 
-                href="/chat" // Volta para o chat
+                href="/me" // Volta para o chat
                 className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300"
               >
                 Voltar ao início
