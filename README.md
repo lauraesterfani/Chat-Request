@@ -17,7 +17,7 @@ Este sistema tem como objetivo facilitar o processo de solicitação de requerim
 
 ## 🛠 Tecnologias Utilizadas
 
-*Front*: Next + tailwind.css + ts-> [https://github.com/victorgustavodev/chat-request]
+*Front*: Next + tailwind.css + ts
 
 *Back*: Laravel + Sanctum
 
