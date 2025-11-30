@@ -42,6 +42,8 @@ class User extends Authenticatable implements JWTSubject
         'phone', 
         'role',
         'birthday', 
+        'matricula',    // 🔥 CORREÇÃO: Adicionado para Mass Assignment
+        'course_id',    // 🔥 CORREÇÃO: Adicionado para Mass Assignment
     ];
 
     /**

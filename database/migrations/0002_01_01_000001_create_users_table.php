@@ -20,11 +20,18 @@ return new class extends Migration
             $table->string('password');
 
             // --- CAMPOS PERSONALIZADOS ---
-            $table->string('cpf', 11)->unique(); 
-            $table->string('phone', 15); 
+            $table->string('cpf', 11)->unique();
+            $table->string('phone', 15);
+            
+            // NOVO: Matrícula (Única, como solicitado)
+            $table->string('matricula', 50)->unique(); 
+            
+            // NOVO: Chave estrangeira para o Curso (usando UUID)
+            // Define a restrição (foreign key constraint) para garantir que o ID exista em 'courses'
+            $table->foreignUuid('course_id')->constrained('courses');
             
             // ALTERAÇÃO CRUCIAL: Renomeado para 'role' e adicionado 'admin'
-            $table->enum('role', ['admin', 'student', 'staff'])->default('student'); 
+            $table->enum('role', ['admin', 'student', 'staff'])->default('student');
             
             $table->date('birthday');
             // --- FIM DOS CAMPOS PERSONALIZADOS ---
@@ -33,7 +40,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // (Mantendo as outras migrations para tokens e sessions)
+        // Migrações de tokens e sessions mantidas...
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
@@ -42,10 +49,7 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            // Assumindo que você usa UUIDs, o foreignId pode ser um pouco diferente.
-            // Para simplificar, vou manter a estrutura básica, mas você pode ter que ajustar 
-            // a declaração da chave estrangeira se o Laravel não reconhecer o UUID nativamente aqui.
-            $table->foreignId('user_id')->nullable()->index(); 
+            $table->foreignId('user_id')->nullable()->index();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');
@@ -61,5 +65,6 @@ return new class extends Migration
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('courses'); // Adicionado para desfazer o curso
     }
 };
