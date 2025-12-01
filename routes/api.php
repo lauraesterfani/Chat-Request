@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CourseController; // NOVO: Importar o Controller de Cursos
 use App\Http\Controllers\DashboardController; 
 use App\Http\Controllers\DocumentController; 
 use App\Http\Controllers\EnrollmentController;
@@ -16,9 +17,14 @@ Route::get('/', function () {
     return response()->json(["api" => "Ativa"]);
 });
 
+// Autenticação e Registo
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
+
+// NOVO: Rota Pública para Carregar a Lista de Cursos
+// Necessário para o formulário de Registo no frontend.
+Route::get('/courses', [CourseController::class, 'index']);
 
 
 // ----------------------------------------------------------------------
@@ -76,7 +82,6 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::apiResource('type-documents', TypeDocumentsController::class); // ATUALIZADO
     
     // Rota de vinculação de tipos de documentos a tipos de requerimentos
-    // ATUALIZADO: Usando o nome "sync-documents" para a URL
     Route::post('/type-requests/{id}/sync-documents', [TypeRequestsController::class, 'syncDocumentTypes']);
 
     // O Admin pode deletar matrículas

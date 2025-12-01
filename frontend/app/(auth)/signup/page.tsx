@@ -1,64 +1,39 @@
-'use client'; // Mantido, embora não seja estritamente necessário neste ambiente
+'use client'; 
 
 import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios'; 
 
 // --------------------------------------------------------------------
-// 🎯 INTERFACES (Para resolver erros de tipo 'never' e 'SetStateAction<null>')
+// 🎯 INTERFACES
 // --------------------------------------------------------------------
 interface Course {
-    id: string;
+    id: string; // O ID deve ser uma string, mesmo que o valor seja numérico (ex: '1', '2')
     name: string;
 }
 // --------------------------------------------------------------------
 
 // ====================================================================
-// SIMULAÇÃO DE DEPENDÊNCIAS EXTERNAS PARA AMBIENTE DE VISUALIZAÇÃO
+// SIMULAÇÃO DE DEPENDÊNCIAS EXTERNAS (Necessário para rodar o preview)
+// Nota: Em uma aplicação Next.js real, 'useRouter' seria importado de 'next/navigation'.
 // ====================================================================
 
-// Simulação de useRouter para ambiente de visualização
-// Adicionada anotação de tipo para 'path'
+// Simulação de useRouter
 const useRouter = () => ({
-    push: (path: string) => console.log(`[SIMULAÇÃO] Redirecionamento para: ${path}`),
-    // Em um um app real do Next.js, esta função faria o redirecionamento.
+    push: (path: string) => console.log(`[SIMULAÇÃO/FRONTEND] Redirecionamento para: ${path}`),
 });
 
-// Simulação de AuthContext
-const useAuth = () => {
-    // Adicionada anotação de tipo para 'userData'
-    const register = useCallback(async (userData: any) => {
-        console.log("[SIMULAÇÃO] Tentativa de Registo com:", userData);
-        
-        // Simulação de atraso de API
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-
-        // Simulação de sucesso para fins de demonstração
-        if (userData.email.includes("fail")) {
-            return { success: false, message: "Este e-mail já está em uso (simulação)." };
-        }
-        return { success: true, message: "Registo bem-sucedido." };
-    }, []);
-
-    // Estado de autenticação simulado
-    const isAuthenticated = false; 
-    const isLoading = false; // Define como falso para exibir o formulário
-
-    return { register, isAuthenticated, isLoading };
-};
-
-// Simulação de Link e Image (usando tags HTML padrão e um placeholder)
-// Adicionadas anotações de tipo para props
+// Simulação de Link e Image
 const Link = ({ href, children, className }: { href: string, children: React.ReactNode, className: string }) => (
-    <a href="#" onClick={() => console.log(`[SIMULAÇÃO] Link clicado para ${href}`)} className={className}>
+    <a href="#" onClick={() => console.log(`[SIMULAÇÃO/FRONTEND] Link clicado para ${href}`)} className={className}>
         {children}
     </a>
 );
 
-// Adicionadas anotações de tipo para props
-const Image = ({ src, alt, fill, className, priority }: { src: string, alt: string, fill?: boolean, className: string, priority?: boolean }) => (
+const Image = ({ alt, className }: { src: string, alt: string, fill?: boolean, className: string, priority?: boolean }) => (
     <img 
         src="https://placehold.co/256x256/15803d/ffffff?text=Mascote" 
         alt={alt} 
-        className={className + " w-full h-full object-cover"} // Simula fill/object-contain
+        className={className + " w-full h-full object-cover"}
         style={{ width: '100%', height: '100%' }}
     />
 );
@@ -67,17 +42,62 @@ const Image = ({ src, alt, fill, className, priority }: { src: string, alt: stri
 // ====================================================================
 
 
-// O código é convertido para JSX (React simples) para ser compilado
-// Adicionada anotação de tipo para props
+// 💡 HOOK useAuth: Centraliza a lógica de comunicação com a API de autenticação
+const useAuth = () => {
+    
+    // 🚩 ENDPOINT DE REGISTO (REAL)
+    const REGISTER_URL = 'http://127.0.0.1:8000/api/register';
+
+    const register = useCallback(async (userData: any) => {
+        
+        console.log("[API REAL] Tentativa de Registo com:", userData);
+
+        try {
+            // 💡 Chamada HTTP real para a API de Registo
+            const response = await axios.post(REGISTER_URL, userData);
+
+            // Resposta de sucesso (status 2xx)
+            return { 
+                success: true, 
+                message: response.data.message || "Registo bem-sucedido.",
+                data: response.data 
+            };
+
+        } catch (error) {
+            // Tratamento de erros de rede ou resposta do Laravel (status 4xx/5xx)
+            if (axios.isAxiosError(error) && error.response) {
+                // Erro de validação ou erro do servidor
+                const errorMessage = error.response.data.message || 
+                                     (typeof error.response.data === 'string' ? error.response.data : "Erro desconhecido no servidor.");
+                return { success: false, message: errorMessage };
+            }
+            
+            // Erro de rede (CORS, servidor offline, etc.)
+            console.error("Erro na comunicação com a API:", error);
+            return { 
+                success: false, 
+                message: "Ocorreu um erro inesperado na comunicação. Verifique se o Laravel está ativo (porta 8000)." 
+            };
+        }
+    }, []);
+
+    // Estado de autenticação simulado (para simplificar a demonstração)
+    const isAuthenticated = false; 
+    const isLoading = false; 
+
+    return { register, isAuthenticated, isLoading };
+};
+
+
+// ... Componentes de UI (LoaderCircle, EyeIcon) ...
 const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" 
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" 
         strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-        <path d="M21 12a9 9 o 1 1-6.219-8.56" />
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
 );
 
-// 💡 COMPONENTE: Ícone de Olho para alternar a visibilidade da senha
 const EyeIcon = (props: React.SVGProps<SVGSVGElement> & { isVisible: boolean, onClick: () => void }) => (
     <button 
         type="button" 
@@ -86,7 +106,6 @@ const EyeIcon = (props: React.SVGProps<SVGSVGElement> & { isVisible: boolean, on
         aria-label={props.isVisible ? "Ocultar senha" : "Visualizar senha"}
     >
         {props.isVisible ? (
-            // Eye-off (Ocultar)
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
                 <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
@@ -94,7 +113,6 @@ const EyeIcon = (props: React.SVGProps<SVGSVGElement> & { isVisible: boolean, on
                 <line x1="2" x2="22" y1="2" y2="22" />
             </svg>
         ) : (
-            // Eye (Mostrar)
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                 <circle cx="12" cy="12" r="3" />
@@ -109,7 +127,7 @@ export default function SignupPage() {
     const router = useRouter();
     const { register, isAuthenticated, isLoading } = useAuth();
     
-    // Campos de cadastro existentes
+    // Campos de cadastro
     const [name, setName] = useState('');
     const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
@@ -130,32 +148,49 @@ export default function SignupPage() {
     // 🟢 ESTADO PARA CONTROLE DE SUCESSO
     const [isSuccess, setIsSuccess] = useState(false); 
     
-    // 🟠 CORREÇÃO: Inicializa com null para não mostrar a mensagem no início.
+    // 🟠 Inicializa com null
     const [error, setError] = useState<string | null>(null); 
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isCoursesLoading, setIsCoursesLoading] = useState(true);
+    const [isCoursesLoading, setIsCoursesLoading] = useState(false); 
 
     // 1. 🔥 Redirecionamento após autenticação (Simulado)
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            router.push('/me');
+            router.push('/me'); 
         }
     }, [isAuthenticated, isLoading]); // router foi removido do array de dependências para a simulação
 
-    // 2. 📚 Carregar Cursos do Backend (Simulado)
+    // 2. 📚 Carregar Cursos do Backend (AGORA É REAL)
     useEffect(() => {
+        // 🚩 ENDPOINT DE CURSOS (REAL)
+        const COURSES_URL = 'http://127.0.0.1:8000/api/courses';
+        
         const fetchCourses = async () => {
-            // MOCK DE DADOS PARA TESTE:
-            const mockCourses: Course[] = [
-                { id: 'logistica-id', name: 'Logística' },
-                { id: 'ipi-id', name: 'Informática para Internet (IPI)' },
-                { id: 'administracao-id', name: 'Administração' },
-                { id: 'gestao-qualidade-id', name: 'Gestão da Qualidade' },
-                { id: 'tsi-id', name: 'Tecnologia em Sistemas para Internet (TSI)' },
-            ];
-            
-            setCourses(mockCourses);
-            setIsCoursesLoading(false);
+            setIsCoursesLoading(true); 
+            setError(null); // Limpa erros anteriores
+
+            try {
+                // 💡 Chamada HTTP real para a API para obter a lista de cursos
+                const response = await axios.get(COURSES_URL);
+                
+                // Assumindo que a API retorna um array de objetos { id: string, name: string }
+                setCourses(response.data); 
+                
+            } catch (error) {
+                console.error("[API REAL] Erro ao carregar cursos:", error);
+                
+                let errorMessage = "Erro ao carregar cursos. Verifique se o Laravel está ativo e a rota '/api/courses' existe.";
+                
+                if (axios.isAxiosError(error) && error.response) {
+                    // Tentativa de obter uma mensagem de erro mais específica do backend
+                    errorMessage = error.response.data.message || errorMessage;
+                }
+                
+                // Define o erro para ser exibido na UI
+                setError(errorMessage); 
+            } finally {
+                setIsCoursesLoading(false);
+            }
         };
         fetchCourses();
     }, []);
@@ -172,9 +207,8 @@ export default function SignupPage() {
             
             return () => clearTimeout(timer); // Limpa o timer
         }
-    }, [isSuccess]);
+    }, [isSuccess, router]);
 
-    // Adicionada anotação de tipo para 'e'
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -193,30 +227,34 @@ export default function SignupPage() {
 
         setIsProcessing(true);
 
+        // 💡 Payload de dados no formato esperado pelo Laravel (snake_case)
         const userData = { 
             name, 
             cpf, 
             email, 
             phone,
             birthday,
-            matricula,      
+            matricula, 
             course_id: courseId, 
             password,
             password_confirmation: passwordConfirmation 
         };
 
         try {
+            // 💡 A CHAMADA REAL PARA O REGISTO
             const result = await register(userData);
 
             if (result.success) {
                 // 🟢 Seta o sucesso. O redirecionamento será tratado pelo useEffect.
                 setIsSuccess(true); 
             } else {
+                // 🟠 Exibe o erro retornado pelo Axios (erro de validação, e-mail duplicado, etc.)
                 setError(result.message || "Erro ao realizar cadastro.");
             }
 
         } catch (err) {
-            setError("Ocorreu um erro inesperado na comunicação.");
+            // 🛑 Tratamento de erros graves
+            setError("Ocorreu um erro inesperado. Verifique o console para mais detalhes.");
         }
 
         setIsProcessing(false);
@@ -244,10 +282,10 @@ export default function SignupPage() {
                       />
                    </div>
                    <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-                      Sua jornada acadêmica,<br/>simplificada.
+                        Sua jornada acadêmica,<br/>simplificada.
                    </h2>
                    <p className="text-green-100 text-lg leading-relaxed max-w-md">
-                      Crie sua conta em segundos e tenha acesso direto à secretaria sem filas e sem burocracia.
+                        Crie sua conta em segundos e tenha acesso direto à secretaria sem filas e sem burocracia.
                    </p>
                 </div>
 
@@ -279,9 +317,9 @@ export default function SignupPage() {
                       <p className="text-gray-500 mt-2 text-lg">Preencha seus dados para começar.</p>
                     </div>
 
-                    {/* 🟢 MENSAGEM DE SUCESSO/ERRO: Agora só exibe se 'error' não for null */}
+                    {/* 🟢 MENSAGEM DE SUCESSO/ERRO */}
                     {error && (
-                      <div className={`mb-8 p-4 border rounded-xl flex items-start gap-3 ${
+                      <div className={`mb-8 p-4 border rounded-2xl flex items-start gap-3 ${
                           isSuccess 
                           ? 'bg-green-50 border-green-100 text-green-700' 
                           : 'bg-red-50 border-red-100 text-red-700' 
@@ -305,7 +343,7 @@ export default function SignupPage() {
                             />
                         </div>
 
-                        {/* 2. Grid Matrícula + Curso (MOVIDO PARA CIMA) */}
+                        {/* 2. Grid Matrícula + Curso */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Matrícula</label>
@@ -323,6 +361,10 @@ export default function SignupPage() {
                               {isCoursesLoading ? (
                                 <div className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-500 flex items-center">
                                     <LoaderCircle className="w-4 h-4 mr-2" /> Carregando cursos...
+                                </div>
+                              ) : courses.length === 0 ? (
+                                <div className="w-full px-5 py-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 font-medium">
+                                    {error || "Nenhum curso disponível. Verifique a API."}
                                 </div>
                               ) : (
                                 <select
@@ -344,7 +386,7 @@ export default function SignupPage() {
                             </div>
                         </div>
 
-                        {/* 3. Grid CPF + Data (MOVIDO PARA BAIXO) */}
+                        {/* 3. Grid CPF + Data */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">CPF</label>
@@ -442,10 +484,10 @@ export default function SignupPage() {
                         
                         <button
                             type="submit"
-                            // 🟢 Desabilita o botão também quando for um sucesso
-                            disabled={isProcessing || isCoursesLoading || isSuccess}
+                            // 🟢 Desabilita o botão quando estiver processando, carregando cursos OU em estado de sucesso
+                            disabled={isProcessing || isCoursesLoading || isSuccess || courses.length === 0}
                             className={`w-full py-4 rounded-2xl text-white font-bold text-lg transition duration-300 flex items-center justify-center mt-6 shadow-lg shadow-green-700/20 hover:shadow-green-700/40 active:scale-[0.98] ${
-                                isProcessing || isCoursesLoading || isSuccess ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#15803d] hover:bg-[#166534]'
+                                isProcessing || isCoursesLoading || isSuccess || courses.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#15803d] hover:bg-[#166534]'
                             }`}
                         >
                             {isProcessing ? (
@@ -463,7 +505,6 @@ export default function SignupPage() {
 
                     <p className="mt-10 text-center text-gray-600">
                         Já tem uma conta? 
-                        {/* CORREÇÃO: Usando a tag <a> com router.push explícito para garantir a navegação simulada */}
                         <a 
                             href="#" 
                             onClick={(e) => {
