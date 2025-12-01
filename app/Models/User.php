@@ -40,9 +40,10 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'cpf',
         'phone', 
+        'matricula',
         'role',
         'birthday', 
-        'enrollment_number', // ✅ CORRIGIDO: Deve ser 'enrollment_number' para coincidir com a coluna real no DB e o Controller
+        'enrollment_number', 
         'course_id',         
     ];
 

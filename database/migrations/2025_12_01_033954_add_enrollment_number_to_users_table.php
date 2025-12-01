@@ -21,11 +21,13 @@
         /**
          * Reverse the migrations.
          */
-        public function down(): void
-        {
-            Schema::table('users', function (Blueprint $table) {
-                // Remove a coluna caso a migration seja revertida
-                $table->dropColumn('enrollment_number');
-            });
+        public function down()
+{
+    Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasColumn('users', 'enrollment_number')) {
+            $table->dropColumn('enrollment_number');
         }
+    });
+}
+
     };

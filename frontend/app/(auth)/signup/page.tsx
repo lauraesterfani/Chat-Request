@@ -509,7 +509,7 @@ export default function SignupPage() {
                             href="#" 
                             onClick={(e) => {
                                 e.preventDefault(); // Impede a ação padrão da âncora
-                                router.push('/login'); // Usa o router real (simulado) para o redirecionamento
+                                router.push('/login');
                             }}
                             className="text-[#15803d] hover:underline hover:text-[#166534] font-bold ml-1"
                         >
