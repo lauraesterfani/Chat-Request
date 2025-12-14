@@ -15,7 +15,8 @@ return new class extends Migration
             $table->uuid('id')->primary(); // Chave primária UUID
             $table->string('name', 63)->unique();
             $table->string('description', 255)->nullable();
-            $table->boolean('status')->default(true); // Exemplo de campo booleano
+            $table->boolean('is_active')->default(true); // Exemplo de campo booleano
+             $table->string('code', 31)->nullable()->unique();
             $table->timestamps();
         });
     }

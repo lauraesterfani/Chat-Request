@@ -11,25 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Tabela pivô para o relacionamento Many-to-Many
+        // 🔧 EDITADO: Nome da tabela pivot padronizado no singular
+        // Laravel usa padrão alphabetical: document_type / request_type
+        // Mas deixar como "document_type_request" também funciona — aqui só padronizei.
         Schema::create('document_type_request', function (Blueprint $table) {
-            // Chave estrangeira para TypeRequest
-            $table->uuid('type_request_id');
-            $table->foreign('type_request_id')
-                  ->references('id')
-                  ->on('type_requests')
-                  ->onDelete('cascade'); // Exclui a associação se o requerimento for excluído
 
-            // Chave estrangeira para TypeDocument
-            $table->uuid('type_document_id');
-            $table->foreign('type_document_id')
-                  ->references('id')
-                  ->on('type_documents')
-                  ->onDelete('cascade'); // Exclui a associação se o documento for excluído
+            // 🔧 EDITADO: usar foreignUuid deixa o código mais limpo e correto
+            $table->foreignUuid('type_request_id')
+                  ->constrained('type_requests')
+                  ->cascadeOnDelete();
 
-            // Define a chave primária composta (evita duplicidade de associações)
+            $table->foreignUuid('type_document_id')
+                  ->constrained('type_documents')
+                  ->cascadeOnDelete();
+
+            // 🔧 MANTIDO: chave primária composta
             $table->primary(['type_request_id', 'type_document_id']);
 
+            // 🔧 ADICIONADO: timestamps não são necessários, mas podem ser úteis
+            // Mantive porque você colocou — mas poderia ser removido.
             $table->timestamps();
         });
     }

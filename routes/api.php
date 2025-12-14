@@ -36,6 +36,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::get('/type-requests/public', [TypeRequestsController::class, 'publicList']);
+
     
     // Alunos e Funcionários precisam poder mudar suas próprias informações
     Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
