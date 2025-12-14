@@ -3,7 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB; // 💡 Necessário para usar DB::table()
+use Illuminate\Support\Facades\DB; // 💡 Necessário para usar DB::statement() e DB::getDriverName()
+use Illuminate\Support\Facades\Schema; // 💡 Necessário para usar Schema::disableForeignKeyConstraints()
 use Illuminate\Support\Str;
 
 class CourseSeeder extends Seeder
@@ -14,25 +15,22 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. 🛑 NOVO: Desativa a verificação de chaves estrangeiras para permitir o TRUNCATE
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // 1. DEFINIÇÃO DE VARIÁVEIS AUSENTES (CORREÇÃO DO ERRO 'Undefined variable')
+        $fixedTsiId = 'f76d9070-179f-432d-905c-d232a52f9b2d'; // ID UUID fixo
+        $timestamp = now(); // Define o timestamp atual para os campos created_at/updated_at
+        
+        // 2. CORREÇÃO DE CHAVES ESTRANGEIRAS (Melhor prática Laravel)
+        // Desativa as restrições de chave estrangeira
+        Schema::disableForeignKeyConstraints();
 
-        // 🚨 CRÍTICO: Limpa a tabela para evitar o erro UniqueConstraintViolationException
-        // Isto só é possível porque a verificação foi desativada acima.
-        DB::table('courses')->truncate(); 
-
-        // 2. 🟢 NOVO: Reativa a verificação de chaves estrangeiras após a limpeza
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
-        // 🎯 ID FIXO CRÍTICO - Usado no frontend (SignupPage.jsx) para simulação/validação
-        $fixedTsiId = '9b1c5e0d-9b1c-4c2a-8b3d-7f4c5e0d9b1a'; 
-        $timestamp = now();
+        // 3. LIMPEZA DA TABELA (Importante para rodar o seeder mais de uma vez)
+        DB::table('courses')->truncate();
 
         // 📚 Todos os cursos a serem inseridos
         $coursesData = [
             // 1. O curso com ID FIXO (CRÍTICO)
             [
-                'id' => $fixedTsiId,
+                'id' => $fixedTsiId, // A variável agora está definida!
                 'name' => 'Tecnologia em Sistemas para Internet (TSI)', 
                 'code' => 'TSI-2025',
                 'is_active' => true,
@@ -62,12 +60,7 @@ class CourseSeeder extends Seeder
                 'code' => 'GQ',
                 'is_active' => true,
             ],
-            [
-                'id' => (string) Str::uuid(),
-                'name' => 'Análise e Desenvolvimento de Sistemas', 
-                'code' => 'ADS-2025',
-                'is_active' => true,
-            ],
+           
         ];
         
         // 🔄 Formata os dados para inserção em massa com DB::table, adicionando timestamps
@@ -81,6 +74,10 @@ class CourseSeeder extends Seeder
 
         // 💾 Insere todos os dados de uma vez
         DB::table('courses')->insert($dataToInsert);
+        
+        // 4. ATIVAÇÃO DE CHAVES ESTRANGEIRAS
+        // Ativa novamente as restrições de chave estrangeira
+        Schema::enableForeignKeyConstraints();
 
         $this->command->info("✅ Foram inseridos " . count($dataToInsert) . " cursos (incluindo o ID fixo $fixedTsiId) através da inserção em massa.");
     }

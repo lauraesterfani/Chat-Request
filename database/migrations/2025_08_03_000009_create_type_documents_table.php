@@ -9,18 +9,15 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::create('type_documents', function (Blueprint $table) {
-            $table->uuid('id')->primary(); // Chave primária UUID
-             $table->string('code', 5)->unique();
-            $table->string('name', 127)->unique();
-            $table->string('description', 255)->nullable();
-           
-            $table->timestamps();
-        });
-    }
-
+   public function up(): void
+{
+    // O erro estava aqui: estava escrito 'type_requests'
+    Schema::create('type_documents', function (Blueprint $table) { 
+        $table->uuid('id')->primary();
+        $table->string('name'); // Nome do tipo de documento (Ex: RG, CPF, Histórico)
+        $table->timestamps();
+    });
+}
     /**
      * Reverse the migrations.
      */

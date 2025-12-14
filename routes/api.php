@@ -1,68 +1,75 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CourseController; // NOVO: Importar o Controller de Cursos
-use App\Http\Controllers\DashboardController; 
-use App\Http\Controllers\DocumentController; 
-use App\Http\Controllers\EnrollmentController;
-use App\Http\Controllers\MessageController; 
-use App\Http\Controllers\RequestController;
-use App\Http\Controllers\TypeDocumentsController;
-use App\Http\Controllers\TypeRequestsController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\RequestController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\TypeRequestController; // Nome no SINGULAR (Corrigido)
+use App\Http\Controllers\TypeDocumentsController; // Verifique se o seu arquivo é Singular ou Plural (mantive Plural se você não alterou)
 
-// --- ROTAS PÚBLICAS (Acesso sem autenticação) ---
+/*
+|--------------------------------------------------------------------------
+| ROTAS PÚBLICAS (Acesso LIVRE - Sem Login)
+|--------------------------------------------------------------------------
+| Essenciais para o Chatbot (ler opções) e para o Cadastro (ler cursos).
+*/
+
+// Teste de API
 Route::get('/', function () {
-    return response()->json(["api" => "Ativa"]);
+    return response()->json(["api" => "Online", "status" => "OK"]);
 });
 
-// Autenticação e Registo
+// Autenticação e Cadastro
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
-// NOVO: Rota Pública para Carregar a Lista de Cursos
-// Necessário para o formulário de Registo no frontend.
-Route::get('/courses', [CourseController::class, 'index']);
+// LISTAS PÚBLICAS (Correção para o erro "Unauthenticated" no Chat e Cadastro)
+Route::get('/courses', [CourseController::class, 'index']); 
+Route::get('/type-requests', [TypeRequestController::class, 'index']); 
 
 
-// ----------------------------------------------------------------------
-// --- GRUPO 1: ROTAS AUTENTICADAS (Acessível por Admin, Staff e Student)
-// ----------------------------------------------------------------------
-// O middleware 'auth:api' garante que o usuário está logado.
+/*
+|--------------------------------------------------------------------------
+| ROTAS PROTEGIDAS (Necessitam de Token)
+|--------------------------------------------------------------------------
+| A partir daqui, tudo exige o cabeçalho "Authorization: Bearer <token>"
+*/
+
+// GRUPO 1: Usuários Logados (Alunos, Staff, Admin)
 Route::middleware('auth:api')->group(function () {
-    // --- Rotas de Autenticação e Usuário Existentes ---
+    
+    // Dados do Usuário
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
-    Route::get('/type-requests/public', [TypeRequestsController::class, 'publicList']);
-
     
-    // Alunos e Funcionários precisam poder mudar suas próprias informações
+    // Atualizar Matrícula
     Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
 
-    // --- Rotas de Comunicação e Uso Comum ---
+    // Uploads e Mensagens
     Route::post('/documents/upload', [DocumentController::class, 'upload']);
     Route::post('/messages', [MessageController::class, 'store']);
     
-    // Rotas de Requerimento:
-    // 1. Definição da rota de Listagem (index) separadamente.
+    // Requerimentos (CRUD Básico para Alunos)
+    // A listagem é separada para permitir filtros customizados se necessário
     Route::get('/requests', [RequestController::class, 'index']); 
-
-    // 2. O restante do recurso (store, show, update, destroy) usa o Policy padrão.
     Route::apiResource('requests', RequestController::class)->except(['index']);
 });
 
 
-// ----------------------------------------------------------------------
-// --- GRUPO 2: ROTAS DE GESTÃO (Acessível por Admin e Staff)
-// ----------------------------------------------------------------------
+// GRUPO 2: Gestão (Staff e Admin)
 Route::middleware(['auth:api', 'role:admin,staff'])->group(function () {
-    // Gestão de Matrículas (Enrollments)
+    
+    // Gestão de Matrículas
     Route::apiResource('enrollment', EnrollmentController::class)->except(['destroy']);
     
-    // Rotas do Dashboard (Estatísticas e Filtros)
+    // Dashboard (Gráficos e Relatórios)
     Route::prefix('dashboard')->group(function () {
         Route::get('/requerimentos', [DashboardController::class, 'index']);
         Route::get('/status', [DashboardController::class, 'requerimentosPorStatus']); 
@@ -72,20 +79,22 @@ Route::middleware(['auth:api', 'role:admin,staff'])->group(function () {
 });
 
 
-// ----------------------------------------------------------------------
-// --- GRUPO 3: ROTAS ADMINISTRATIVAS (Exclusivo para Admin)
-// ----------------------------------------------------------------------
+// GRUPO 3: Administração Total (Só Admin)
 Route::middleware(['auth:api', 'role:admin'])->group(function () {
-    // Gestão de Usuários (CRUD completo, exceto o 'store' que é a rota pública de /register)
+    
+    // Gestão de Usuários
     Route::apiResource('user', UserController::class)->except('store');
     
-    // Gestão dos Tipos de Documentos e Requerimentos
-    Route::apiResource('type-requests', TypeRequestsController::class); // ATUALIZADO
-    Route::apiResource('type-documents', TypeDocumentsController::class); // ATUALIZADO
+    // Gestão de Tipos (Create, Update, Delete)
+    // O 'except index' evita conflito com a rota pública lá de cima
+    Route::apiResource('type-requests', TypeRequestController::class)->except(['index']);
     
-    // Rota de vinculação de tipos de documentos a tipos de requerimentos
-    Route::post('/type-requests/{id}/sync-documents', [TypeRequestsController::class, 'syncDocumentTypes']);
+    // Se o controller de documentos for TypeDocumentsController:
+    Route::apiResource('type-documents', TypeDocumentsController::class); 
+    
+    // Rota Especial: Vincular documentos a requerimentos
+    Route::post('/type-requests/{id}/sync-documents', [TypeRequestController::class, 'syncDocumentTypes']);
 
-    // O Admin pode deletar matrículas
+    // Deletar Matrícula
     Route::delete('enrollment/{enrollment}', [EnrollmentController::class, 'destroy']);
 });

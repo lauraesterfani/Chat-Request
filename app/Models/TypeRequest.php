@@ -4,25 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids; 
 
 class TypeRequest extends Model
 {
-    use HasFactory, HasUuids; 
+    use HasFactory;
 
-    protected $table = 'type_requests';
+    protected $table = 'type_requests'; // Nome da tabela no banco
+    protected $keyType = 'string';      // O ID é UUID (string)
+    public $incrementing = false;       // Não é auto-incremento numérico
 
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $fillable = ['id', 'name', 'description', 'icon'];
 
-    protected $fillable = [
-        'id',
-        'name',
-        'description',
-    ];
-    
-    public function requests()
+    // Relação com Documentos (caso precise no futuro)
+    public function documentTypes()
     {
-        return $this->hasMany(\App\Models\Request::class, 'type_id');
+        return $this->belongsToMany(TypeDocument::class, 'type_request_documents');
     }
 }
