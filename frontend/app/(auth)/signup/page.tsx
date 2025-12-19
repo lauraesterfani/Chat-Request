@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios'; 
+import { useRouter } from 'next/navigation'; // 👈 IMPORT REAL (Para funcionar o push)
+import Link from 'next/link';               // 👈 IMPORT REAL
+import Image from 'next/image';             // 👈 IMPORT REAL
 
 // --------------------------------------------------------------------
 // 🎯 INTERFACES
@@ -11,30 +14,7 @@ interface Course {
     name: string;
 }
 
-// ====================================================================
-// SIMULAÇÃO DE DEPENDÊNCIAS (Mantida conforme seu arquivo original)
-// ====================================================================
-
-const useRouter = () => ({
-    push: (path: string) => console.log(`[SIMULAÇÃO/FRONTEND] Redirecionamento para: ${path}`),
-});
-
-const Link = ({ href, children, className }: { href: string, children: React.ReactNode, className: string }) => (
-    <a href="#" onClick={() => console.log(`[SIMULAÇÃO/FRONTEND] Link clicado para ${href}`)} className={className}>
-        {children}
-    </a>
-);
-
-const Image = ({ alt, className }: { src: string, alt: string, fill?: boolean, className: string, priority?: boolean }) => (
-    <img 
-        src="https://placehold.co/256x256/15803d/ffffff?text=Mascote" 
-        alt={alt} 
-        className={className + " w-full h-full object-cover"}
-        style={{ width: '100%', height: '100%' }}
-    />
-);
-
-// 💡 HOOK useAuth (Mantido conforme seu arquivo original)
+// 💡 HOOK useAuth (Mantém a lógica local por enquanto)
 const useAuth = () => {
     const REGISTER_URL = 'http://127.0.0.1:8000/api/register';
 
@@ -47,7 +27,7 @@ const useAuth = () => {
                 message: response.data.message || "Registo bem-sucedido.",
                 data: response.data 
             };
-        } catch (error) {
+        } catch (error: any) {
             if (axios.isAxiosError(error) && error.response) {
                 const errorMessage = error.response.data.message || 
                                      (typeof error.response.data === 'string' ? error.response.data : "Erro desconhecido no servidor.");
@@ -61,6 +41,7 @@ const useAuth = () => {
         }
     }, []);
 
+    // Se você já tiver o AuthContext global funcionando, pode remover essa parte e usar o global.
     const isAuthenticated = false; 
     const isLoading = false; 
 
@@ -102,7 +83,7 @@ const EyeIcon = (props: React.SVGProps<SVGSVGElement> & { isVisible: boolean, on
 
 export default function SignupPage() {
 
-    const router = useRouter();
+    const router = useRouter(); // 👈 AGORA É O ROUTER REAL
     const { register, isAuthenticated, isLoading } = useAuth();
     
     // Campos de cadastro
@@ -131,8 +112,7 @@ export default function SignupPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isCoursesLoading, setIsCoursesLoading] = useState(false); 
 
-
-    // ✅ REGRAS DE VALIDAÇÃO DE SENHA(Atualizado conforme Backend)
+    // ✅ REGRAS DE VALIDAÇÃO DE SENHA (Atualizado conforme Backend)
     const requirements = [
         { id: 1, text: "Mínimo de 8 caracteres", met: password.length >= 8 },
         { id: 2, text: "Letra maiúscula e minúscula", met: /[a-z]/.test(password) && /[A-Z]/.test(password) },
@@ -140,12 +120,12 @@ export default function SignupPage() {
         { id: 4, text: "Pelo menos um símbolo (ex: !@#)", met: /[^A-Za-z0-9]/.test(password) },
     ];
 
-    // 1. Redirecionamento após autenticação (Simulado)
+    // 1. Redirecionamento após autenticação
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
             router.push('/me'); 
         }
-    }, [isAuthenticated, isLoading]);
+    }, [isAuthenticated, isLoading, router]);
 
     // 2. Carregar Cursos do Backend
     useEffect(() => {
@@ -159,7 +139,7 @@ export default function SignupPage() {
                 const response = await axios.get(COURSES_URL);
                 setCourses(response.data); 
                 
-            } catch (error) {
+            } catch (error: any) {
                 console.error("[API REAL] Erro ao carregar cursos:", error);
                 let errorMessage = "Erro ao carregar cursos. Verifique se o Laravel está ativo e a rota '/api/courses' existe.";
                 if (axios.isAxiosError(error) && error.response) {
@@ -179,7 +159,7 @@ export default function SignupPage() {
             setError("Conta criada com sucesso! Redirecionando para a página de Login..."); 
 
             const timer = setTimeout(() => {
-                router.push('/login'); 
+                router.push('/login'); // 👈 AGORA VAI NAVEGAR DE VERDADE
             }, 3000); 
             
             return () => clearTimeout(timer); 
@@ -249,6 +229,9 @@ export default function SignupPage() {
                           src="https://placehold.co/256x256/15803d/ffffff?text=Mascote" 
                           alt="Mascote" 
                           className="object-contain drop-shadow-2xl"
+                          width={256}  // 👈 Next/Image precisa de width/height
+                          height={256}
+                          unoptimized // 👈 Importante para URLs externas sem config
                           priority
                       />
                    </div>
@@ -406,7 +389,7 @@ export default function SignupPage() {
                              </div>
                         </div>
 
-                        {/* 5. Senha com Requisitos Visuais (MODIFICADO AQUI) */}
+                        {/* 5. Senha com Requisitos Visuais */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Senha</label>
                             <div className="relative"> 
@@ -424,7 +407,7 @@ export default function SignupPage() {
                                 />
                             </div>
                             
-                            {/* --- LISTA DE REQUISITOS (NOVA) --- */}
+                            {/* --- LISTA DE REQUISITOS --- */}
                             <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <p className="text-xs font-semibold text-gray-500 mb-2">
                                     Sua senha deve conter:
@@ -449,7 +432,6 @@ export default function SignupPage() {
                                     ))}
                                 </ul>
                             </div>
-                            {/* ---------------------------------- */}
                         </div>
 
                         {/* 6. Confirmar Senha */}
@@ -493,16 +475,12 @@ export default function SignupPage() {
 
                     <p className="mt-10 text-center text-gray-600">
                         Já tem uma conta? 
-                        <a 
-                            href="#" 
-                            onClick={(e) => {
-                                e.preventDefault();
-                                router.push('/login');
-                            }}
+                        <Link 
+                            href="/login" // 👈 LINK REAL (Usa o Link do Next.js)
                             className="text-[#15803d] hover:underline hover:text-[#166534] font-bold ml-1"
                         >
                             Fazer Login
-                        </a>
+                        </Link>
                     </p>
                 </div>
             </div>

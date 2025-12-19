@@ -28,7 +28,7 @@ class UserController extends Controller
                 'required',
                 'string',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers()->symbols()->uncompromised()
+                Password::min(8)->mixedCase()->numbers()->symbols()
             ],
             'cpf'       => 'required|string|size:11|unique:users,cpf',
             'phone'     => 'required|string|max:20',
@@ -124,7 +124,7 @@ class UserController extends Controller
                     'sometimes',
                     'required',
                     'confirmed',
-                    Password::min(8)->mixedCase()->numbers()->symbols()->uncompromised()
+                    Password::min(8)->mixedCase()->numbers()->symbols()
                 ],
                 'cpf'       => ['sometimes','required','string','size:11',Rule::unique('users','cpf')->ignore($user->id)],
                 'phone'     => 'sometimes|required|string|max:20',
