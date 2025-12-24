@@ -58,6 +58,7 @@ Route::middleware('auth:api')->group(function () {
     
     // Requerimentos (CRUD Básico para Alunos)
     // A listagem é separada para permitir filtros customizados se necessário
+    Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests', [RequestController::class, 'index']); 
     Route::apiResource('requests', RequestController::class)->except(['index']);
 });

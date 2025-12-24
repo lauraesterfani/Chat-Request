@@ -47,7 +47,7 @@ export default function ChatDashboardPage() {
                     text: `Olá, ${user.name.split(' ')[0]}! Sou o assistente virtual da secretaria. Como posso ajudar você hoje?`,
                     options: [
                         { label: '📝 Solicitar Novo Requerimento', value: 'request', action: 'initial_choice' },
-                        { label: '📂 Consultar Meus Pedidos', value: '/requests', action: 'navigate' }
+                        { label: '📂 Consultar Meus Pedidos', value: '/dashboard', action: 'navigate' }
                     ]
                 };
                 return newMsgs;
@@ -77,7 +77,7 @@ export default function ChatDashboardPage() {
         // Ação: Buscar Tipos
         if (option.value === 'request') {
             try {
-                const response = await fetch('http://localhost:8000/api/type-requests', {
+                const response = await fetch('http://127.0.0.1:8000/api/type-requests', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 

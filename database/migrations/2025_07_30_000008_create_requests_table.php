@@ -13,32 +13,32 @@ return new class extends Migration
     {
         Schema::create('requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('protocol')->unique();
             
-            // CORREÇÃO CRÍTICA: Mudar o ENUM para termos em inglês e manter o default em português
+            // Vamos deixar nulo por enquanto para evitar erro se não gerar na hora
+            $table->string('protocol')->unique()->nullable(); 
+
+            // --- CAMPOS QUE FALTAVAM (Essenciais para o Frontend) ---
+            $table->string('subject');
+            $table->text('description');
+
+            // --- CHAVES ESTRANGEIRAS (Usando sintaxe moderna para UUID) ---
+            // Substituí enrollment_id por user_id para facilitar o vínculo com o Auth
+            $table->foreignUuid('user_id')->constrained('users')->onDelete('cascade');
+            
+            // O frontend manda 'type_id', então a coluna deve ter esse nome
+            $table->foreignUuid('type_id')->constrained('type_requests')->onDelete('cascade');
+
             $table->enum('status', [
-                'pending',      // Corresponde a "Aberto"
-                'analyzing',    // Corresponde a "Em Análise"
-                'waiting',      // Corresponde a "Pendente"
-                'solving',      // Corresponde a "Em Solução"
-                'completed',    // Corresponde a "Concluído"
-                'canceled'      // Corresponde a "Cancelado"
-            ])->default('pending'); // O valor default agora é o termo em inglês
+                'pending',      // Aberto
+                'analyzing',    // Em Análise
+                'waiting',      // Pendente
+                'solving',      // Em Solução
+                'completed',    // Concluído
+                'canceled'      // Cancelado
+            ])->default('pending');
 
-            $table->text('observations')->nullable();
-            $table->uuid('enrollment_id');
-            $table->uuid('type_request_id');
+            $table->text('observation')->nullable(); // Singular (padrão Laravel)
             $table->timestamp('due_date')->nullable();
-
-            $table->foreign('enrollment_id', 'fk_requests_enrollment_id')
-                ->references('id')
-                ->on('enrollments')
-                ->onDelete('cascade');
-
-            $table->foreign('type_request_id', 'fk_type_requests_request_id')
-                ->references('id')
-                ->on('type_requests')
-                ->onDelete('cascade');
 
             $table->timestamps();
         });

@@ -6,36 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     * Corrigido para usar 'file_name' e adicionado nullable() ao campo 'type'.
-     */
     public function up(): void
     {
         Schema::create('documents', function (Blueprint $table) {
-            $table->id();
+            // 1. UUID para a chave primária (Compatível com seu Model)
+            $table->uuid('id')->primary();
 
-            // CHAVE ESTRANGEIRA (UUID)
+            // 2. Chave Estrangeira para o Usuário (UUID)
             $table->foreignUuid('user_id')
-                  ->constrained('users') // Referencia a tabela 'users'
+                  ->constrained('users')
                   ->cascadeOnDelete();
             
-            // DADOS DO ARQUIVO
+            // 3. DADOS DO ARQUIVO
             $table->string('file_path');
-            $table->string('file_name'); // CORRIGIDO: Agora corresponde ao campo usado no Controller
+            $table->string('file_name'); 
             $table->string('mime_type');
             $table->unsignedBigInteger('file_size'); // em bytes
-            
-            // METADADOS
-            $table->string('type', 50)->nullable(); // Adicionado nullable para flexibilidade
+
+            // 4. TIPO DE DOCUMENTO (Já criando com o nome correto)
+            // nullable() permite enviar o arquivo antes de classificar, se precisar
+            $table->foreignUuid('type_document_id')
+                  ->nullable()
+                  ->constrained('type_documents')
+                  ->cascadeOnDelete();
             
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('documents');

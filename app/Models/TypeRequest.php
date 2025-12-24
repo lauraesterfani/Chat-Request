@@ -2,22 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class TypeRequest extends Model
 {
-    use HasFactory;
+    use HasUuids;
 
-    protected $table = 'type_requests'; // Nome da tabela no banco
-    protected $keyType = 'string';      // O ID é UUID (string)
-    public $incrementing = false;       // Não é auto-incremento numérico
+    protected $fillable = ['id', 'name', 'description', 'active'];
 
-    protected $fillable = ['id', 'name', 'description', 'icon'];
-
-    // Relação com Documentos (caso precise no futuro)
-    public function documentTypes()
+    /**
+     * Define quais tipos de documentos são exigidos para este tipo de requerimento.
+     */
+    public function typeDocuments()
     {
+        // Certifique-se de que o nome da tabela pivô (segundo parâmetro) esteja correto
         return $this->belongsToMany(TypeDocument::class, 'type_request_documents');
     }
 }

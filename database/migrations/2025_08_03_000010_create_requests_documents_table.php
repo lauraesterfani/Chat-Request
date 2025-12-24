@@ -11,25 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 🔧 EDITADO: Nome da tabela pivot padronizado no singular
-        // Laravel usa padrão alphabetical: document_type / request_type
-        // Mas deixar como "document_type_request" também funciona — aqui só padronizei.
+        // Cria a tabela pivô que liga 'Tipos de Requerimento' a 'Tipos de Documento'
         Schema::create('document_type_request', function (Blueprint $table) {
-
-            // 🔧 EDITADO: usar foreignUuid deixa o código mais limpo e correto
+            
+            // 1. Chave Estrangeira para TypeRequests (UUID)
             $table->foreignUuid('type_request_id')
-                  ->constrained('type_requests')
-                  ->cascadeOnDelete();
+                  ->constrained('type_requests') // Aponta para a tabela type_requests
+                  ->cascadeOnDelete();           // Se deletar o tipo de requerimento, deleta a relação
 
+            // 2. Chave Estrangeira para TypeDocuments (UUID)
             $table->foreignUuid('type_document_id')
-                  ->constrained('type_documents')
-                  ->cascadeOnDelete();
+                  ->constrained('type_documents') // Aponta para a tabela type_documents
+                  ->cascadeOnDelete();            // Se deletar o tipo de documento, deleta a relação
 
-            // 🔧 MANTIDO: chave primária composta
+            // 3. Chave Primária Composta (Evita duplicatas do mesmo par)
             $table->primary(['type_request_id', 'type_document_id']);
 
-            // 🔧 ADICIONADO: timestamps não são necessários, mas podem ser úteis
-            // Mantive porque você colocou — mas poderia ser removido.
             $table->timestamps();
         });
     }
