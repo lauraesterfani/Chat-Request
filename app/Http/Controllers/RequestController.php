@@ -16,7 +16,7 @@ class RequestController extends Controller
             'type_id' => 'required|exists:type_requests,id',
             'subject' => 'required|string',
             'description' => 'required|string',
-            'document_ids' => 'required|array'
+            'document_ids' => 'array'
         ]);
 
         try {
@@ -30,7 +30,7 @@ class RequestController extends Controller
                     'subject' => $request->subject,
                     'description' => $request->description,
                     'status' => 'pending',
-                    'protocol' => date('Ymd') . rand(1000, 9999) // Gera um protocolo simples
+                   'protocol'    => now()->format('Ymd') . '-' . rand(1000, 9999)
                 ]);
 
                 // 3. Vincular os Documentos (Preenche a tabela pivô)
