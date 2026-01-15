@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
 public function run(): void
 {
     $this->call([
+        UserSeeder::class,        // Usuários (Admin e Staff)
         CourseSeeder::class,      // <--- ADICIONE ISTO (Cursos)
         TypeRequestSeeder::class, // <--- Este já estava (Tipos de Requerimento)
     ]);

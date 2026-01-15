@@ -30,7 +30,7 @@ export default function CradtLoginPage() {
 
     try {
       // 1. Faz a requisição de Login manualmente
-      const response = await fetch('http://127.0.0.1:8000/api/login', {
+      const response = await fetch('http://127.0.0.1:8000/api/login/staff', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -74,6 +74,39 @@ class AuthController extends Controller
         // Retorna os dados do utilizador.
         return response()->json($user);
     }
+    public function loginStaff(Request $request)
+{
+    $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required', 'string'],
+    ]);
+
+    $credentials = $request->only('email', 'password');
+
+    $token = auth('api')->attempt($credentials);
+
+    if (!$token) {
+        throw ValidationException::withMessages([
+            'email' => ['Credenciais inválidas.'],
+        ]);
+    }
+
+    $user = auth('api')->user();
+
+    // Segurança extra: bloqueia aluno
+    if ($user->role === 'student') {
+        return response()->json([
+            'message' => 'Acesso negado. Apenas staff ou admin.'
+        ], 403);
+    }
+
+    return response()->json([
+        'user' => $user,
+        'token' => $token,
+        'message' => 'Login administrativo realizado com sucesso.',
+    ]);
+}
+
     
     // NOTA: Os métodos 'logout', 'refresh' e 'changeEnrollment' estão em falta 
     // neste ficheiro, mas não causaram o erro atual. Se estiverem noutro local, 

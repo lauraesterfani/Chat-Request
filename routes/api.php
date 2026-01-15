@@ -27,6 +27,7 @@ Route::get('/', function () {
 // Autenticação e Cadastro
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login/staff', [AuthController::class, 'loginStaff']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
 // LISTAS PÚBLICAS (Correção para o erro "Unauthenticated" no Chat e Cadastro)
