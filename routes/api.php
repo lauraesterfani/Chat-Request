@@ -87,6 +87,8 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     // Gestão de Usuários
     Route::apiResource('user', UserController::class)->except('store');
     
+    // 🔹 CADASTRO DE STAFF (NOVO)
+    Route::post('/staff/register', [UserController::class, 'storeStaff']);
     // Gestão de Tipos (Create, Update, Delete)
     // O 'except index' evita conflito com a rota pública lá de cima
     Route::apiResource('type-requests', TypeRequestController::class)->except(['index']);

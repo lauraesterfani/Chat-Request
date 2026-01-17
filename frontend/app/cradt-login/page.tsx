@@ -57,7 +57,13 @@ export default function CradtLoginPage() {
       setToken(data.token);
       
       // Redireciona para o dashboard administrativo
-      router.push('/dashboard'); 
+     if (data.user.role === 'admin') {
+      router.push('/dashboard/admin'); // Admin vai para o dashboard principal
+    } else if (data.user.role === 'staff') {
+      router.push('/dashboard/staff'); // Staff também vai para o dashboard
+    } else {
+  router.push('/dashboard'); // alunos
+}
 
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao tentar entrar.');
