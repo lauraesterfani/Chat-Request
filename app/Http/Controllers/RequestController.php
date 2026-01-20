@@ -56,9 +56,38 @@ class RequestController extends Controller
     // Listar meus pedidos (Bônus para a Dashboard)
     public function index()
     {
-        return RequestModel::with('type')
-            ->where('user_id', Auth::id())
+        $user = Auth::user();
+
+    // Admin e Staff veem TODOS
+    if (in_array($user->role, ['admin', 'staff'])) {
+        return RequestModel::with(['user', 'type'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
+
+    // Aluno vê só os dele
+    return RequestModel::with(['user', 'type'])
+        ->where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+    }
+
+    public function show($id)
+{
+    $user = Auth::user();
+
+    // Busca o requerimento com todos os dados necessários
+    $request = RequestModel::with(['user', 'type', 'documents'])
+        ->findOrFail($id);
+
+    // Se NÃO for admin ou staff, só pode ver o próprio requerimento
+    if (!in_array($user->role, ['admin', 'staff']) && $request->user_id !== $user->id) {
+        return response()->json([
+            'message' => 'Acesso não autorizado'
+        ], 403);
+    }
+
+    return response()->json($request);
+}
+
 }

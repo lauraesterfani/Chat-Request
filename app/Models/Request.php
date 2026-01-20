@@ -25,6 +25,12 @@ class Request extends Model
     {
         return $this->belongsToMany(Document::class);
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     
     // Relacionamento com Tipo
     public function type()
