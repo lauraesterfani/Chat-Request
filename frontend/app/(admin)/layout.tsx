@@ -1,80 +1,81 @@
-'use client' // Layouts com botões (logout) precisam ser Client Components
+"use client";
 
-import { ReactNode } from 'react';
-import { useAuth } from '@/app/context/AuthContext'; // Para o logout
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-// Ícone para o botão de logout
-import { IoLogOutOutline } from 'react-icons/io5';
-
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { logout, user } = useAuth();
+export default function AdminDashboardPage() {
   const router = useRouter();
 
   const handleLogout = () => {
-    // Chame a função de logout do nosso cérebro de autenticação
-    logout(); 
+    localStorage.removeItem("jwt_token");
+    router.push("/login");
   };
 
-  // Proteção de Rota Simples:
-  // Se o Next.js tentar renderizar este layout e o usuário não for admin/staff,
-  // (ex: um aluno a tentar aceder /dashboard manualmente), redireciona-o.
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    // Idealmente, isto mostraria um ecrã de "Acesso Negado",
-    // mas por agora vamos apenas enviá-lo para o login.
-    if (typeof window !== 'undefined') { // Garante que o código só corre no navegador
-      router.push('/');
-    }
-    return null; // Não renderiza nada enquanto redireciona
-  }
-
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50 font-sans">
       
-      {/* ===== BARRA LATERAL (ASIDE) ===== */}
-      <aside className="w-64 bg-[#1a472a] text-white flex flex-col p-6">
-        {/* Logo e Título do Painel */}
-        <div className="flex items-center gap-3 px-2">
-          <Image
-            src="/mascote.png" // Da pasta 'frontend/public'
-            alt="Mascote"
-            width={40}
-            height={40}
-          />
-          <h1 className="text-2xl font-bold">Painel</h1>
+      {/* Cabeçalho Admin Padronizado */}
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+           <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-700 font-bold text-xl">
+                C
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Painel CRADT</h1>
+                <p className="text-xs text-green-600 font-medium">Administração Acadêmica</p>
+              </div>
+           </div>
+           <button onClick={handleLogout} className="text-sm font-medium text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition">
+             Sair do Sistema
+           </button>
+        </div>
+      </header>
+
+      {/* Conteúdo Principal */}
+      <main className="max-w-6xl mx-auto p-8">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-800">Visão Geral</h2>
+          <p className="text-gray-500">Selecione uma ferramenta administrativa abaixo.</p>
         </div>
 
-        {/* Links de Navegação (Exemplo) */}
-        <nav className="flex-1 mt-10 space-y-2">
-          <Link href="/dashboard" className="block py-2 px-4 rounded hover:bg-green-700">
-            Lista de Requerimentos
-          </Link>
-          <Link href="/dashboard/users" className="block py-2 px-4 rounded hover:bg-green-700">
-            Usuários
-          </Link>
-          <Link href="/dashboard/types" className="block py-2 px-4 rounded hover:bg-green-700">
-            Tipos de Requerimento
-          </Link>
-        </nav>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        {/* Botão de Logout (Fixo em baixo) */}
-        <div className="mt-auto">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 w-full text-left py-2 px-4 rounded text-gray-300 hover:bg-green-700 hover:text-white"
+          {/* Card: Visualizar Requerimentos */}
+          <Link
+            href="/request" 
+            className="group bg-white p-6 rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl hover:border-green-200 transition-all cursor-pointer relative overflow-hidden"
           >
-            <IoLogOutOutline size={20} />
-            Fazer Logout
-          </button>
-        </div>
-      </aside>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+            <div className="relative z-10">
+                <div className="w-12 h-12 bg-green-100 text-green-700 rounded-xl flex items-center justify-center mb-4 text-2xl">
+                  📂
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 group-hover:text-green-700 transition-colors">Requerimentos</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  Visualize, analise e defira as solicitações dos alunos.
+                </p>
+            </div>
+          </Link>
 
-      {/* ===== CONTEÚDO PRINCIPAL (MAIN) ===== */}
-      <main className="flex-1 p-10 overflow-y-auto">
-        {/* O 'children' é a página que será injetada aqui (ex: a tabela) */}
-        {children}
+          {/* Outros cards... (Pode manter os links se quiser) */}
+           <Link
+            href="/requests/new"
+            className="group bg-white p-6 rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl hover:border-yellow-200 transition-all cursor-pointer relative overflow-hidden"
+          >
+             <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+             <div className="relative z-10">
+                <div className="w-12 h-12 bg-yellow-100 text-yellow-700 rounded-xl flex items-center justify-center mb-4 text-2xl">
+                  ✏️
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 group-hover:text-yellow-700 transition-colors">Abrir Chamado</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  Criar um requerimento manualmente para um aluno.
+                </p>
+             </div>
+          </Link>
+
+        </div>
       </main>
     </div>
   );

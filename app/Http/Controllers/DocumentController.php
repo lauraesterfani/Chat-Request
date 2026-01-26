@@ -12,7 +12,7 @@ class DocumentController extends Controller
     {
         // 1. Valida se o arquivo existe e é uma imagem ou PDF
         $request->validate([
-            'arquivo' => 'required|file|mimes:pdf,jpg,png|max:2048',
+            'arquivo' => 'required|file|mimes:pdf,jpg,png|max:10240',
         ]);
 
         try {

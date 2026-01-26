@@ -4,35 +4,33 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids; // <--- O IMPORT QUE DEVE ESTAR FALTANDO
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Request extends Model
 {
     use HasFactory, HasUuids;
 
-    // Garante que o Laravel deixe salvar esses campos
     protected $fillable = [
         'user_id',
         'type_id',
         'subject',
         'description',
         'status',
-        'observation'
+        'observation',
+        'protocol' // <--- OBRIGATÓRIO: Sem isso, o salvamento falha!
     ];
 
-    // Relacionamento com Documentos (caso precise)
     public function documents()
     {
-        return $this->belongsToMany(Document::class);
+        // Garante o uso da tabela pivô correta
+        return $this->belongsToMany(Document::class, 'requests_documents', 'request_id', 'document_id');
     }
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-
     
-    // Relacionamento com Tipo
     public function type()
     {
         return $this->belongsTo(TypeRequest::class, 'type_id');

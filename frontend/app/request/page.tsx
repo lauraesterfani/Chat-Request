@@ -1,109 +1,141 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/app/context/AuthContext"; // Importe seu contexto se tiver, ou use localStorage direto
 
-type RequestItem = {
-  id: number;
-  subject: string;
-  status: string;
-  created_at: string;
-  user: {
-    name: string;
-    email: string;
-  };
-};
+const API_BASE = "http://127.0.0.1:8000/api";
 
-export default function RequestPage() {
-  const { token } = useAuth(); // mesma lógica do login
-  const router = useRouter(); // 👈 ADICIONADO
-
-  const [requests, setRequests] = useState<RequestItem[]>([]);
+export default function RequestListPage() {
+  const router = useRouter();
+  const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    if (!token) return;
-
     const fetchRequests = async () => {
+      const token = localStorage.getItem("jwt_token");
+      if (!token) {
+          router.push("/login");
+          return;
+      }
+
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/requests', {
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+        const res = await fetch(`${API_BASE}/requests`, {
+          headers: { Authorization: `Bearer ${token}` }
         });
-
-        if (!response.ok) {
-          throw new Error('Erro ao buscar requerimentos');
+        
+        if (res.ok) {
+          setRequests(await res.json());
         }
-
-        const data = await response.json();
-
-        if (Array.isArray(data)) {
-          setRequests(data);
-        } else if (Array.isArray(data.data)) {
-          setRequests(data.data);
-        } else {
-          setRequests([]);
-        }
-      } catch {
-        setError('Erro ao carregar requerimentos');
+      } catch (error) {
+        console.error("Erro ao buscar pedidos");
       } finally {
         setLoading(false);
       }
     };
 
     fetchRequests();
-  }, [token]);
+  }, [router]);
 
-  if (loading) {
-    return <p className="p-8">Carregando requerimentos...</p>;
-  }
+  // Função para filtrar na tela
+  const filteredRequests = requests.filter(req => 
+    filter === "all" ? true : req.status === filter
+  );
 
-  if (error) {
-    return <p className="p-8 text-red-600">{error}</p>;
-  }
+  const getStatusBadge = (status: string) => {
+    const map: any = {
+      pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      analyzing: "bg-blue-100 text-blue-800 border-blue-200",
+      completed: "bg-green-100 text-green-800 border-green-200",
+      rejected: "bg-red-100 text-red-800 border-red-200"
+    };
+    const labels: any = {
+        pending: "Pendente", analyzing: "Em Análise", completed: "Deferido", rejected: "Indeferido"
+    };
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${map[status] || "bg-gray-100"}`}>
+        {labels[status] || status}
+      </span>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8">
-      <h1 className="text-2xl font-bold mb-6">
-        Todos os Requerimentos
-      </h1>
+    <div className="min-h-screen bg-gray-50 p-6 font-sans">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Cabeçalho */}
+        <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-3">
+                <button onClick={() => router.back()} className="p-2 hover:bg-gray-200 rounded-full transition">
+                    ⬅️
+                </button>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Central de Requerimentos</h1>
+                    <p className="text-gray-500 text-sm">Gerencie todas as solicitações recebidas.</p>
+                </div>
+            </div>
+            
+            {/* Botão Novo (Tarefa 3 - Atalho Rápido) */}
+            <Link href="/requests/new" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold shadow-md transition flex items-center gap-2">
+                + Novo Pedido
+            </Link>
+        </div>
 
-      {requests.length === 0 ? (
-        <p>Nenhum requerimento encontrado.</p>
-      ) : (
-        <table className="w-full bg-white rounded-xl shadow">
-          <thead>
-            <tr className="bg-slate-200 text-left">
-              <th className="p-3">Aluno</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Título</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Criado em</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map(req => (
-              <tr
-                key={req.id}
-                className="border-t cursor-pointer hover:bg-slate-100"
-                onClick={() => router.push(`/request/acesso/${req.id}`)} // 👈 AQUI ESTÁ A CHAVE
-              >
-                <td className="p-3">{req.user.name}</td>
-                <td className="p-3">{req.user.email}</td>
-                <td className="p-3">{req.subject}</td>
-                <td className="p-3 capitalize">{req.status}</td>
-                <td className="p-3">
-                  {new Date(req.created_at).toLocaleDateString('pt-BR')}
-                </td>
-              </tr>
+        {/* Filtros */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {['all', 'pending', 'analyzing', 'completed', 'rejected'].map((f) => (
+                <button 
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        filter === f ? 'bg-green-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                >
+                    {f === 'all' ? 'Todos' : f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
             ))}
-          </tbody>
-        </table>
-      )}
+        </div>
+
+        {/* Lista */}
+        {loading ? (
+            <div className="text-center py-20 text-gray-400">Carregando solicitações...</div>
+        ) : filteredRequests.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <p className="text-gray-500">Nenhum requerimento encontrado.</p>
+            </div>
+        ) : (
+            <div className="grid gap-4">
+                {filteredRequests.map((req) => (
+                    <Link key={req.id} href={`/request/acesso/${req.id}`}>
+                        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all cursor-pointer flex justify-between items-center group">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold
+                                    ${req.user?.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}
+                                `}>
+                                    {req.user?.name?.charAt(0) || '?'}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-800 group-hover:text-green-700 transition">{req.subject}</h3>
+                                    <p className="text-xs text-gray-500">
+                                        {req.user?.name} • Matrícula: {req.user?.matricula}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Protocolo: {req.protocol || 'N/A'} • {new Date(req.created_at).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                                {getStatusBadge(req.status)}
+                                <span className="text-xs text-gray-400">Tipo: {req.type?.name}</span>
+                            </div>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        )}
+      </div>
     </div>
   );
 }

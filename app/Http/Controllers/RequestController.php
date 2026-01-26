@@ -11,7 +11,6 @@ class RequestController extends Controller
 {
     public function store(Request $request)
     {
-        // 1. Validação
         $request->validate([
             'type_id' => 'required|exists:type_requests,id',
             'subject' => 'required|string',
@@ -20,21 +19,19 @@ class RequestController extends Controller
         ]);
 
         try {
-            // Inicia uma transação (se der erro, cancela tudo)
             return DB::transaction(function () use ($request) {
                 
-                // 2. Criar o Requerimento
                 $newRequest = RequestModel::create([
-                    'user_id' => Auth::id(), // Pega o ID do usuário logado
+                    'user_id' => Auth::id(),
                     'type_id' => $request->type_id,
                     'subject' => $request->subject,
                     'description' => $request->description,
                     'status' => 'pending',
-                   'protocol'    => now()->format('Ymd') . '-' . rand(1000, 9999)
+                    'protocol' => now()->format('Ymd') . '-' . rand(1000, 9999)
                 ]);
 
-                // 3. Vincular os Documentos (Preenche a tabela pivô)
                 if (!empty($request->document_ids)) {
+                    // Garante que usa a tabela pivô correta
                     $newRequest->documents()->sync($request->document_ids);
                 }
 
@@ -45,7 +42,6 @@ class RequestController extends Controller
             });
 
         } catch (\Exception $e) {
-            // Mostra o erro real no console do navegador se falhar
             return response()->json([
                 'message' => 'Erro ao salvar requerimento.',
                 'error' => $e->getMessage()
@@ -53,41 +49,67 @@ class RequestController extends Controller
         }
     }
     
-    // Listar meus pedidos (Bônus para a Dashboard)
     public function index()
     {
         $user = Auth::user();
 
-    // Admin e Staff veem TODOS
-    if (in_array($user->role, ['admin', 'staff'])) {
+        // ADICIONEI 'cradt' AQUI
+        if (in_array($user->role, ['admin', 'staff', 'cradt'])) {
+            return RequestModel::with(['user', 'type'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
         return RequestModel::with(['user', 'type'])
+            ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();
     }
 
-    // Aluno vê só os dele
-    return RequestModel::with(['user', 'type'])
-        ->where('user_id', $user->id)
-        ->orderBy('created_at', 'desc')
-        ->get();
-    }
-
     public function show($id)
-{
-    $user = Auth::user();
+    {
+        $user = Auth::user();
 
-    // Busca o requerimento com todos os dados necessários
-    $request = RequestModel::with(['user', 'type', 'documents'])
-        ->findOrFail($id);
+        $request = RequestModel::with(['user', 'type', 'documents'])
+            ->findOrFail($id);
 
-    // Se NÃO for admin ou staff, só pode ver o próprio requerimento
-    if (!in_array($user->role, ['admin', 'staff']) && $request->user_id !== $user->id) {
-        return response()->json([
-            'message' => 'Acesso não autorizado'
-        ], 403);
+        // ADICIONEI 'cradt' AQUI TAMBÉM
+        if (!in_array($user->role, ['admin', 'staff', 'cradt']) && $request->user_id !== $user->id) {
+            return response()->json([
+                'message' => 'Acesso não autorizado'
+            ], 403);
+        }
+
+        return response()->json($request);
     }
+    // ... (Mantenha as funções store, index e show que já fizemos)
 
-    return response()->json($request);
-}
+    // ATUALIZAR STATUS (Para a CRADT)
+    public function update(Request $request, $id)
+    {
+        $user = Auth::user();
+        $requestModel = RequestModel::findOrFail($id);
 
+        // 1. Segurança: Só Admin/Staff/Cradt pode alterar status
+        if (!in_array($user->role, ['admin', 'staff', 'cradt'])) {
+            return response()->json(['message' => 'Apenas a coordenação pode alterar solicitações.'], 403);
+        }
+
+        // 2. Validação
+        $validated = $request->validate([
+            'status' => 'required|in:pending,analyzing,completed,rejected',
+            'observation' => 'nullable|string'
+        ]);
+
+        // 3. Atualização
+        $requestModel->update([
+            'status' => $validated['status'],
+            'observation' => $request->observation ?? $requestModel->observation
+        ]);
+
+        return response()->json([
+            'message' => 'Status atualizado com sucesso!',
+            'data' => $requestModel
+        ]);
+    }
 }
