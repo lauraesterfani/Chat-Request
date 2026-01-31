@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { Lock, Eye, EyeOff } from "lucide-react";
+import { User } from "lucide-react";
 
 // Ícone de Carregamento
 const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
@@ -24,6 +26,7 @@ export default function StudentLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // 🔥 Se já estiver logado, redireciona
   useEffect(() => {
@@ -135,42 +138,56 @@ export default function StudentLoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-6">
 
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">CPF</label>
-                    <div className="relative">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
-                            <svg width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                        </span>
-                        <input
-                            type="text"
-                            value={cpf}
-                            onChange={(e) => setCpf(e.target.value)}
-                            className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all"
-                            placeholder="000.000.000-00"
-                            required
-                        />
-                    </div>
-                </div>
+               
+<div>
+  <label className="block text-sm font-semibold text-slate-700 mb-2">CPF</label>
+  <div className="relative">
+    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+      <User size={20} />
+    </span>
+    <input
+      type="text"
+      value={cpf}
+      onChange={(e) => setCpf(e.target.value)}
+      className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all"
+      placeholder="000.000.000-00"
+      required
+    />
+  </div>
+</div>
 
-                <div>
-                    <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-semibold text-slate-700">Senha</label>
-                        <Link href="#" className="text-sm font-medium text-[#15803d] hover:underline">Esqueceu?</Link>
-                    </div>
-                    <div className="relative">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
-                            <svg width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        </span>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all"
-                            placeholder="••••••••"
-                            required
-                        />
-                    </div>
-                </div>
+
+        
+
+
+
+<div>
+  <div className="flex justify-between items-center mb-2">
+    <label className="text-sm font-semibold text-slate-700">Senha</label>
+    <Link href="#" className="text-sm font-medium text-[#15803d] hover:underline">Esqueceu?</Link>
+  </div>
+  <div className="relative">
+    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+      <Lock size={20} />
+    </span>
+    <input
+      type={showPassword ? "text" : "password"}
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="w-full pl-11 pr-11 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all"
+      placeholder="••••••••"
+      required
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600"
+    >
+      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+    </button>
+  </div>
+</div>
+
 
                 <button
                     type="submit"

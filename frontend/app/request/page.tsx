@@ -48,14 +48,14 @@ export default function RequestListPage() {
     pending: "bg-red-100 text-red-700 border-red-200",       // Pendente → vermelho suave
     analyzing: "bg-yellow-100 text-yellow-700 border-yellow-200", // Em análise → amarelo/laranja suave
     completed: "bg-green-100 text-green-700 border-green-200",    // Deferido → verde suave
-    rejected: "bg-gray-200 text-gray-800 border-gray-300",        // Indeferido → preto/cinza suave
+    canceled: "bg-gray-200 text-gray-800 border-gray-300",        // Indeferido → preto/cinza suave
   };
 
   const labels: any = {
     pending: "Pendente",
     analyzing: "Em Análise",
     completed: "Deferido",
-    rejected: "Indeferido",
+    canceled: "Indeferido",
   };
 
   return (
@@ -109,7 +109,7 @@ export default function RequestListPage() {
 
         {/* Filtros */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {["all", "pending", "analyzing", "completed", "rejected"].map((f) => (
+          {["all", "pending", "analyzing", "completed", "canceled"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}

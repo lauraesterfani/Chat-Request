@@ -97,7 +97,7 @@ class RequestController extends Controller
 
         // 2. Validação
         $validated = $request->validate([
-            'status' => 'required|in:pending,analyzing,completed,rejected',
+            'status' => 'required|in:pending,analyzing,completed,canceled',
             'observation' => 'nullable|string'
         ]);
 
