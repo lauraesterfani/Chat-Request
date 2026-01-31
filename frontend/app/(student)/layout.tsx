@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         {/* Logo / Título */}
         <Link
-          href={isAdmin ? "/cradt" : "/me"} // 🔹 Admin → tela principal CRADT
+          href={isAdmin ? "/dashboard/admin" : "/me"} // 🔹 Admin → tela principal CRADT
           className={`tracking-tighter hover:opacity-80 transition-opacity ${
             isAdmin ? "text-2xl font-bold" : "text-3xl font-bold mb-4 text-[#108542]"
           }`}

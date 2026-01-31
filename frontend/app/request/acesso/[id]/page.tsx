@@ -162,35 +162,43 @@ export default function RequestDetailsPage() {
               <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">
                 Documentos Anexados
               </h3>
+{request.documents?.length > 0 ? (
+  <div className="grid grid-cols-1 gap-3">
+    {request.documents.map((doc: any) => (
+      <div
+        key={doc.id}
+        className="flex flex-col gap-2 p-3 border border-gray-200 rounded-lg hover:bg-[#E8F0FE] hover:border-[#1A73E8] transition"
+      >
+        {/* Preview da imagem */}
+        <img
+          src={`http://127.0.0.1:8000/storage/${doc.path.replace("public/", "")}`}
+          alt={doc.name}
+          className="max-w-sm rounded-md shadow-md border border-slate-200"
+        />
 
-              {request.documents?.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {request.documents.map((doc: any) => (
-                    <a
-                      key={doc.id}
-                      href={`http://127.0.0.1:8000/storage/${doc.path}`}
-                      target="_blank"
-                      className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-[#E8F0FE] hover:border-[#1A73E8] transition"
-                    >
-                      <div className="bg-[#E8F0FE] p-2 rounded text-[#1A73E8]">
-                        📄
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 truncate">
-                          {doc.name}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Clique para visualizar
-                        </p>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 italic">
-                  Nenhum anexo enviado.
-                </p>
-              )}
+        {/* Nome e link */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-700 truncate">
+            {doc.name}
+          </p>
+          <a
+            href={`http://127.0.0.1:8000/storage/${doc.path.replace("public/", "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#1A73E8] hover:underline"
+          >
+            Clique para visualizar em nova aba
+          </a>
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <p className="text-sm text-gray-400 italic">
+    Nenhum anexo enviado.
+  </p>
+)}
+
             </div>
           </div>
 
