@@ -1,157 +1,209 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-// Importando ícones para o Tutorial
-import { HelpCircle, X, MessageSquare, FileText, CheckCircle } from 'lucide-react';
+import { FileText, Send, Paperclip, X, CheckCircle } from 'lucide-react';
 
-interface Option {
-    label: string;
-    value: string;
-    action: 'request_type' | 'navigate' | 'initial_choice'; 
-}
+const API_BASE = "http://127.0.0.1:8000/api";
+
+const MANDATORY_ATTACHMENT_KEYWORDS = [
+    "aproveitamento", "isenção", "justificativa", "falta", 
+    "chamada", "educação física", "transferência", "cancelamento"
+];
 
 interface Message {
     id: string | number;
     role: 'bot' | 'user';
     text: string;
-    options?: Option[]; 
+    options?: any[];
+    requestsData?: any[];
 }
 
-export default function ChatDashboardPage() {
-    const { token, user } = useAuth(); 
-    const router = useRouter();
+export default function GuidedChatPage() {
+    const { token, user } = useAuth();
     const bottomRef = useRef<HTMLDivElement>(null);
-
-    // Estados do Chat
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: 'init-1',
-            role: 'bot',
-            text: 'Olá! Sou o assistente virtual da secretaria. Carregando suas opções...',
-            options: [] 
-        }
-    ]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState<'idle' | 'subject' | 'description' | 'attachment_choice' | 'waiting_file'>('idle');
+    const [tempData, setTempData] = useState({ typeId: "", subject: "", description: "", typeName: "", isMandatory: false });
+    const [inputValue, setInputValue] = useState("");
 
-    // ESTADO DO TUTORIAL (NOVO)
-    const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+    const initialOptions = [
+        { label: '📝 Novo Requerimento', action: 'start_flow' },
+        { label: '📂 Meus Pedidos', action: 'view_requests' }
+    ];
 
     useEffect(() => {
         if (user) {
-            setMessages(prev => {
-                const newMsgs = [...prev];
-                newMsgs[0] = {
-                    id: 'init-1',
-                    role: 'bot',
-                    text: `Olá, ${user.name.split(' ')[0]}! Sou o assistente virtual da secretaria. Como posso ajudar você hoje?`,
-                    options: [
-                        { label: '📝 Solicitar Novo Requerimento', value: 'request', action: 'initial_choice' },
-                        { label: '📂 Consultar Meus Pedidos', value: '/dashboard', action: 'navigate' }
-                    ]
-                };
-                return newMsgs;
-            });
+            setMessages([{
+                id: 'init', role: 'bot',
+                text: `Olá, ${user.name.split(' ')[0]}! Sou a Stella. Como posso ajudar você hoje?`,
+                options: initialOptions
+            }]);
         }
     }, [user]);
 
+    // Scroll suave sempre para a última mensagem
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, loading]);
 
-    const handleOptionClick = async (option: Option) => {
-        const userMsg: Message = { id: Date.now(), role: 'user', text: option.label.replace(/^[^\w]+/, '') }; 
-        setMessages(prev => [...prev, userMsg]);
+    const finalizeRequest = async (fileToUpload: File | null = null) => {
         setLoading(true);
-
-        if (option.action === 'navigate') {
-            setTimeout(() => router.push(option.value), 800);
-            return;
-        }
-
-        if (option.value === 'request') {
-            try {
-                const response = await fetch('http://127.0.0.1:8000/api/type-requests', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+        try {
+            let documentIds: string[] = [];
+            if (fileToUpload) {
+                const formData = new FormData();
+                formData.append("arquivo", fileToUpload);
+                const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
+                    method: "POST", headers: { Authorization: `Bearer ${token}` },
+                    body: formData,
                 });
-                if (!response.ok) throw new Error('Erro na API');
-                const data = await response.json();
-                const types = data.data || data;
-
-                const typeOptions: Option[] = types.map((t: any) => ({
-                    label: t.name,
-                    value: t.id,
-                    action: 'request_type'
-                }));
-
-                setTimeout(() => {
-                    const botMsg: Message = {
-                        id: Date.now() + 1,
-                        role: 'bot',
-                        text: 'Entendido. Selecione abaixo qual tipo de documento ou solicitação você precisa:',
-                        options: typeOptions
-                    };
-                    setMessages(prev => [...prev, botMsg]);
-                    setLoading(false);
-                }, 600);
-            } catch (error) {
-                setLoading(false);
-                setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: 'Desculpe, não consegui carregar as opções agora.' }]);
+                const uploadData = await uploadRes.json();
+                if (uploadRes.ok) documentIds = [uploadData.id];
             }
-        } 
-        else if (option.action === 'request_type') {
-            setTimeout(() => {
-                setMessages(prev => [...prev, {
-                    id: Date.now() + 1,
-                    role: 'bot',
-                    text: `Perfeito! Estou te redirecionando para o formulário de "${option.label}".`
+
+            const res = await fetch(`${API_BASE}/requests`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type_id: tempData.typeId,
+                    subject: tempData.subject,
+                    description: tempData.description,
+                    document_ids: documentIds
+                }),
+            });
+
+            if (res.ok) {
+                setMessages(prev => [...prev, { 
+                    id: Date.now(), role: 'bot', 
+                    text: `Tudo pronto! Seu requerimento de "${tempData.typeName}" foi enviado com sucesso. ✅` 
                 }]);
-                setLoading(false);
 
                 setTimeout(() => {
-                    localStorage.setItem('selected_type_id', option.value); 
-                    router.push('/requests/new'); 
-                }, 1500);
-            }, 500);
+                    setMessages(prev => [...prev, {
+                        id: Date.now() + 500, role: 'bot',
+                        text: 'Deseja realizar mais alguma operação?',
+                        options: initialOptions
+                    }]);
+                }, 1000);
+            }
+        } catch (err) {
+            setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "Erro no envio. Tente novamente." }]);
+        }
+        setStep('idle');
+        setLoading(false);
+        setTempData({ typeId: "", subject: "", description: "", typeName: "", isMandatory: false });
+    };
+
+    const handleSendMessage = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!inputValue.trim()) return;
+
+        const text = inputValue;
+        setInputValue("");
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', text }]);
+
+        if (step === 'subject') {
+            setTempData(prev => ({ ...prev, subject: text }));
+            setTimeout(() => {
+                setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: "Entendido. Agora, descreva brevemente o motivo do seu pedido:" }]);
+                setStep('description');
+            }, 600);
+        } 
+        else if (step === 'description') {
+            setTempData(prev => ({ ...prev, description: text }));
+            setTimeout(() => {
+                if (tempData.isMandatory) {
+                    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: "Este pedido exige anexo. Clique no clipe 📎 para enviar o documento:" }]);
+                    setStep('waiting_file');
+                } else {
+                    setMessages(prev => [...prev, { 
+                        id: Date.now() + 1, role: 'bot', 
+                        text: "Deseja anexar algum comprovante opcional?",
+                        options: [{ label: '📎 Sim, anexar', action: 'ask_file' }, { label: '⏩ Não, enviar agora', action: 'submit_no_file' }]
+                    }]);
+                    setStep('attachment_choice');
+                }
+            }, 600);
+        }
+    };
+
+    const handleAction = async (opt: any) => {
+        if (opt.action === 'start_flow') {
+            const res = await fetch(`${API_BASE}/type-requests`);
+            const data = await res.json();
+            setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: opt.label }, { 
+                id: Date.now() + 1, role: 'bot', text: "Qual destes requerimentos você deseja abrir?", 
+                options: (data.data || data).map((t: any) => ({ label: t.name, value: t.id, action: 'select_type' })) 
+            }]);
+        }
+        else if (opt.action === 'select_type') {
+            const isMandatory = MANDATORY_ATTACHMENT_KEYWORDS.some(kw => opt.label.toLowerCase().includes(kw));
+            setTempData({ ...tempData, typeId: opt.value, typeName: opt.label, isMandatory });
+            setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: opt.label }, { id: Date.now() + 1, role: 'bot', text: "Qual o ASSUNTO deste requerimento?" }]);
+            setStep('subject');
+        }
+        else if (opt.action === 'ask_file') {
+            setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "Selecione o arquivo clicando no ícone de clipe 📎 abaixo:" }]);
+            setStep('waiting_file');
+        }
+        else if (opt.action === 'submit_no_file') {
+            finalizeRequest(null);
+        }
+        else if (opt.action === 'view_requests') {
+            const res = await fetch(`${API_BASE}/requests`, { headers: { Authorization: `Bearer ${token}` } });
+            const data = await res.json();
+            setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: opt.label }, { id: Date.now() + 1, role: 'bot', text: "Seus pedidos recentes:", requestsData: (data.data || data).slice(0, 5) }]);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#f0f2f5] flex flex-col font-sans">
+        /* h-[100dvh] garante que o app ocupe exatamente a tela visível, descontando barras do navegador */
+        <div className="flex flex-col h-[100dvh] bg-[#f0f2f5] font-sans antialiased">
             
-            {/* Header Original */}
-            <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-4 shadow-sm">
+            <header className="bg-white border-b border-gray-200 px-4 py-4 shadow-sm shrink-0">
                 <div className="max-w-3xl mx-auto flex items-center gap-3">
-                    <div className="relative">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">CR</div>
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-bold text-slate-800 leading-tight">Secretaria Virtual</h1>
-                        <p className="text-xs text-green-600 font-medium">Online agora</p>
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-black shadow-sm shrink-0">CR</div>
+                    <div className="overflow-hidden">
+                        <h1 className="text-base sm:text-lg font-black text-slate-800 leading-tight tracking-tighter truncate">Secretaria Virtual</h1>
+                        <p className="text-[10px] sm:text-xs text-green-600 font-bold uppercase tracking-widest">Stella Online</p>
                     </div>
                 </div>
             </header>
 
-            <main className="flex-1 w-full max-w-3xl mx-auto p-4 sm:p-6 pb-24 overflow-y-auto">
-                <div className="space-y-6">
+            {/* A área de mensagens agora é flex-1, ocupando todo o espaço entre o topo e o rodapé */}
+            <main className="flex-1 overflow-y-auto px-3 py-6 sm:px-6">
+                <div className="max-w-3xl mx-auto space-y-6">
                     {messages.map((msg) => (
                         <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`flex max-w-[90%] sm:max-w-[75%] gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold shadow-sm mt-auto mb-1
-                                    ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600' : 'bg-white text-green-600 border border-gray-200'}`}>
+                            <div className={`flex max-w-[92%] sm:max-w-[80%] gap-2 sm:gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold mt-auto mb-1 ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600' : 'bg-white text-green-600 border border-gray-100 shadow-sm'}`}>
                                     {msg.role === 'user' ? 'EU' : 'CR'}
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <div className={`px-5 py-3.5 text-[15px] leading-relaxed shadow-sm transition-all duration-300
-                                        ${msg.role === 'user' ? 'bg-[#15803d] text-white rounded-2xl rounded-br-none' : 'bg-white border border-gray-100 text-slate-700 rounded-2xl rounded-bl-none'}`}>
+                                    <div className={`px-4 py-3 sm:px-5 sm:py-3.5 text-sm sm:text-[15px] shadow-sm tracking-tight font-medium ${msg.role === 'user' ? 'bg-[#15803d] text-white rounded-2xl rounded-br-none' : 'bg-white border border-gray-100 text-slate-700 rounded-2xl rounded-bl-none'}`}>
                                         {msg.text}
                                     </div>
-                                    {msg.role === 'bot' && msg.options && msg.options.length > 0 && (
+                                    {msg.requestsData && (
+                                        <div className="space-y-2 mt-1">
+                                            {msg.requestsData.map((req: any) => (
+                                                <div key={req.id} className="bg-white border border-gray-100 p-3 rounded-xl flex items-center justify-between shadow-sm gap-2">
+                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                        <FileText size={14} className="text-gray-400 shrink-0" />
+                                                        <span className="text-[11px] font-black text-gray-700 truncate tracking-tight">{req.subject}</span>
+                                                    </div>
+                                                    <span className="text-[9px] font-black px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full shrink-0 border border-amber-100 uppercase tracking-tighter">{req.status}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {msg.role === 'bot' && msg.options && (
                                         <div className="flex flex-wrap gap-2 mt-1">
                                             {msg.options.map((opt, idx) => (
-                                                <button key={idx} onClick={() => handleOptionClick(opt)} className="bg-white border border-green-200 text-[#15803d] px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md hover:bg-green-50 active:scale-95 transition-all">
+                                                <button key={idx} onClick={() => handleAction(opt)} className="bg-white border border-green-200 text-[#15803d] px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black shadow-sm hover:bg-green-50 active:scale-95 transition-all tracking-tight">
                                                     {opt.label}
                                                 </button>
                                             ))}
@@ -161,69 +213,34 @@ export default function ChatDashboardPage() {
                             </div>
                         </div>
                     ))}
-                    {loading && (
-                        <div className="flex w-full justify-start">
-                            <div className="flex gap-3 max-w-[85%]">
-                                <div className="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-green-600 shadow-sm mt-auto mb-1">CR</div>
-                                <div className="bg-white border border-gray-100 px-4 py-4 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-1">
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={bottomRef} className="h-4" />
+                    {/* Elemento invisível para scroll */}
+                    <div ref={bottomRef} className="h-2" />
                 </div>
             </main>
 
-            {/* Input Estático Original */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
-                <div className="max-w-3xl mx-auto relative opacity-50 cursor-not-allowed">
-                    <input type="text" placeholder="Selecione uma opção acima..." disabled className="w-full bg-gray-100 border-0 rounded-full py-3.5 px-5 text-gray-500 outline-none" />
-                </div>
-                <p className="text-center text-[10px] text-gray-400 mt-2 uppercase tracking-wider">Ambiente Seguro • ChatRequest v1.0</p>
-            </div>
-
-            {/* --- COMPONENTE DE TUTORIAL (ADICIONADO) --- */}
-            
-            {/* Botão de Ajuda Flutuante */}
-            <button
-                onClick={() => setIsTutorialOpen(true)}
-                className="fixed bottom-20 right-6 w-12 h-12 bg-[#108542] text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all flex items-center justify-center z-50 group"
-                title="Ajuda"
-            >
-                <HelpCircle size={24} />
-            </button>
-
-            {/* Modal de Tutorial */}
-            {isTutorialOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
-                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="font-black text-gray-800">Como usar o ChatRequest?</h3>
-                            <button onClick={() => setIsTutorialOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                <X size={20} />
+            {/* Rodapé fixo na base da flexbox - Quando o teclado sobe, ele sobe junto */}
+            <footer className="bg-white border-t border-gray-200 p-3 sm:p-4 shrink-0">
+                <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex gap-2 items-center">
+                    {(step === 'waiting_file' || step === 'attachment_choice') && (
+                        <>
+                            <input type="file" ref={fileInputRef} onChange={(e) => finalizeRequest(e.target.files?.[0] || null)} className="hidden" />
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 sm:p-3 bg-gray-50 text-[#15803d] rounded-full border border-green-200 hover:bg-green-100 shadow-sm transition-colors">
+                                <Paperclip size={18} />
                             </button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div className="flex gap-3">
-                                <div className="p-2 bg-green-50 rounded-lg text-green-600 h-fit"><MessageSquare size={20}/></div>
-                                <div><p className="font-bold text-sm">Passo 1</p><p className="text-xs text-gray-500">Inicie o chat clicando em "Solicitar Novo Requerimento".</p></div>
-                            </div>
-                            <div className="flex gap-3">
-                                <div className="p-2 bg-green-50 rounded-lg text-green-600 h-fit"><FileText size={20}/></div>
-                                <div><p className="font-bold text-sm">Passo 2</p><p className="text-xs text-gray-500">Escolha o serviço desejado. Stella irá te redirecionar para o formulário.</p></div>
-                            </div>
-                            <div className="flex gap-3">
-                                <div className="p-2 bg-green-50 rounded-lg text-green-600 h-fit"><CheckCircle size={20}/></div>
-                                <div><p className="font-bold text-sm">Passo 3</p><p className="text-xs text-gray-500">Preencha os campos e anexe arquivos se necessário. Depois é só enviar!</p></div>
-                            </div>
-                            <button onClick={() => setIsTutorialOpen(false)} className="w-full bg-[#108542] text-white font-bold py-3 rounded-xl mt-4">Entendi!</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        </>
+                    )}
+                    <input 
+                        type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)}
+                        placeholder={step === 'idle' ? "Stella está aguardando..." : "Digite sua mensagem..."}
+                        disabled={step === 'idle' || step === 'waiting_file' || step === 'attachment_choice'}
+                        className="flex-1 px-4 py-2.5 sm:px-5 sm:py-3 rounded-full border border-gray-200 text-xs sm:text-sm outline-none focus:border-green-500 bg-white shadow-inner font-medium"
+                    />
+                    <button type="submit" disabled={!inputValue.trim()} className="p-2.5 sm:p-3 bg-[#15803d] text-white rounded-full shadow-lg active:scale-95 disabled:bg-gray-200 transition-all">
+                        <Send size={18} />
+                    </button>
+                </form>
+                <p className="text-center text-[8px] text-gray-400 mt-2 uppercase tracking-[0.2em] font-black">Ambiente Seguro • ChatRequest</p>
+            </footer>
         </div>
     );
 }
