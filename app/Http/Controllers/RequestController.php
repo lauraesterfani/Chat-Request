@@ -70,7 +70,7 @@ class RequestController extends Controller
     {
         $user = Auth::user();
 
-        $request = RequestModel::with(['user', 'type', 'documents'])
+        $request = RequestModel::with(['user.course', 'type', 'documents'])
             ->findOrFail($id);
 
         // ADICIONEI 'cradt' AQUI TAMBÉM

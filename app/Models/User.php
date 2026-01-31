@@ -102,10 +102,11 @@ class User extends Authenticatable implements JWTSubject
     /**
      * Relação: Usuário pertence a um Curso
      */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class, 'course_id');
-    }
+    public function course()
+        {
+    return $this->belongsTo(Course::class);
+        }
+
 
     /**
      * Relação: Usuário tem muitos Requerimentos
