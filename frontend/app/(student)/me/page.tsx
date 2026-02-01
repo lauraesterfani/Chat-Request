@@ -72,202 +72,239 @@ const REQUEST_CONFIG: Record<string, {
 };
 
 interface Message {
-    id: string | number;
-    role: 'bot' | 'user';
-    text: | React.ReactNode;
-    options?: any[];
+  id: string | number;
+  role: "bot" | "user";
+  text: React.ReactNode;
+  options?: { label: string; action: string; icon?: React.ReactNode; value?: any }[];
+  items?: { subject: string; status: string }[];
 }
-
 export default function GuidedChatPage() {
-    const { token, user } = useAuth();
-    const bottomRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  const { token, user } = useAuth();
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState<'idle' | 'description' | 'waiting_file'>('idle');
-    const [inputValue, setInputValue] = useState("");
-    const [files, setFiles] = useState<File[]>([]);
-    const [tempData, setTempData] = useState({
-        typeId: "",
-        typeName: "",
-        description: "",
-        minAttachments: 0,
-        maxAttachments: 10
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"idle" | "description" | "waiting_file">("idle");
+  const [inputValue, setInputValue] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [tempData, setTempData] = useState({
+    typeId: "",
+    typeName: "",
+    description: "",
+    minAttachments: 0,
+    maxAttachments: 10,
+  });
+
+  const initialOptions = [
+    { label: " Novo Requerimento", action: "start_flow", icon: <FilePlus2 size={18} /> },
+    { label: " Meus Pedidos", action: "view_requests", icon: <ClipboardList size={18} /> },
+  ];
+
+  useEffect(() => {
+    if (user) {
+      setMessages([
+        {
+          id: "init",
+          role: "bot",
+          text: (
+            <span>
+              Olá, <strong className="text-[#2e7d32]">{user.name.split(" ")[0]}</strong>! Sou o Jacaréu. Como posso ajudar você hoje?
+            </span>
+          ),
+          options: initialOptions,
+        },
+      ]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+  const cancelFlow = () => {
+    setStep("idle");
+    setFiles([]);
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "bot", text: "❌ Operação cancelada.", options: initialOptions },
+    ]);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selected = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...selected]);
+    }
+  };
+
+  const finalizeRequest = async (currentDescription?: string) => {
+    if (loading) return;
+
+    const finalDescription = currentDescription || tempData.description;
+    if (!finalDescription.trim()) return;
+
+    setLoading(true);
+    try {
+      const documentIds: string[] = [];
+
+      if (files.length > 0) {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("arquivo", file);
+
+          const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+
+          const uploadData = await uploadRes.json();
+          documentIds.push(uploadData.id);
+        }
+      }
+
+      const payload = {
+        type_id: tempData.typeId,
+        subject: tempData.typeName,
+        description: finalDescription,
+        document_ids: documentIds,
+      };
+
+      await fetch(`${API_BASE}/requests`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), role: "bot", text: `✅ Requerimento de "${tempData.typeName}" enviado com sucesso!` },
+        { id: Date.now() + 1, role: "bot", text: "Deseja realizar mais alguma operação?", options: initialOptions },
+      ]);
+
+      setStep("idle");
+      setFiles([]);
+      setTempData((prev) => ({ ...prev, description: "" }));
+    } catch {
+      setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "❌ Erro ao enviar. Tente novamente." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputValue.trim() || step !== "description") return;
+
+    const text = inputValue;
+    setInputValue("");
+    setMessages((prev) => [...prev, { id: Date.now(), role: "user", text }]);
+
+    setTempData((prev) => ({ ...prev, description: text }));
+
+    if (tempData.minAttachments === 0) {
+      setStep("idle");
+      finalizeRequest(text);
+    } else {
+      setStep("waiting_file");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "bot",
+          text: REQUEST_CONFIG[tempData.typeId]?.attachmentMessage || "📎 Por favor, anexe os documentos.",
+        },
+      ]);
+    }
+  };
+  const handleAction = async (opt: any) => {
+  if (opt.action === "start_flow") {
+    const res = await fetch(`${API_BASE}/type-requests`);
+    const data = await res.json();
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "user", text: opt.label },
+      {
+        id: Date.now() + 1,
+        role: "bot",
+        text: "Qual requerimento você deseja abrir?",
+        options: (data.data || data || []).map((t: any) => ({
+          label: t.name,
+          value: t.id,
+          action: "select_type",
+        })),
+      },
+    ]);
+  } else if (opt.action === "select_type") {
+    const config = REQUEST_CONFIG[opt.value];
+    setTempData({
+      typeId: opt.value,
+      typeName: opt.label,
+      description: "",
+      minAttachments: config?.minAttachments ?? 0,
+      maxAttachments: config?.maxAttachments ?? 10,
     });
+    setStep("description");
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "user", text: opt.label },
+      {
+        id: Date.now() + 1,
+        role: "bot",
+        text: config?.descriptionMessage || "Descreva o motivo:",
+      },
+    ]);
+  } else if (opt.action === "view_requests") {
+    try {
+      const res = await fetch(`${API_BASE}/requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      const requests = data.data || data || [];
 
-    const initialOptions = [
-        { label: ' Novo Requerimento', action: 'start_flow', icon: <FilePlus2 size={18}/> },
-        { label: ' Meus Pedidos', action: 'view_requests', icon: <ClipboardList size={18}/> }
-    ];
+      const statusMap: Record<string, string> = {
+        pending: "Pendente",
+        analyzing: "Em análise",
+        completed: "Concluído",
+        canceled: "Cancelado",
+        denied: "Negado",
+      };
 
-    useEffect(() => {
-        if (user) {
-            setMessages([{
-                id: 'init',
-                role: 'bot',
-                text: (
-  <span>
-    Olá, <strong className="text-[#2e7d32]">{user.name.split(' ')[0]}</strong>! Sou o Jacaréu. Como posso ajudar você hoje?
-  </span>
-),
-
-                options: initialOptions
-            }]);
-        }
-    }, [user]);
-
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, loading]);
-
-    const cancelFlow = () => {
-        setStep('idle');
-        setFiles([]);
-        setMessages(prev => [...prev, {
-            id: Date.now(),
-            role: 'bot',
-            text: "❌ Operação cancelada.",
-            options: initialOptions
-        }]);
-    };
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const selected = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...selected]);
-        }
-    };
-
-    const finalizeRequest = async (currentDescription?: string) => {
-        if (loading) return;
-
-        const finalDescription = currentDescription || tempData.description;
-        if (!finalDescription.trim()) {
-            console.error("Erro: descrição vazia");
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const documentIds: string[] = [];
-
-            // Upload de arquivos
-            if (files.length > 0) {
-                for (const file of files) {
-                    const formData = new FormData();
-                    formData.append("arquivo", file);
-
-                    const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${token}` },
-                        body: formData,
-                    });
-
-                    if (!uploadRes.ok) throw new Error("Erro no upload de arquivo");
-
-                    const uploadData = await uploadRes.json();
-                    documentIds.push(uploadData.id);
-                }
-            }
-
-            // Envio do requerimento
-            const payload = {
-                type_id: tempData.typeId,
-                subject: tempData.typeName,
-                description: finalDescription,
-                document_ids: documentIds,
-            };
-
-            const res = await fetch(`${API_BASE}/requests`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) {
-                const errorDetail = await res.json();
-                console.error("Erro detalhado:", errorDetail);
-                throw new Error("Erro ao enviar requerimento");
-            }
-
-            setMessages(prev => [
-                ...prev,
-                { id: Date.now(), role: "bot", text: `✅ Requerimento de "${tempData.typeName}" enviado com sucesso!` },
-                { id: Date.now() + 1, role: "bot", text: "Deseja realizar mais alguma operação?", options: initialOptions }
-            ]);
-
-            setStep("idle");
-            setFiles([]);
-            setTempData(prev => ({ ...prev, description: "" }));
-
-        } catch (error) {
-            setMessages(prev => [...prev, { id: Date.now(), role: "bot", text: "❌ Erro ao enviar. Tente novamente." }]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSendMessage = (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (!inputValue.trim() || step !== 'description') return;
-
-        const text = inputValue;
-        setInputValue("");
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', text }]);
-
-        setTempData(prev => ({ ...prev, description: text }));
-
-        if (tempData.minAttachments === 0) {
-            setStep('idle');
-            finalizeRequest(text);
-        } else {
-            setStep('waiting_file');
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                role: 'bot',
-                text: REQUEST_CONFIG[tempData.typeId]?.attachmentMessage || "📎 Por favor, anexe os documentos."
-            }]);
-        }
-    };
-
-    const handleAction = async (opt: any) => {
-        if (opt.action === 'start_flow') {
-            const res = await fetch(`${API_BASE}/type-requests`);
-            const data = await res.json();
-            setMessages(prev => [...prev, 
-                { id: Date.now(), role: 'user', text: opt.label },
-                { id: Date.now() + 1, role: 'bot', text: "Qual requerimento você deseja abrir?", 
-                  options: (data.data || data).map((t: any) => ({ label: t.name, value: t.id, action: 'select_type' })) 
-                }
-            ]);
-        } else if (opt.action === 'select_type') {
-            const config = REQUEST_CONFIG[opt.value];
-            setTempData({
-                typeId: opt.value,
-                typeName: opt.label,
-                description: "",
-                minAttachments: config?.minAttachments ?? 0,
-                maxAttachments: config?.maxAttachments ?? 10
-            });
-            setStep('description');
-            setMessages(prev => [...prev, 
-                { id: Date.now(), role: 'user', text: opt.label },
-                { id: Date.now() + 1, role: 'bot', text: config?.descriptionMessage || "Descreva o motivo:" }
-            ]);
-        }
-    };
-
-      return (
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), role: "user", text: opt.label },
+        {
+          id: Date.now() + 1,
+          role: "bot",
+          text: " Aqui estão seus pedidos:",
+          items: requests.map((req: any) => ({
+            subject: req.subject,
+            status: statusMap[req.status?.toLowerCase()] || req.status,
+          })),
+          options: initialOptions,
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), role: "bot", text: "❌ Não consegui carregar seus pedidos." },
+      ]);
+    }
+  }
+};
+return (
   <div className="flex flex-col h-[100dvh] bg-[#f0f2f5] font-sans text-lg">
     <main className="flex-1 overflow-y-auto p-6 space-y-6">
       {messages.map((msg) => (
-        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
-          {msg.role !== 'user' && (
+        <div
+          key={msg.id}
+          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-3`}
+        >
+          {msg.role !== "user" && (
             <div className="flex items-center gap-2 mb-1">
               <img
                 src="/jacareu.jpg"
@@ -280,13 +317,32 @@ export default function GuidedChatPage() {
 
           <div
             className={`p-4 rounded-md max-w-[80%] ${
-              msg.role === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-[#c8e6c9] text-[#2e7d32]'
+              msg.role === "user"
+                ? "bg-blue-600 text-white"
+                : "bg-[#c8e6c9] text-[#2e7d32]"
             }`}
           >
             {msg.text}
+            {/* Lista de pedidos */}
+            {msg.items && (
+              <ul className="mt-3 space-y-2">
+                {msg.items.map((req, i) => {
+                  let colorClass = "text-gray-600";
+                  if (req.status === "Concluído") colorClass = "text-green-600";
+                  else if (req.status === "Em análise") colorClass = "text-yellow-600";
+                  else if (req.status === "Negado") colorClass = "text-red-600";
 
+                  return (
+                    <li key={i} className="flex justify-between border-b pb-1 text-sm">
+                      <span>{req.subject}</span>
+                      <span className={`font-semibold ${colorClass}`}>{req.status}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* Botões dentro do chat */}
             {msg.options && (
               <div className="flex gap-3 mt-3 flex-wrap">
                 {msg.options.map((opt, i) => (
@@ -305,7 +361,9 @@ export default function GuidedChatPage() {
       ))}
 
       {files.length > 0 && (
-        <div className="text-xs text-gray-500 italic">📎 {files.length} arquivo(s) selecionado(s)</div>
+        <div className="text-xs text-gray-500 italic">
+          📎 {files.length} arquivo(s) selecionado(s)
+        </div>
       )}
 
       {loading && (
@@ -316,10 +374,9 @@ export default function GuidedChatPage() {
 
       <div ref={bottomRef} />
     </main>
-
-    <footer className="p-4 bg-white">
+    <footer className="p-4 bg-white shadow-inner">
       <form onSubmit={handleSendMessage} className="flex gap-3 items-center max-w-4xl mx-auto">
-        {step !== 'idle' && (
+        {step !== "idle" && (
           <button
             type="button"
             onClick={cancelFlow}
@@ -330,9 +387,15 @@ export default function GuidedChatPage() {
           </button>
         )}
 
-        {step === 'waiting_file' && (
+        {step === "waiting_file" && (
           <>
-            <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -357,14 +420,14 @@ export default function GuidedChatPage() {
         <input
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          disabled={step !== 'description'}
-          placeholder={step === 'waiting_file' ? 'Anexe os arquivos...' : 'Escreva aqui...'}
+          disabled={step !== "description"}
+          placeholder={step === "waiting_file" ? "Anexe os arquivos..." : "Escreva aqui..."}
           className="flex-1 border border-[#c8e6c9] rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-[#66bb6a] outline-none"
         />
 
         <button
           type="submit"
-          disabled={step !== 'description' || !inputValue.trim()}
+          disabled={step !== "description" || !inputValue.trim()}
           className="flex items-center gap-2 p-3 bg-[#2e7d32] text-white rounded-md hover:bg-[#1b5e20] disabled:bg-gray-300 font-bold"
         >
           <Send size={22} />
@@ -372,12 +435,18 @@ export default function GuidedChatPage() {
         </button>
       </form>
 
-      {/* Botões extras abaixo */}
+      {/* Botões fixos no rodapé */}
       <div className="flex gap-4 mt-6 justify-center">
-        <button className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]">
+        <button
+          onClick={() => handleAction({ action: "start_flow", label: " Novo Requerimento" })}
+          className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]"
+        >
           <FilePlus2 size={20} /> Novo Requerimento
         </button>
-        <button className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]">
+        <button
+          onClick={() => handleAction({ action: "view_requests", label: " Meus Pedidos" })}
+          className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]"
+        >
           <ClipboardList size={20} /> Meus Pedidos
         </button>
       </div>
