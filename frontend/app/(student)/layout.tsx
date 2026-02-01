@@ -67,7 +67,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   isAdmin ? "text-white" : "text-slate-700"
                 } font-bold text-lg group`} 
               >
-                <span>{user.name}</span>
+                {/* Nome do aluno em verde */}
+                <span className="text-[#108542]">{user.name}</span>
                 <ChevronDown
                   size={20}
                   className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}
@@ -90,9 +91,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     </div>
                   </div>
 
+                  {/* 🔹 Botão de sair em vermelho com texto branco */}
                   <button
                     onClick={() => { logout(); router.push("/login"); }}
-                    className="w-full py-4 bg-slate-800 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-red-500 transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-red-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
                   >
                     <LogOut size={14} /> Sair do Sistema
                   </button>

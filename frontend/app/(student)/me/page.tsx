@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Send, Paperclip, XCircle, Loader2 } from 'lucide-react';
+import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList } from 'lucide-react';
 
 const API_BASE = "http://127.0.0.1:8000/api";
 
@@ -74,7 +74,7 @@ const REQUEST_CONFIG: Record<string, {
 interface Message {
     id: string | number;
     role: 'bot' | 'user';
-    text: string;
+    text: | React.ReactNode;
     options?: any[];
 }
 
@@ -97,8 +97,8 @@ export default function GuidedChatPage() {
     });
 
     const initialOptions = [
-        { label: '📝 Novo Requerimento', action: 'start_flow' },
-        { label: '📂 Meus Pedidos', action: 'view_requests' }
+        { label: ' Novo Requerimento', action: 'start_flow', icon: <FilePlus2 size={18}/> },
+        { label: ' Meus Pedidos', action: 'view_requests', icon: <ClipboardList size={18}/> }
     ];
 
     useEffect(() => {
@@ -106,7 +106,12 @@ export default function GuidedChatPage() {
             setMessages([{
                 id: 'init',
                 role: 'bot',
-                text: `Olá, ${user.name.split(' ')[0]}! Sou a Stella. Como posso ajudar você hoje?`,
+                text: (
+  <span>
+    Olá, <strong className="text-[#2e7d32]">{user.name.split(' ')[0]}</strong>! Sou o Jacaréu. Como posso ajudar você hoje?
+  </span>
+),
+
                 options: initialOptions
             }]);
         }
@@ -127,53 +132,81 @@ export default function GuidedChatPage() {
         }]);
     };
 
-    const finalizeRequest = async () => {
-        if (loading) return;
-        setLoading(true);
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const selected = Array.from(e.target.files);
+            setFiles(prev => [...prev, ...selected]);
+        }
+    };
 
+    const finalizeRequest = async (currentDescription?: string) => {
+        if (loading) return;
+
+        const finalDescription = currentDescription || tempData.description;
+        if (!finalDescription.trim()) {
+            console.error("Erro: descrição vazia");
+            return;
+        }
+
+        setLoading(true);
         try {
             const documentIds: string[] = [];
 
-            // 1. Upload dos arquivos
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append("arquivo", file);
-                const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
-                    body: formData,
-                });
-                if (!uploadRes.ok) throw new Error("Falha no upload");
-                const uploadData = await uploadRes.json();
-                documentIds.push(uploadData.id);
+            // Upload de arquivos
+            if (files.length > 0) {
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append("arquivo", file);
+
+                    const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    });
+
+                    if (!uploadRes.ok) throw new Error("Erro no upload de arquivo");
+
+                    const uploadData = await uploadRes.json();
+                    documentIds.push(uploadData.id);
+                }
             }
 
-            // 2. Criação do Requerimento (Corrigido com SUBJECT)
+            // Envio do requerimento
+            const payload = {
+                type_id: tempData.typeId,
+                subject: tempData.typeName,
+                description: finalDescription,
+                document_ids: documentIds,
+            };
+
             const res = await fetch(`${API_BASE}/requests`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
                 },
-                body: JSON.stringify({
-                    type_id: tempData.typeId,
-                    subject: tempData.typeName, // O subject que o back exige
-                    description: tempData.description,
-                    document_ids: documentIds
-                }),
+                body: JSON.stringify(payload),
             });
 
-            if (!res.ok) throw new Error("Erro ao salvar requerimento");
+            if (!res.ok) {
+                const errorDetail = await res.json();
+                console.error("Erro detalhado:", errorDetail);
+                throw new Error("Erro ao enviar requerimento");
+            }
 
             setMessages(prev => [
                 ...prev,
-                { id: Date.now(), role: 'bot', text: `✅ Requerimento enviado com sucesso!` },
-                { id: Date.now() + 1, role: 'bot', text: "Mais alguma coisa?", options: initialOptions }
+                { id: Date.now(), role: "bot", text: `✅ Requerimento de "${tempData.typeName}" enviado com sucesso!` },
+                { id: Date.now() + 1, role: "bot", text: "Deseja realizar mais alguma operação?", options: initialOptions }
             ]);
-            setStep('idle');
+
+            setStep("idle");
             setFiles([]);
+            setTempData(prev => ({ ...prev, description: "" }));
+
         } catch (error) {
-            setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: "❌ Erro ao enviar. Verifique sua conexão ou os anexos." }]);
+            setMessages(prev => [...prev, { id: Date.now(), role: "bot", text: "❌ Erro ao enviar. Tente novamente." }]);
         } finally {
             setLoading(false);
         }
@@ -186,11 +219,12 @@ export default function GuidedChatPage() {
         const text = inputValue;
         setInputValue("");
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', text }]);
+
         setTempData(prev => ({ ...prev, description: text }));
 
         if (tempData.minAttachments === 0) {
             setStep('idle');
-            setTimeout(() => finalizeRequest(), 500);
+            finalizeRequest(text);
         } else {
             setStep('waiting_file');
             setMessages(prev => [...prev, {
@@ -228,74 +262,126 @@ export default function GuidedChatPage() {
         }
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const selected = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...selected]);
-        }
-    };
+      return (
+  <div className="flex flex-col h-[100dvh] bg-[#f0f2f5] font-sans text-lg">
+    <main className="flex-1 overflow-y-auto p-6 space-y-6">
+      {messages.map((msg) => (
+        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
+          {msg.role !== 'user' && (
+            <div className="flex items-center gap-2 mb-1">
+              <img
+                src="/jacareu.jpg"
+                alt="Jacaréu"
+                className="w-10 h-10 rounded-full border-2 border-[#2e7d32]"
+              />
+              <span className="text-[#2e7d32] font-bold">Jacaréu</span>
+            </div>
+          )}
 
-    return (
-        <div className="flex flex-col h-[100dvh] bg-[#f0f2f5]">
-            <main className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`p-3 rounded-xl max-w-[80%] ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border shadow-sm'}`}>
-                            {msg.text}
-                            {msg.options && (
-                                <div className="flex gap-2 mt-2 flex-wrap">
-                                    {msg.options.map((opt, i) => (
-                                        <button key={i} onClick={() => handleAction(opt)} className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full border hover:bg-gray-200">
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+          <div
+            className={`p-4 rounded-md max-w-[80%] ${
+              msg.role === 'user'
+                ? 'bg-blue-600 text-white'
+                : 'bg-[#c8e6c9] text-[#2e7d32]'
+            }`}
+          >
+            {msg.text}
+
+            {msg.options && (
+              <div className="flex gap-3 mt-3 flex-wrap">
+                {msg.options.map((opt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleAction(opt)}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#66bb6a] text-white text-sm rounded-md hover:bg-[#81c784]"
+                  >
+                    {opt.icon} {opt.label}
+                  </button>
                 ))}
-                {files.length > 0 && (
-                    <div className="text-xs text-gray-500 italic">
-                        📎 {files.length} arquivo(s) selecionado(s)
-                    </div>
-                )}
-                {loading && <div className="flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div>}
-                <div ref={bottomRef} />
-            </main>
-
-            <footer className="p-4 bg-white border-t">
-                <form onSubmit={handleSendMessage} className="flex gap-2 items-center max-w-4xl mx-auto">
-                    {step !== 'idle' && (
-                        <button type="button" onClick={cancelFlow} className="p-2 text-red-500"><XCircle /></button>
-                    )}
-
-                    {step === 'waiting_file' && (
-                        <>
-                            <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-blue-600">
-                                <Paperclip />
-                            </button>
-                            {files.length >= tempData.minAttachments && (
-                                <button type="button" onClick={finalizeRequest} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
-                                    Enviar {files.length} anexo(s)
-                                </button>
-                            )}
-                        </>
-                    )}
-
-                    <input
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        disabled={step !== 'description'}
-                        placeholder={step === 'waiting_file' ? "Anexe os arquivos..." : "Escreva aqui..."}
-                        className="flex-1 border rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-
-                    <button type="submit" disabled={step !== 'description' || !inputValue.trim()} className="p-2 bg-blue-600 text-white rounded-full disabled:bg-gray-300">
-                        <Send size={20} />
-                    </button>
-                </form>
-            </footer>
+              </div>
+            )}
+          </div>
         </div>
-    );
+      ))}
+
+      {files.length > 0 && (
+        <div className="text-xs text-gray-500 italic">📎 {files.length} arquivo(s) selecionado(s)</div>
+      )}
+
+      {loading && (
+        <div className="flex justify-center">
+          <Loader2 className="animate-spin text-[#2e7d32]" />
+        </div>
+      )}
+
+      <div ref={bottomRef} />
+    </main>
+
+    <footer className="p-4 bg-white">
+      <form onSubmit={handleSendMessage} className="flex gap-3 items-center max-w-4xl mx-auto">
+        {step !== 'idle' && (
+          <button
+            type="button"
+            onClick={cancelFlow}
+            className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 font-bold"
+          >
+            <XCircle size={22} />
+            Cancelar
+          </button>
+        )}
+
+        {step === 'waiting_file' && (
+          <>
+            <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-3 py-2 text-[#2e7d32] hover:text-[#1b5e20] font-bold"
+            >
+              <Paperclip size={22} />
+              Anexar
+            </button>
+
+            {files.length >= tempData.minAttachments && (
+              <button
+                type="button"
+                onClick={() => finalizeRequest(tempData.description)}
+                className="flex items-center gap-2 px-5 py-2 bg-[#2e7d32] text-white rounded-md text-sm font-bold hover:bg-[#1b5e20]"
+              >
+                Enviar {files.length} anexo(s)
+              </button>
+            )}
+          </>
+        )}
+
+        <input
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          disabled={step !== 'description'}
+          placeholder={step === 'waiting_file' ? 'Anexe os arquivos...' : 'Escreva aqui...'}
+          className="flex-1 border border-[#c8e6c9] rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-[#66bb6a] outline-none"
+        />
+
+        <button
+          type="submit"
+          disabled={step !== 'description' || !inputValue.trim()}
+          className="flex items-center gap-2 p-3 bg-[#2e7d32] text-white rounded-md hover:bg-[#1b5e20] disabled:bg-gray-300 font-bold"
+        >
+          <Send size={22} />
+          Enviar
+        </button>
+      </form>
+
+      {/* Botões extras abaixo */}
+      <div className="flex gap-4 mt-6 justify-center">
+        <button className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]">
+          <FilePlus2 size={20} /> Novo Requerimento
+        </button>
+        <button className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]">
+          <ClipboardList size={20} /> Meus Pedidos
+        </button>
+      </div>
+    </footer>
+  </div>
+);
 }
