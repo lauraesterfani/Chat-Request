@@ -7,68 +7,68 @@ import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList } from 'luc
 const API_BASE = "http://127.0.0.1:8000/api";
 
 const REQUEST_CONFIG: Record<string, {
-    descriptionMessage: string;
-    attachmentMessage?: string;
-    minAttachments?: number;
-    maxAttachments?: number;
+  descriptionMessage: string;
+  attachmentMessage?: string;
+  minAttachments?: number;
+  maxAttachments?: number;
 }> = {
-    "c79f4dd0-8a1c-4ec3-ae1c-a9c3c24a3a13": {
-        descriptionMessage: "Descreva o motivo da justificativa de falta.",
-        attachmentMessage: "📎 Anexe o(s) atestado(s) médico(s) ou declaração.",
-        minAttachments: 1,
-        maxAttachments: 10
-    },
-    "ffcd16ff-2268-4a59-84c7-c083854a5541": {
-        descriptionMessage: "Explique o motivo da solicitação de Trancamento de Matricula.",
-    },
-    "49e153cc-f9d0-43e3-ad41-70c618c2f23f": {
-        descriptionMessage: "Explique o motivo da solicitação de Ajuste de Matrícula Semestral.",
-    },
-    "55307bb1-a5ef-4db2-99ca-0e57124655a8": {
-        descriptionMessage: "Explique o motivo da solicitação de Autorização para cursar em outra IES.",
-    },
-    "abb3412c-5089-4103-b99e-aace5a2dcfcf": {
-        descriptionMessage: "Explique o motivo da solicitação de Cancelamento de Matrícula.",
-    },
-    "f004abae-8f69-463e-bce1-973119fedcf8": {
-        descriptionMessage: "Explique o motivo da solicitação da Declaração de Matrícula / Vínculo",
-    },
-    "abcfa491-e9d5-411d-97d9-00ec82646ee3": {
-        descriptionMessage: "Explique o motivo da solicitação.",
-        attachmentMessage: "📎 Para a transferência, por favor anexe os documentos necessários (atestado médico ou Declaração de Unidade Militar).",
-        minAttachments: 1,
-        maxAttachments: 10
-    },
-    "3854d826-5b4f-4df7-8004-463c941a1bc5": {
-        descriptionMessage: "Digite o ano e o semestre para Diploma / Certificado de Conclusão. Ex: 2019.1",
-    },
-    "f00a8cf5-80e6-405d-86ce-22aa3ab3d0c0": { 
-        descriptionMessage: "Explique o motivo da solicitação.",
-        attachmentMessage: "📎 Para a Dispensa Prática, por favor anexe os documentos necessários (atestado médico ou Declaração de Unidade Militar).",
-        minAttachments: 1,
-        maxAttachments: 10
-    },
-    "8fcb51b8-ac47-4bd5-acbf-2b34dc4ca64f": {
-        descriptionMessage: "Especifique qual cadeira deseja para a Ementa de Disciplina. Ex: Cálculo I",
-    },
-    "92ac7b65-a291-4d31-a78b-d7d963a28f6d": {
-        descriptionMessage: "Explique o motivo da solicitação da Guia de Transferência.",
-    },
-    "83d615b3-a13c-4fc9-ab25-0fabfb1a5e5ce": {
-        descriptionMessage: "Digite o ano e o semestre para o Histórico Escolar. Ex: 2019.1",
-    },
-    "60f403cb-a100-4619-b7e8-bb1180897418": {
-        descriptionMessage: "Explique o motivo da solicitação.",
-        attachmentMessage: "📎 Para Isenção de Disciplinas, anexe Histórico Escolar (Original) e Ementas das disciplinas cursadas.",
-        minAttachments: 1,
-        maxAttachments: 10
-    },
-    "f09e9bbf-a4fb-48af-a7de-34a28bc34211": {
-        descriptionMessage: "Explique o motivo da solicitação da Reabertura de Matrícula.",
-    },
-    "de20efff-e610-48be-b9aa-c45da0ca59fa": {
-        descriptionMessage: "Explique o motivo da solicitação da Revisão de Nota ou Faltas.",
-    },
+  "c79f4dd0-8a1c-4ec3-ae1c-a9c3c24a3a13": {
+    descriptionMessage: "Descreva o motivo da justificativa de falta.",
+    attachmentMessage: "📎 Anexe o(s) atestado(s) médico(s) ou declaração.",
+    minAttachments: 1,
+    maxAttachments: 10
+  },
+  "ffcd16ff-2268-4a59-84c7-c083854a5541": {
+    descriptionMessage: "Explique o motivo da solicitação de Trancamento de Matricula.",
+  },
+  "49e153cc-f9d0-43e3-ad41-70c618c2f23f": {
+    descriptionMessage: "Explique o motivo da solicitação de Ajuste de Matrícula Semestral.",
+  },
+  "55307bb1-a5ef-4db2-99ca-0e57124655a8": {
+    descriptionMessage: "Explique o motivo da solicitação de Autorização para cursar em outra IES.",
+  },
+  "abb3412c-5089-4103-b99e-aace5a2dcfcf": {
+    descriptionMessage: "Explique o motivo da solicitação de Cancelamento de Matrícula.",
+  },
+  "f004abae-8f69-463e-bce1-973119fedcf8": {
+    descriptionMessage: "Explique o motivo da solicitação da Declaração de Matrícula / Vínculo",
+  },
+  "abcfa491-e9d5-411d-97d9-00ec82646ee3": {
+    descriptionMessage: "Explique o motivo da solicitação.",
+    attachmentMessage: "📎 Para a transferência, por favor anexe os documentos necessários (atestado médico ou Declaração de Unidade Militar).",
+    minAttachments: 1,
+    maxAttachments: 10
+  },
+  "3854d826-5b4f-4df7-8004-463c941a1bc5": {
+    descriptionMessage: "Digite o ano e o semestre para Diploma / Certificado de Conclusão. Ex: 2019.1",
+  },
+  "f00a8cf5-80e6-405d-86ce-22aa3ab3d0c0": {
+    descriptionMessage: "Explique o motivo da solicitação.",
+    attachmentMessage: "📎 Para a Dispensa Prática, por favor anexe os documentos necessários (atestado médico ou Declaração de Unidade Militar).",
+    minAttachments: 1,
+    maxAttachments: 10
+  },
+  "8fcb51b8-ac47-4bd5-acbf-2b34dc4ca64f": {
+    descriptionMessage: "Especifique qual cadeira deseja para a Ementa de Disciplina. Ex: Cálculo I",
+  },
+  "92ac7b65-a291-4d31-a78b-d7d963a28f6d": {
+    descriptionMessage: "Explique o motivo da solicitação da Guia de Transferência.",
+  },
+  "83d615b3-a13c-4fc9-ab25-0fabfb1a5e5ce": {
+    descriptionMessage: "Digite o ano e o semestre para o Histórico Escolar. Ex: 2019.1",
+  },
+  "60f403cb-a100-4619-b7e8-bb1180897418": {
+    descriptionMessage: "Explique o motivo da solicitação.",
+    attachmentMessage: "📎 Para Isenção de Disciplinas, anexe Histórico Escolar (Original) e Ementas das disciplinas cursadas.",
+    minAttachments: 1,
+    maxAttachments: 10
+  },
+  "f09e9bbf-a4fb-48af-a7de-34a28bc34211": {
+    descriptionMessage: "Explique o motivo da solicitação da Reabertura de Matrícula.",
+  },
+  "de20efff-e610-48be-b9aa-c45da0ca59fa": {
+    descriptionMessage: "Explique o motivo da solicitação da Revisão de Nota ou Faltas.",
+  },
 };
 
 interface Message {
@@ -221,58 +221,9 @@ export default function GuidedChatPage() {
     }
   };
   const handleAction = async (opt: any) => {
-  if (opt.action === "start_flow") {
-    const res = await fetch(`${API_BASE}/type-requests`);
-    const data = await res.json();
-
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "user", text: opt.label },
-      {
-        id: Date.now() + 1,
-        role: "bot",
-        text: "Qual requerimento você deseja abrir?",
-        options: (data.data || data || []).map((t: any) => ({
-          label: t.name,
-          value: t.id,
-          action: "select_type",
-        })),
-      },
-    ]);
-  } else if (opt.action === "select_type") {
-    const config = REQUEST_CONFIG[opt.value];
-    setTempData({
-      typeId: opt.value,
-      typeName: opt.label,
-      description: "",
-      minAttachments: config?.minAttachments ?? 0,
-      maxAttachments: config?.maxAttachments ?? 10,
-    });
-    setStep("description");
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "user", text: opt.label },
-      {
-        id: Date.now() + 1,
-        role: "bot",
-        text: config?.descriptionMessage || "Descreva o motivo:",
-      },
-    ]);
-  } else if (opt.action === "view_requests") {
-    try {
-      const res = await fetch(`${API_BASE}/requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    if (opt.action === "start_flow") {
+      const res = await fetch(`${API_BASE}/type-requests`);
       const data = await res.json();
-      const requests = data.data || data || [];
-
-      const statusMap: Record<string, string> = {
-        pending: "Pendente",
-        analyzing: "Em análise",
-        completed: "Concluído",
-        canceled: "Cancelado",
-        denied: "Negado",
-      };
 
       setMessages((prev) => [
         ...prev,
@@ -280,177 +231,236 @@ export default function GuidedChatPage() {
         {
           id: Date.now() + 1,
           role: "bot",
-          text: " Aqui estão seus pedidos:",
-          items: requests.map((req: any) => ({
-            subject: req.subject,
-            status: statusMap[req.status?.toLowerCase()] || req.status,
+          text: "Qual requerimento você deseja abrir?",
+          options: (data.data || data || []).map((t: any) => ({
+            label: t.name,
+            value: t.id,
+            action: "select_type",
           })),
-          options: initialOptions,
         },
       ]);
-    } catch {
+    } else if (opt.action === "select_type") {
+      const config = REQUEST_CONFIG[opt.value];
+      setTempData({
+        typeId: opt.value,
+        typeName: opt.label,
+        description: "",
+        minAttachments: config?.minAttachments ?? 0,
+        maxAttachments: config?.maxAttachments ?? 10,
+      });
+      setStep("description");
       setMessages((prev) => [
         ...prev,
-        { id: Date.now(), role: "bot", text: "❌ Não consegui carregar seus pedidos." },
+        { id: Date.now(), role: "user", text: opt.label },
+        {
+          id: Date.now() + 1,
+          role: "bot",
+          text: config?.descriptionMessage || "Descreva o motivo:",
+        },
       ]);
+    } else if (opt.action === "view_requests") {
+      try {
+        const res = await fetch(`${API_BASE}/requests`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const requests = data.data || data || [];
+
+        const statusMap: Record<string, string> = {
+          pending: "Pendente",
+          analyzing: "Em análise",
+          completed: "Concluído",
+          canceled: "Cancelado",
+          denied: "Negado",
+        };
+
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now(), role: "user", text: opt.label },
+          {
+            id: Date.now() + 1,
+            role: "bot",
+            text: " Aqui estão seus pedidos:",
+            items: requests.map((req: any) => ({
+              subject: req.subject,
+              status: statusMap[req.status?.toLowerCase()] || req.status,
+            })),
+            options: initialOptions,
+          },
+        ]);
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now(), role: "bot", text: "❌ Não consegui carregar seus pedidos." },
+        ]);
+      }
     }
-  }
-};
-return (
-  <div className="flex flex-col h-[100dvh] bg-[#f0f2f5] font-sans text-lg">
-    <main className="flex-1 overflow-y-auto p-6 space-y-6">
-      {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-3`}
-        >
-          {msg.role !== "user" && (
-            <div className="flex items-center gap-2 mb-1">
-              <img
-                src="/jacareu.jpg"
-                alt="Jacaréu"
-                className="w-10 h-10 rounded-full border-2 border-[#2e7d32]"
-              />
-              <span className="text-[#2e7d32] font-bold">Jacaréu</span>
-            </div>
-          )}
-
+  };
+  return (
+    <div className="flex flex-col h-[100dvh] bg-[#f0f2f5] font-sans text-lg">
+      <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        {messages.map((msg) => (
           <div
-            className={`p-4 rounded-md max-w-[80%] ${
-              msg.role === "user"
-                ? "bg-blue-600 text-white"
-                : "bg-[#c8e6c9] text-[#2e7d32]"
-            }`}
+            key={msg.id}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-3`}
           >
-            {msg.text}
-            {/* Lista de pedidos */}
-            {msg.items && (
-              <ul className="mt-3 space-y-2">
-                {msg.items.map((req, i) => {
-                  let colorClass = "text-gray-600";
-                  if (req.status === "Concluído") colorClass = "text-green-600";
-                  else if (req.status === "Em análise") colorClass = "text-yellow-600";
-                  else if (req.status === "Negado") colorClass = "text-red-600";
-
-                  return (
-                    <li key={i} className="flex justify-between border-b pb-1 text-sm">
-                      <span>{req.subject}</span>
-                      <span className={`font-semibold ${colorClass}`}>{req.status}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
-            {/* Botões dentro do chat */}
-            {msg.options && (
-              <div className="flex gap-3 mt-3 flex-wrap">
-                {msg.options.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleAction(opt)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#66bb6a] text-white text-sm rounded-md hover:bg-[#81c784]"
-                  >
-                    {opt.icon} {opt.label}
-                  </button>
-                ))}
+            {msg.role !== "user" && (
+              <div className="flex items-center gap-2 mb-1">
+                <img
+                  src="/jacareu.jpg"
+                  alt="Jacaréu"
+                  className="w-10 h-10 rounded-full border-2 border-[#108542]"
+                />
+                <span className="text-[#108542] font-bold">Jacaréu</span>
               </div>
             )}
+
+            <div
+              className={`p-4 rounded-md max-w-[80%] ${msg.role === "user"
+                  ? "bg-blue-600 text-white"
+                  : "bg-[#c8e6c9] text-[108542]"
+                }`}
+            >
+              {msg.text}
+              {/* Lista de pedidos */}
+              {msg.items && (
+                <ul className="mt-3 space-y-2">
+                  {msg.items.map((req, i) => {
+                    // Definimos as classes base para o badge (espaçamento, borda, arredondamento)
+                    let colorClass = "px-2 py-0.5 rounded-full border text-xs font-semibold ";
+
+                    // Aplica as cores exatas que você definiu no outro objeto
+                    if (req.status === "Concluído") {
+                      colorClass += "bg-green-100 text-green-700 border-green-200";
+                    } else if (req.status === "Em análise") {
+                      colorClass += "bg-yellow-100 text-yellow-700 border-yellow-200";
+                    } else if (req.status === "Negado" || req.status === "Pendente") {
+                      colorClass += "bg-red-100 text-red-700 border-red-200";
+                    } else {
+                      colorClass += "bg-gray-200 text-gray-800 border-gray-300"; // Fallback para outros/cancelado
+                    }
+
+                    return (
+                      <li key={i} className="flex justify-between items-center border-b border-gray-50 pb-2 text-sm">
+                        <span className="text-gray-700 font-medium">{req.subject}</span>
+                        <span className={colorClass}>
+                          {req.status}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {/* Botões dentro do chat */}
+              {msg.options && (
+                <div className="flex gap-3 mt-3 flex-wrap">
+                  {msg.options.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleAction(opt)}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#108542] text-white text-sm rounded-md hover:bg-[#81c784]"
+                    >
+                      {opt.icon} {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
-      {files.length > 0 && (
-        <div className="text-xs text-gray-500 italic">
-          📎 {files.length} arquivo(s) selecionado(s)
-        </div>
-      )}
-
-      {loading && (
-        <div className="flex justify-center">
-          <Loader2 className="animate-spin text-[#2e7d32]" />
-        </div>
-      )}
-
-      <div ref={bottomRef} />
-    </main>
-    <footer className="p-4 bg-white shadow-inner">
-      <form onSubmit={handleSendMessage} className="flex gap-3 items-center max-w-4xl mx-auto">
-        {step !== "idle" && (
-          <button
-            type="button"
-            onClick={cancelFlow}
-            className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 font-bold"
-          >
-            <XCircle size={22} />
-            Cancelar
-          </button>
+        {files.length > 0 && (
+          <div className="text-xs text-gray-500 italic">
+            📎 {files.length} arquivo(s) selecionado(s)
+          </div>
         )}
 
-        {step === "waiting_file" && (
-          <>
-            <input
-              type="file"
-              ref={fileInputRef}
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-            />
+        {loading && (
+          <div className="flex justify-center">
+            <Loader2 className="animate-spin text-[#2e7d32]" />
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </main>
+      <footer className="p-4 bg-white shadow-inner">
+        <form onSubmit={handleSendMessage} className="flex gap-3 items-center max-w-4xl mx-auto">
+          {step !== "idle" && (
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-3 py-2 text-[#2e7d32] hover:text-[#1b5e20] font-bold"
+              onClick={cancelFlow}
+              className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 font-bold"
             >
-              <Paperclip size={22} />
-              Anexar
+              <XCircle size={22} />
+              Cancelar
             </button>
+          )}
 
-            {files.length >= tempData.minAttachments && (
+          {step === "waiting_file" && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
               <button
                 type="button"
-                onClick={() => finalizeRequest(tempData.description)}
-                className="flex items-center gap-2 px-5 py-2 bg-[#2e7d32] text-white rounded-md text-sm font-bold hover:bg-[#1b5e20]"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-2 text-[#2e7d32] hover:text-[#1b5e20] font-bold"
               >
-                Enviar {files.length} anexo(s)
+                <Paperclip size={22} />
+                Anexar
               </button>
-            )}
-          </>
-        )}
 
-        <input
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          disabled={step !== "description"}
-          placeholder={step === "waiting_file" ? "Anexe os arquivos..." : "Escreva aqui..."}
-          className="flex-1 border border-[#c8e6c9] rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-[#66bb6a] outline-none"
-        />
+              {files.length >= tempData.minAttachments && (
+                <button
+                  type="button"
+                  onClick={() => finalizeRequest(tempData.description)}
+                  className="flex items-center gap-2 px-5 py-2 bg-[#108542] text-white rounded-md text-sm font-bold hover:bg-[#1b5e20]"
+                >
+                  Enviar {files.length} anexo(s)
+                </button>
+              )}
+            </>
+          )}
 
-        <button
-          type="submit"
-          disabled={step !== "description" || !inputValue.trim()}
-          className="flex items-center gap-2 p-3 bg-[#2e7d32] text-white rounded-md hover:bg-[#1b5e20] disabled:bg-gray-300 font-bold"
-        >
-          <Send size={22} />
-          Enviar
-        </button>
-      </form>
+          <input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            disabled={step !== "description"}
+            placeholder={step === "waiting_file" ? "Anexe os arquivos..." : "Escreva aqui..."}
+            className="flex-1 border border-[#c8e6c9] rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-[#66bb6a] outline-none"
+          />
 
-      {/* Botões fixos no rodapé */}
-      <div className="flex gap-4 mt-6 justify-center">
-        <button
-          onClick={() => handleAction({ action: "start_flow", label: " Novo Requerimento" })}
-          className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]"
-        >
-          <FilePlus2 size={20} /> Novo Requerimento
-        </button>
-        <button
-          onClick={() => handleAction({ action: "view_requests", label: " Meus Pedidos" })}
-          className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]"
-        >
-          <ClipboardList size={20} /> Meus Pedidos
-        </button>
-      </div>
-    </footer>
-  </div>
-);
+          <button
+            type="submit"
+            disabled={step !== "description" || !inputValue.trim()}
+            className="flex items-center gap-2 p-3 bg-[#108542] text-white rounded-md hover:bg-[#1b5e20] disabled:bg-gray-300 font-bold"
+          >
+            <Send size={22} />
+            Enviar
+          </button>
+        </form>
+
+        {/* Botões fixos no rodapé */}
+        <div className="flex gap-4 mt-6 justify-center">
+          <button
+            onClick={() => handleAction({ action: "start_flow", label: " Novo Requerimento" })}
+            className="flex items-center gap-2 px-6 py-3 bg-[#108542] text-white font-bold rounded-md hover:bg-[#81c784]"
+          >
+            <FilePlus2 size={20} /> Novo Requerimento
+          </button>
+          <button
+            onClick={() => handleAction({ action: "view_requests", label: " Meus Pedidos" })}
+            className="flex items-center gap-2 px-6 py-3 bg-[#108542] text-white font-bold rounded-md hover:bg-[#81c784]"
+          >
+            <ClipboardList size={20} /> Meus Pedidos
+          </button>
+        </div>
+      </footer>
+    </div>
+  );
 }
