@@ -4,15 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use App\Models\User; // Certifique-se de que o modelo User está importado
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
     /**
-     * Lidar com o processo de login usando CPF e Password.
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     * @throws \Illuminate\Validation\ValidationException
+     * Login usando CPF e senha (para alunos e admins).
      */
     public function login(Request $request)
     {
@@ -23,92 +21,106 @@ class AuthController extends Controller
 
         $credentials = $request->only('cpf', 'password');
 
-        // 1. Tentar autenticar o usuário e gerar o token JWT no guard 'api'
         $token = auth('api')->attempt($credentials);
 
-        // 2. Se a autenticação falhar
         if (!$token) {
             throw ValidationException::withMessages([
                 'cpf' => [__('Credenciais inválidas. Verifique o CPF e a senha.')],
             ]);
         }
 
-        // 3. Se a autenticação for bem-sucedida, o token foi gerado.
-        
-        // 4. Obter o objeto User do guard.
-        $user = auth('api')->user(); 
-        
-        // Verificação de segurança: Se, por alguma razão, o user ainda for null, 
-        // procuramos o utilizador manualmente pelo CPF.
+        $user = auth('api')->user();
+
         if (!$user) {
             $user = User::where('cpf', $request->cpf)->first();
         }
 
-        // 5. Retornar a resposta JSON
         return response()->json([
-            'user' => $user, 
-            'token' => $token, 
+            'user' => [
+                'id'    => $user->id,
+                'name'  => $user->name,
+                'email' => $user->email,
+                'role'  => $user->role, // 🔑 importante para o frontend
+            ],
+            'token' => $token,
             'message' => 'Login bem-sucedido.',
-            'expires_in' => auth('api')->factory()->getTTL() * 60, 
+            'expires_in' => auth('api')->factory()->getTTL() * 60,
         ], 200);
     }
-    
-    /**
-     * Get the authenticated User's details.
-     * Esta função é usada pela rota /api/me para verificar a sessão (o token JWT).
-     * O middleware 'auth:api' garante que o token é válido antes de chamar este método.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function me()
-    {
-        // O Laravel (com JWT-Auth) detetou o utilizador pelo token.
-        // auth('api')->user() retorna o objeto do utilizador.
-        $user = auth('api')->user(); 
 
-        if (!$user) {
-            // Isto não deveria acontecer, pois a rota está protegida pelo middleware 'auth:api'.
-            return response()->json(['message' => 'Token inválido ou expirado.'], 401);
+    /**
+     * Login administrativo (staff/admin via email).
+     */
+    public function loginStaff(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $credentials = $request->only('email', 'password');
+
+        $token = auth('api')->attempt($credentials);
+
+        if (!$token) {
+            throw ValidationException::withMessages([
+                'email' => ['Credenciais inválidas.'],
+            ]);
         }
 
-        // Retorna os dados do utilizador.
-        return response()->json($user);
-    }
-    public function loginStaff(Request $request)
-{
-    $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required', 'string'],
-    ]);
+        $user = auth('api')->user();
 
-    $credentials = $request->only('email', 'password');
+        // Bloqueia aluno
+        if ($user->role === 'student') {
+            return response()->json([
+                'message' => 'Acesso negado. Apenas staff ou admin.'
+            ], 403);
+        }
 
-    $token = auth('api')->attempt($credentials);
-
-    if (!$token) {
-        throw ValidationException::withMessages([
-            'email' => ['Credenciais inválidas.'],
+        return response()->json([
+            'user' => [
+                'id'    => $user->id,
+                'name'  => $user->name,
+                'email' => $user->email,
+                'role'  => $user->role,
+            ],
+            'token' => $token,
+            'message' => 'Login administrativo realizado com sucesso.',
+            'expires_in' => auth('api')->factory()->getTTL() * 60,
         ]);
     }
 
-    $user = auth('api')->user();
+    /**
+     * Retorna dados do usuário autenticado.
+     */
+    public function me()
+    {
+        $user = auth('api')->user();
 
-    // Segurança extra: bloqueia aluno
-    if ($user->role === 'student') {
-        return response()->json([
-            'message' => 'Acesso negado. Apenas staff ou admin.'
-        ], 403);
+        if (!$user) {
+            return response()->json(['message' => 'Token inválido ou expirado.'], 401);
+        }
+
+        return response()->json($user);
     }
 
-    return response()->json([
-        'user' => $user,
-        'token' => $token,
-        'message' => 'Login administrativo realizado com sucesso.',
-    ]);
-}
+    /**
+     * Logout.
+     */
+    public function logout()
+    {
+        auth('api')->logout();
+        return response()->json(['message' => 'Logout realizado com sucesso.']);
+    }
 
-    
-    // NOTA: Os métodos 'logout', 'refresh' e 'changeEnrollment' estão em falta 
-    // neste ficheiro, mas não causaram o erro atual. Se estiverem noutro local, 
-    // certifique-se de que estão a funcionar. O erro atual foi apenas por causa do 'me()'.
+    /**
+     * Refresh token.
+     */
+    public function refresh()
+    {
+        return response()->json([
+            'token' => auth('api')->refresh(),
+            'expires_in' => auth('api')->factory()->getTTL() * 60,
+        ]);
+    }
 }

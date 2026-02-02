@@ -58,9 +58,9 @@ export default function CradtLoginPage() {
       
       // Redireciona para o dashboard administrativo
      if (data.user.role === 'admin') {
-      router.push('/dashboard/admin'); // Admin vai para o dashboard principal
+      router.push('/request'); // Admin vai para o dashboard principal
     } else if (data.user.role === 'staff') {
-      router.push('/dashboard/staff'); // Staff também vai para o dashboard
+      router.push('/dashboard/admin'); // Staff também vai para o dashboard
     } else {
   router.push('/dashboard'); // alunos
 }

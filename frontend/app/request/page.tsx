@@ -12,6 +12,9 @@ export default function RequestListPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
+  // 🔹 Pegando o role do usuário armazenado no login
+  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+
   useEffect(() => {
     const fetchRequests = async () => {
       const token = localStorage.getItem("jwt_token");
@@ -44,31 +47,30 @@ export default function RequestListPage() {
   );
 
   const getStatusBadge = (status: string) => {
-  const map: any = {
-    pending: "bg-red-100 text-red-700 border-red-200",       // Pendente → vermelho suave
-    analyzing: "bg-yellow-100 text-yellow-700 border-yellow-200", // Em análise → amarelo/laranja suave
-    completed: "bg-green-100 text-green-700 border-green-200",    // Deferido → verde suave
-    canceled: "bg-gray-200 text-gray-800 border-gray-300",        // Indeferido → preto/cinza suave
+    const map: any = {
+      pending: "bg-red-100 text-red-700 border-red-200",
+      analyzing: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      completed: "bg-green-100 text-green-700 border-green-200",
+      canceled: "bg-gray-200 text-gray-800 border-gray-300",
+    };
+
+    const labels: any = {
+      pending: "Pendente",
+      analyzing: "Em Análise",
+      completed: "Deferido",
+      canceled: "Indeferido",
+    };
+
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-bold border ${
+          map[status] || "bg-gray-100 text-gray-600"
+        }`}
+      >
+        {labels[status] || status}
+      </span>
+    );
   };
-
-  const labels: any = {
-    pending: "Pendente",
-    analyzing: "Em Análise",
-    completed: "Deferido",
-    canceled: "Indeferido",
-  };
-
-  return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-bold border ${
-        map[status] || "bg-gray-100 text-gray-600"
-      }`}
-    >
-      {labels[status] || status}
-    </span>
-  );
-};
-
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans">
@@ -76,26 +78,25 @@ export default function RequestListPage() {
         {/* Cabeçalho */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.back()}
-              className="p-2 hover:bg-[#E8F0FE] rounded-full transition flex items-center justify-center"
-            >
-              {/* Ícone de seta azul */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-[#1A73E8]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+            {/* 🔹 Botão de voltar só aparece para STAFF */}
+            {role === "staff" && (
+              <button
+                onClick={() => router.push("/dashboard/admin")}
+                className="p-2 hover:bg-[#E8F0FE] rounded-full transition flex items-center justify-center"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-[#1A73E8]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
                 Central de Requerimentos
@@ -149,17 +150,16 @@ export default function RequestListPage() {
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold
-                                    ${
-                                      req.user?.role === "admin"
-                                        ? "bg-[#E8F0FE] text-[#1A73E8]"
-                                        : "bg-gray-100 text-gray-600"
-                                    }
-                                `}
+                        ${
+                          req.user?.role === "admin"
+                            ? "bg-[#E8F0FE] text-[#1A73E8]"
+                            : "bg-gray-100 text-gray-600"
+                        }
+                      `}
                     >
                       {req.user?.name?.charAt(0) || "?"}
                     </div>
                     <div>
-                      {/* Agora mostra o tipo de requerimento em destaque */}
                       <h3 className="font-bold text-gray-800 group-hover:text-[#1A73E8] transition">
                         {req.type?.name || "Tipo não informado"}
                       </h3>
