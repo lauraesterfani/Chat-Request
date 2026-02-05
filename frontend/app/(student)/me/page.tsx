@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList } from 'lucide-react';
+import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList, CheckCircle2 } from 'lucide-react';
 
 const API_BASE = "http://127.0.0.1:8000/api";
 
@@ -10,447 +10,448 @@ const REQUEST_CONFIG: Record<string, {
     descriptionMessage: string;
     attachmentMessage?: string;
     minAttachments?: number;
-    maxAttachments?: number;
 }> = {
-    "c79f4dd0-8a1c-4ec3-ae1c-a9c3c24a3a13": {
-        descriptionMessage: "Descreva o motivo da justificativa de falta.",
-        attachmentMessage: "📎 Anexe o(s) atestado(s) médico(s) ou declaração.",
-        minAttachments: 1,
-        maxAttachments: 10
+    "Admissão por Transferência e Análise Curricular (anexos) - Solicitação no Protocolo Geral": {
+        descriptionMessage: "Relate os detalhes da transferência e análise curricular desejada.",
+        attachmentMessage: "📎 Anexe: Declaração de Transferência, Históricos e Ementas das disciplinas. (c, f, g, h, i, a)",
+        minAttachments: 1
     },
-    "ffcd16ff-2268-4a59-84c7-c083854a5541": {
-        descriptionMessage: "Explique o motivo da solicitação de Trancamento de Matricula.",
+    "Ajuste de Matrícula Semestral": {
+        descriptionMessage: "Descreva as inclusões ou exclusões de disciplinas para o semestre.",
     },
-    "49e153cc-f9d0-43e3-ad41-70c618c2f23f": {
-        descriptionMessage: "Explique o motivo da solicitação de Ajuste de Matrícula Semestral.",
+    "Autorização para cursar disciplinas em outras Instituições de Ensino Superior (especifique)": {
+        descriptionMessage: "Especifique a Instituição e as disciplinas que deseja cursar.",
     },
-    "55307bb1-a5ef-4db2-99ca-0e57124655a8": {
-        descriptionMessage: "Explique o motivo da solicitação de Autorização para cursar em outra IES.",
+    "Cancelamento de Matrícula": {
+        descriptionMessage: "Informe o motivo do cancelamento definitivo do vínculo.",
     },
-    "abb3412c-5089-4103-b99e-aace5a2dcfcf": {
-        descriptionMessage: "Explique o motivo da solicitação de Cancelamento de Matrícula.",
+    "Cancelamento de Disciplina (especifique)": {
+        descriptionMessage: "Especifique o nome da disciplina que deseja cancelar.",
     },
-    "f004abae-8f69-463e-bce1-973119fedcf8": {
-        descriptionMessage: "Explique o motivo da solicitação da Declaração de Matrícula / Vínculo",
+    "Certificado de Conclusão - Ano ( ) Semestre ( )": {
+        descriptionMessage: "Informe o Ano e o Semestre de conclusão do curso.",
     },
-    "abcfa491-e9d5-411d-97d9-00ec82646ee3": {
-        descriptionMessage: "Explique o motivo da solicitação.",
-        attachmentMessage: "📎 Para a transferência, por favor anexe os documentos necessários (atestado médico ou Declaração de Unidade Militar).",
-        minAttachments: 1,
-        maxAttachments: 10
+    "Certidão - Autenticidade (especifique)": {
+        descriptionMessage: "Especifique o documento para o qual deseja a certidão de autenticidade.",
     },
-    "3854d826-5b4f-4df7-8004-463c941a1bc5": {
-        descriptionMessage: "Digite o ano e o semestre para Diploma / Certificado de Conclusão. Ex: 2019.1",
+    "Complementação de Matrícula (especifique)": {
+        descriptionMessage: "Especifique as disciplinas para complementação.",
     },
-    "f00a8cf5-80e6-405d-86ce-22aa3ab3d0c0": { 
-        descriptionMessage: "Explique o motivo da solicitação.",
-        attachmentMessage: "📎 Para a Dispensa Prática, por favor anexe os documentos necessários (atestado médico ou Declaração de Unidade Militar).",
-        minAttachments: 1,
-        maxAttachments: 10
+    "Cópia Xerox de Documento (especifique)": {
+        descriptionMessage: "Especifique qual documento você deseja a cópia.",
     },
-    "8fcb51b8-ac47-4bd5-acbf-2b34dc4ca64f": {
-        descriptionMessage: "Especifique qual cadeira deseja para a Ementa de Disciplina. Ex: Cálculo I",
+    "Declaração de Colação de Grau e Tramitação de Diploma (curso tecnológico)": {
+        descriptionMessage: "Confirme a solicitação para curso tecnológico.",
+        attachmentMessage: "📎 Anexe: Atestado Médico ou Cópia da CTPS e Declaração da Empresa. (a/b, d)",
+        minAttachments: 1
     },
-    "92ac7b65-a291-4d31-a78b-d7d963a28f6d": {
-        descriptionMessage: "Explique o motivo da solicitação da Guia de Transferência.",
+    "Declaração de Matrícula ou Matrícula Vínculo (especifique)": {
+        descriptionMessage: "Especifique se deseja Declaração de Matrícula ou Vínculo.",
     },
-    "83d615b3-a13c-4fc9-ab25-0fabfb1a5e5ce": {
-        descriptionMessage: "Digite o ano e o semestre para o Histórico Escolar. Ex: 2019.1",
+    "Declaração de Monitoria": {
+        descriptionMessage: "Informe o período e a disciplina da monitoria.",
     },
-    "60f403cb-a100-4619-b7e8-bb1180897418": {
-        descriptionMessage: "Explique o motivo da solicitação.",
-        attachmentMessage: "📎 Para Isenção de Disciplinas, anexe Histórico Escolar (Original) e Ementas das disciplinas cursadas.",
-        minAttachments: 1,
-        maxAttachments: 10
+    "Declaração para Estágio - Conclusão Ano ( ) Semestre ( )": {
+        descriptionMessage: "Informe o Ano e Semestre previstos para conclusão.",
     },
-    "f09e9bbf-a4fb-48af-a7de-34a28bc34211": {
-        descriptionMessage: "Explique o motivo da solicitação da Reabertura de Matrícula.",
+    "Diploma 1a Via ( ) 2a ( ) - Conclusão Ano ( ) Semestre ( )": {
+        descriptionMessage: "Especifique a via (1ª ou 2ª) e o período de conclusão.",
     },
-    "de20efff-e610-48be-b9aa-c45da0ca59fa": {
-        descriptionMessage: "Explique o motivo da solicitação da Revisão de Nota ou Faltas.",
+    "Dispensa da prática de Educação Física (anexos)": {
+        descriptionMessage: "Informe o motivo da dispensa de Educação Física.",
+        attachmentMessage: "📎 Anexe: Atestado Médico ou Declaração de Unidade Militar. (a/j)",
+        minAttachments: 1
     },
+    "Declaração Tramitação de Diploma (técnico)": {
+        descriptionMessage: "Confirme a solicitação de tramitação para curso técnico.",
+    },
+    "Ementa de disciplina - (especifique)": {
+        descriptionMessage: "Especifique o nome da disciplina para a ementa.",
+    },
+    "Guia de Transferência": {
+        descriptionMessage: "Informe a instituição de destino para a transferência.",
+    },
+    "Histórico Escolar - Ano ( ) Semestre ( )": {
+        descriptionMessage: "Informe o Ano e Semestre de referência para o histórico.",
+    },
+    "Isenção de disciplinas cursadas (anexo)": {
+        descriptionMessage: "Relate as disciplinas para isenção.",
+        attachmentMessage: "📎 Anexe: Histórico Escolar e Ementas das disciplinas cursadas. (f/g/h, i)",
+        minAttachments: 1
+    },
+    "Justificativa de falta(s) ou prova 2o chamada (anexos)": {
+        descriptionMessage: "Descreva o motivo e as datas das faltas ou provas.",
+        attachmentMessage: "📎 Anexe: Atestado Médico, Declaração da Empresa ou Ementas. (a, d, i)",
+        minAttachments: 1
+    },
+    "Matriz curricular": {
+        descriptionMessage: "Confirme a solicitação da matriz curricular do curso.",
+    },
+    "Reabertura de Matrícula": {
+        descriptionMessage: "Informe o motivo da solicitação de reabertura.",
+    },
+    "Reintegração ( ) Estágio ( ) Entrega do Relatório de Estágio ( ) TCC": {
+        descriptionMessage: "Especifique se é reintegração para Estágio, Relatório ou TCC.",
+    },
+    "Reintegração para Cursar (Solicitar no Protocolo Geral)": {
+        descriptionMessage: "Relate a necessidade de reintegração para cursar disciplinas.",
+    },
+    "Solicitação de Conselho de Classe": {
+        descriptionMessage: "Descreva o motivo da solicitação ao Conselho de Classe.",
+    },
+    "Trancamento de Matrícula": {
+        descriptionMessage: "Informe o motivo do trancamento de matrícula.",
+    },
+    "Transferência de Turno (especifique turno)": {
+        descriptionMessage: "Especifique o turno para o qual deseja a transferência.",
+        attachmentMessage: "📎 Anexe: Atestado Médico ou Declaração de Unidade Militar. (a/j)",
+        minAttachments: 1
+    }
 };
 
 interface Message {
-  id: string | number;
-  role: "bot" | "user";
-  text: React.ReactNode;
-  options?: { label: string; action: string; icon?: React.ReactNode; value?: any }[];
-  items?: { subject: string; status: string }[];
+    id: string | number;
+    role: "bot" | "user";
+    text: React.ReactNode;
+    options?: { label: string; action: string; icon?: React.ReactNode; value?: any }[];
+    items?: { subject: string; status: string }[];
 }
+
 export default function GuidedChatPage() {
-  const { token, user } = useAuth();
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const { token, user } = useAuth();
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"idle" | "description" | "waiting_file">("idle");
-  const [inputValue, setInputValue] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [tempData, setTempData] = useState({
-    typeId: "",
-    typeName: "",
-    description: "",
-    minAttachments: 0,
-    maxAttachments: 10,
-  });
-
-  const initialOptions = [
-    { label: " Novo Requerimento", action: "start_flow", icon: <FilePlus2 size={18} /> },
-    { label: " Meus Pedidos", action: "view_requests", icon: <ClipboardList size={18} /> },
-  ];
-
-  useEffect(() => {
-    if (user) {
-      setMessages([
-        {
-          id: "init",
-          role: "bot",
-          text: (
-            <span>
-              Olá, <strong className="text-[#2e7d32]">{user.name.split(" ")[0]}</strong>! Sou o Jacaréu. Como posso ajudar você hoje?
-            </span>
-          ),
-          options: initialOptions,
-        },
-      ]);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-  const cancelFlow = () => {
-    setStep("idle");
-    setFiles([]);
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "bot", text: "❌ Operação cancelada.", options: initialOptions },
-    ]);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selected = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...selected]);
-    }
-  };
-
-  const finalizeRequest = async (currentDescription?: string) => {
-    if (loading) return;
-
-    const finalDescription = currentDescription || tempData.description;
-    if (!finalDescription.trim()) return;
-
-    setLoading(true);
-    try {
-      const documentIds: string[] = [];
-
-      if (files.length > 0) {
-        for (const file of files) {
-          const formData = new FormData();
-          formData.append("arquivo", file);
-
-          const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
-          });
-
-          const uploadData = await uploadRes.json();
-          documentIds.push(uploadData.id);
-        }
-      }
-
-      const payload = {
-        type_id: tempData.typeId,
-        subject: tempData.typeName,
-        description: finalDescription,
-        document_ids: documentIds,
-      };
-
-      await fetch(`${API_BASE}/requests`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now(), role: "bot", text: `✅ Requerimento de "${tempData.typeName}" enviado com sucesso!` },
-        { id: Date.now() + 1, role: "bot", text: "Deseja realizar mais alguma operação?", options: initialOptions },
-      ]);
-
-      setStep("idle");
-      setFiles([]);
-      setTempData((prev) => ({ ...prev, description: "" }));
-    } catch {
-      setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "❌ Erro ao enviar. Tente novamente." }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendMessage = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!inputValue.trim() || step !== "description") return;
-
-    const text = inputValue;
-    setInputValue("");
-    setMessages((prev) => [...prev, { id: Date.now(), role: "user", text }]);
-
-    setTempData((prev) => ({ ...prev, description: text }));
-
-    if (tempData.minAttachments === 0) {
-      setStep("idle");
-      finalizeRequest(text);
-    } else {
-      setStep("waiting_file");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          role: "bot",
-          text: REQUEST_CONFIG[tempData.typeId]?.attachmentMessage || "📎 Por favor, anexe os documentos.",
-        },
-      ]);
-    }
-  };
-  const handleAction = async (opt: any) => {
-  if (opt.action === "start_flow") {
-    const res = await fetch(`${API_BASE}/type-requests`);
-    const data = await res.json();
-
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "user", text: opt.label },
-      {
-        id: Date.now() + 1,
-        role: "bot",
-        text: "Qual requerimento você deseja abrir?",
-        options: (data.data || data || []).map((t: any) => ({
-          label: t.name,
-          value: t.id,
-          action: "select_type",
-        })),
-      },
-    ]);
-  } else if (opt.action === "select_type") {
-    const config = REQUEST_CONFIG[opt.value];
-    setTempData({
-      typeId: opt.value,
-      typeName: opt.label,
-      description: "",
-      minAttachments: config?.minAttachments ?? 0,
-      maxAttachments: config?.maxAttachments ?? 10,
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState<"idle" | "description" | "waiting_file">("idle");
+    const [inputValue, setInputValue] = useState("");
+    const [files, setFiles] = useState<File[]>([]);
+    const [tempData, setTempData] = useState({
+        typeId: "",
+        typeName: "",
+        description: "",
+        minAttachments: 0,
+        maxAttachments: 10,
     });
-    setStep("description");
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "user", text: opt.label },
-      {
-        id: Date.now() + 1,
-        role: "bot",
-        text: config?.descriptionMessage || "Descreva o motivo:",
-      },
-    ]);
-  } else if (opt.action === "view_requests") {
-    try {
-      const res = await fetch(`${API_BASE}/requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      const requests = data.data || data || [];
 
-      const statusMap: Record<string, string> = {
-        pending: "Pendente",
-        analyzing: "Em análise",
-        completed: "Concluído",
-        canceled: "Cancelado",
-        denied: "Negado",
-      };
+    const initialOptions = [
+        { label: " Novo Requerimento", action: "start_flow", icon: <FilePlus2 size={16} /> },
+        { label: " Meus Pedidos", action: "view_requests", icon: <ClipboardList size={18} /> },
+    ];
 
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now(), role: "user", text: opt.label },
-        {
-          id: Date.now() + 1,
-          role: "bot",
-          text: " Aqui estão seus pedidos:",
-          items: requests.map((req: any) => ({
-            subject: req.subject,
-            status: statusMap[req.status?.toLowerCase()] || req.status,
-          })),
-          options: initialOptions,
-        },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now(), role: "bot", text: "❌ Não consegui carregar seus pedidos." },
-      ]);
-    }
-  }
-};
-return (
-  <div className="flex flex-col h-[100dvh] bg-[#f0f2f5] font-sans text-lg">
-    <main className="flex-1 overflow-y-auto p-6 space-y-6">
-      {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-3`}
-        >
-          {msg.role !== "user" && (
-            <div className="flex items-center gap-2 mb-1">
-              <img
-                src="/jacareu.jpg"
-                alt="Jacaréu"
-                className="w-10 h-10 rounded-full border-2 border-[#2e7d32]"
-              />
-              <span className="text-[#2e7d32] font-bold">Jacaréu</span>
-            </div>
-          )}
+    useEffect(() => {
+        if (user) {
+            setMessages([
+                {
+                    id: "init",
+                    role: "bot",
+                    text: (
+                        <span>
+                            Olá, <span className="text-[#15803d] font-semibold">{user.name.split(" ")[0]}</span>! Sou o assistente virtual. Como posso ajudar você hoje?
+                        </span>
+                    ),
+                    options: initialOptions,
+                },
+            ]);
+        }
+    }, [user]);
 
-          <div
-            className={`p-4 rounded-md max-w-[80%] ${
-              msg.role === "user"
-                ? "bg-blue-600 text-white"
-                : "bg-[#c8e6c9] text-[#2e7d32]"
-            }`}
-          >
-            {msg.text}
-            {/* Lista de pedidos */}
-            {msg.items && (
-              <ul className="mt-3 space-y-2">
-                {msg.items.map((req, i) => {
-                  let colorClass = "text-gray-600";
-                  if (req.status === "Concluído") colorClass = "text-green-600";
-                  else if (req.status === "Em análise") colorClass = "text-yellow-600";
-                  else if (req.status === "Negado") colorClass = "text-red-600";
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, loading]);
 
-                  return (
-                    <li key={i} className="flex justify-between border-b pb-1 text-sm">
-                      <span>{req.subject}</span>
-                      <span className={`font-semibold ${colorClass}`}>{req.status}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+    const cancelFlow = () => {
+        setStep("idle");
+        setFiles([]);
+        setMessages((prev) => [
+            ...prev,
+            { id: Date.now(), role: "bot", text: "A operação foi cancelada. Posso ajudar em algo mais?", options: initialOptions },
+        ]);
+    };
 
-            {/* Botões dentro do chat */}
-            {msg.options && (
-              <div className="flex gap-3 mt-3 flex-wrap">
-                {msg.options.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleAction(opt)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#66bb6a] text-white text-sm rounded-md hover:bg-[#81c784]"
-                  >
-                    {opt.icon} {opt.label}
-                  </button>
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const selected = Array.from(e.target.files);
+            setFiles((prev) => [...prev, ...selected]);
+        }
+    };
+
+    const finalizeRequest = async (currentDescription?: string) => {
+        if (loading) return;
+        const finalDescription = currentDescription || tempData.description;
+        if (!finalDescription.trim()) return;
+
+        setLoading(true);
+        try {
+            const documentIds: string[] = [];
+            if (files.length > 0) {
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append("arquivo", file);
+                    const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    });
+                    const uploadData = await uploadRes.json();
+                    documentIds.push(uploadData.id);
+                }
+            }
+
+            await fetch(`${API_BASE}/requests`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type_id: tempData.typeId,
+                    subject: tempData.typeName,
+                    description: finalDescription,
+                    document_ids: documentIds,
+                }),
+            });
+
+            setMessages((prev) => [
+                ...prev,
+                { id: Date.now(), role: "bot", text: (
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 size={18} className="text-[#15803d]" />
+                        <span>Seu requerimento de "{tempData.typeName}" foi enviado com sucesso!</span>
+                    </div>
+                )},
+                { id: Date.now() + 1, role: "bot", text: "Deseja realizar mais alguma operação?", options: initialOptions },
+            ]);
+
+            setStep("idle");
+            setFiles([]);
+            setTempData((prev) => ({ ...prev, description: "" }));
+        } catch {
+            setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "Houve um erro no envio. Por favor, tente novamente." }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendMessage = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!inputValue.trim() || step !== "description") return;
+        const text = inputValue;
+        setInputValue("");
+        setMessages((prev) => [...prev, { id: Date.now(), role: "user", text }]);
+        setTempData((prev) => ({ ...prev, description: text }));
+
+        if (tempData.minAttachments === 0) {
+            finalizeRequest(text);
+        } else {
+            setStep("waiting_file");
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: Date.now() + 1,
+                    role: "bot",
+                    text: REQUEST_CONFIG[tempData.typeName]?.attachmentMessage || "Por favor, anexe os documentos necessários abaixo.",
+                },
+            ]);
+        }
+    };
+
+    const handleAction = async (opt: any) => {
+        if (opt.action === "start_flow") {
+            const res = await fetch(`${API_BASE}/type-requests`);
+            const data = await res.json();
+            const allTypes = data.data || data || [];
+
+            const pdfOptionNames = Object.keys(REQUEST_CONFIG);
+
+            const filteredOptions = allTypes.filter((t: any) =>
+                pdfOptionNames.includes(t.name)
+            );
+
+            setMessages((prev) => [
+                ...prev,
+                { id: Date.now(), role: "user", text: opt.label },
+                {
+                    id: Date.now() + 1,
+                    role: "bot",
+                    text: "Qual requerimento você deseja abrir?",
+                    options: filteredOptions.map((t: any) => ({
+                        label: t.name,
+                        value: t.id,
+                        action: "select_type",
+                    })),
+                },
+            ]);
+        } else if (opt.action === "select_type") {
+            const config = REQUEST_CONFIG[opt.label];
+            setTempData({
+                typeId: opt.value,
+                typeName: opt.label,
+                description: "",
+                minAttachments: config?.minAttachments ?? 0,
+                maxAttachments: 10,
+            });
+            setStep("description");
+            setMessages((prev) => [
+                ...prev,
+                { id: Date.now(), role: "user", text: opt.label },
+                { id: Date.now() + 1, role: "bot", text: config?.descriptionMessage || "Por favor, descreva o motivo da sua solicitação:" },
+            ]);
+        } else if (opt.action === "view_requests") {
+            try {
+                const res = await fetch(`${API_BASE}/requests`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = await res.json();
+                const requests = data.data || data || [];
+                const statusMap: any = { pending: "Pendente", analyzing: "Em análise", completed: "Concluído", canceled: "Cancelado", denied: "Negado" };
+
+                setMessages((prev) => [
+                    ...prev,
+                    { id: Date.now(), role: "user", text: opt.label },
+                    {
+                        id: Date.now() + 1,
+                        role: "bot",
+                        text: "Aqui estão os seus pedidos recentes:",
+                        items: requests.map((req: any) => ({
+                            subject: req.subject,
+                            status: statusMap[req.status?.toLowerCase()] || req.status,
+                        })),
+                        options: initialOptions,
+                    },
+                ]);
+            } catch {
+                setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "Não foi possível carregar seu histórico." }]);
+            }
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-[100dvh] bg-white font-sans text-slate-700 selection:bg-green-100 antialiased font-normal">
+            <main className="flex-1 overflow-y-auto px-4 py-8 space-y-8 scrollbar-hide max-w-4xl mx-auto w-full">
+                {messages.map((msg) => (
+                    <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} w-full`}>
+                        {msg.role === "bot" && (
+                            <div className="flex items-center gap-2 mb-2 ml-1">
+                                <div className="w-8 h-8 rounded-full border border-gray-100 flex items-center justify-center overflow-hidden bg-white shadow-sm">
+                                    <img src="/jacareu.jpg" alt="Jacaréu" className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-xs font-semibold text-[#15803d] tracking-widest uppercase">Secretaria</span>
+                            </div>
+                        )}
+
+                        <div className={`p-5 shadow-sm transition-all text-base leading-relaxed tracking-tight
+                            ${msg.role === "user"
+                                ? "bg-[#15803d] text-white rounded-3xl rounded-tr-none max-w-[85%]"
+                                : "bg-[#f8fafc] border border-gray-100 text-slate-700 rounded-3xl rounded-tl-none max-w-[90%]"
+                            }`}
+                        >
+                            {msg.text}
+
+                            {msg.items && (
+                                <div className="mt-4 space-y-3">
+                                    {msg.items.map((req, i) => (
+                                        <div key={i} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-50 shadow-sm hover:shadow-md transition-shadow">
+                                            <span className="text-sm font-medium text-slate-800">{req.subject}</span>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full 
+                                                ${req.status === "Concluído" ? "bg-green-100 text-green-700" :
+                                                    req.status === "Em análise" ? "bg-amber-100 text-amber-700" :
+                                                        "bg-slate-100 text-slate-500"}`}>
+                                                {req.status}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {msg.options && (
+                                <div className="flex flex-wrap gap-2 mt-4">
+                                    {msg.options.map((opt, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleAction(opt)}
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-slate-600 text-sm rounded-full hover:border-[#15803d] hover:text-[#15803d] hover:shadow-md transition-all transform hover:-translate-y-0.5"
+                                        >
+                                            {opt.icon} {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 ))}
-              </div>
-            )}
-          </div>
+                {loading && <div className="flex ml-4"><Loader2 className="animate-spin text-[#15803d] w-5 h-5" /></div>}
+                <div ref={bottomRef} className="h-4" />
+            </main>
+
+            <footer className="p-6 bg-white border-t border-gray-50">
+                <div className="max-w-4xl mx-auto space-y-6">
+                    <form onSubmit={handleSendMessage} className="flex gap-3 items-center">
+                        {step !== "idle" && (
+                            <button
+                                type="button"
+                                onClick={cancelFlow}
+                                className="p-3 text-slate-400 hover:text-red-500 transition-colors"
+                                title="Cancelar"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        )}
+
+                        {step === "waiting_file" && (
+                            <>
+                                <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex items-center gap-2 px-4 py-3 bg-[#f8fafc] text-[#15803d] rounded-2xl hover:bg-[#dcfce7] transition-all font-medium border border-gray-100 shadow-sm"
+                                >
+                                    <Paperclip size={20} />
+                                    <span className="hidden sm:inline">Anexar</span>
+                                </button>
+                                {files.length >= tempData.minAttachments && (
+                                    <button
+                                        type="button"
+                                        onClick={() => finalizeRequest(tempData.description)}
+                                        className="flex items-center gap-2 px-6 py-3 bg-[#15803d] text-white rounded-2xl text-sm font-semibold hover:bg-[#166534] shadow-lg transition-all transform hover:-translate-y-0.5"
+                                    >
+                                        Enviar Pedido
+                                    </button>
+                                )}
+                            </>
+                        )}
+
+                        <input
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            disabled={step !== "description"}
+                            placeholder={step === "waiting_file" ? `${files.length} arquivo(s) prontos...` : "Escreva sua mensagem aqui..."}
+                            className="flex-1 bg-[#f8fafc] border border-gray-100 rounded-2xl px-6 py-4 text-sm outline-none focus:ring-2 focus:ring-[#15803d]/10 focus:border-[#15803d] transition-all text-slate-600 placeholder:text-slate-300 shadow-inner"
+                        />
+
+                        <button
+                            type="submit"
+                            disabled={step !== "description" || !inputValue.trim()}
+                            className="p-4 bg-[#15803d] text-white rounded-2xl hover:bg-[#166534] disabled:bg-slate-200 shadow-lg transition-all transform active:scale-95"
+                        >
+                            <Send size={20} />
+                        </button>
+                    </form>
+
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-2">
+                        <button
+                            onClick={() => handleAction({ action: "start_flow", label: " Novo Requerimento" })}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-[#15803d] text-white font-semibold rounded-full hover:bg-[#166534] transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        >
+                            <FilePlus2 size={20} /> Novo Requerimento
+                        </button>
+                        <button
+                            onClick={() => handleAction({ action: "view_requests", label: " Meus Pedidos" })}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 border border-[#15803d] text-[#15803d] font-semibold rounded-full hover:bg-[#f0fdf4] transition-all transform hover:-translate-y-0.5"
+                        >
+                            <ClipboardList size={20} /> Meus Pedidos
+                        </button>
+                    </div>
+                </div>
+            </footer>
         </div>
-      ))}
-
-      {files.length > 0 && (
-        <div className="text-xs text-gray-500 italic">
-          📎 {files.length} arquivo(s) selecionado(s)
-        </div>
-      )}
-
-      {loading && (
-        <div className="flex justify-center">
-          <Loader2 className="animate-spin text-[#2e7d32]" />
-        </div>
-      )}
-
-      <div ref={bottomRef} />
-    </main>
-    <footer className="p-4 bg-white shadow-inner">
-      <form onSubmit={handleSendMessage} className="flex gap-3 items-center max-w-4xl mx-auto">
-        {step !== "idle" && (
-          <button
-            type="button"
-            onClick={cancelFlow}
-            className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 font-bold"
-          >
-            <XCircle size={22} />
-            Cancelar
-          </button>
-        )}
-
-        {step === "waiting_file" && (
-          <>
-            <input
-              type="file"
-              ref={fileInputRef}
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-3 py-2 text-[#2e7d32] hover:text-[#1b5e20] font-bold"
-            >
-              <Paperclip size={22} />
-              Anexar
-            </button>
-
-            {files.length >= tempData.minAttachments && (
-              <button
-                type="button"
-                onClick={() => finalizeRequest(tempData.description)}
-                className="flex items-center gap-2 px-5 py-2 bg-[#2e7d32] text-white rounded-md text-sm font-bold hover:bg-[#1b5e20]"
-              >
-                Enviar {files.length} anexo(s)
-              </button>
-            )}
-          </>
-        )}
-
-        <input
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          disabled={step !== "description"}
-          placeholder={step === "waiting_file" ? "Anexe os arquivos..." : "Escreva aqui..."}
-          className="flex-1 border border-[#c8e6c9] rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-[#66bb6a] outline-none"
-        />
-
-        <button
-          type="submit"
-          disabled={step !== "description" || !inputValue.trim()}
-          className="flex items-center gap-2 p-3 bg-[#2e7d32] text-white rounded-md hover:bg-[#1b5e20] disabled:bg-gray-300 font-bold"
-        >
-          <Send size={22} />
-          Enviar
-        </button>
-      </form>
-
-      {/* Botões fixos no rodapé */}
-      <div className="flex gap-4 mt-6 justify-center">
-        <button
-          onClick={() => handleAction({ action: "start_flow", label: " Novo Requerimento" })}
-          className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]"
-        >
-          <FilePlus2 size={20} /> Novo Requerimento
-        </button>
-        <button
-          onClick={() => handleAction({ action: "view_requests", label: " Meus Pedidos" })}
-          className="flex items-center gap-2 px-6 py-3 bg-[#66bb6a] text-white font-bold rounded-md hover:bg-[#81c784]"
-        >
-          <ClipboardList size={20} /> Meus Pedidos
-        </button>
-      </div>
-    </footer>
-  </div>
-);
+    );
 }
