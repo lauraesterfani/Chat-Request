@@ -2,114 +2,105 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Request as RequestModel;
+use App\Models\Request as Requerimento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class RequestController extends Controller
 {
-    public function store(Request $request)
-    {
-        $request->validate([
-            'type_id' => 'required|exists:type_requests,id',
-            'subject' => 'required|string',
-            'description' => 'required|string',
-            'document_ids' => 'array'
-        ]);
-
-        try {
-            return DB::transaction(function () use ($request) {
-                
-                $newRequest = RequestModel::create([
-                    'user_id' => Auth::id(),
-                    'type_id' => $request->type_id,
-                    'subject' => $request->subject,
-                    'description' => $request->description,
-                    'status' => 'pending',
-                    'protocol' => now()->format('Ymd') . '-' . rand(1000, 9999)
-                ]);
-
-                if (!empty($request->document_ids)) {
-                    // Garante que usa a tabela pivô correta
-                    $newRequest->documents()->sync($request->document_ids);
-                }
-
-                return response()->json([
-                    'message' => 'Requerimento criado com sucesso!',
-                    'id' => $newRequest->id
-                ], 201);
-            });
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao salvar requerimento.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
+    /**
+     * Lista os requerimentos (Inteligente: Aluno vê o seu, Admin vê tudo)
+     */
     public function index()
     {
         $user = Auth::user();
 
-        // ADICIONEI 'cradt' AQUI
+        // 1. Se for Admin, Staff ou CRADT -> Vê TUDO
         if (in_array($user->role, ['admin', 'staff', 'cradt'])) {
-            return RequestModel::with(['user', 'type'])
-                ->orderBy('created_at', 'desc')
+            return Requerimento::with(['user.course', 'type']) // Carrega dados do aluno e curso
+                ->latest()
                 ->get();
         }
 
-        return RequestModel::with(['user', 'type'])
+        // 2. Se for Aluno -> Vê só os DELE
+        return Requerimento::with(['type']) // Aluno não precisa ver seus próprios dados de user
             ->where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
+            ->latest()
             ->get();
     }
 
+    /**
+     * Cria um novo requerimento
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'type_id' => 'required|exists:type_requests,id',
+            'description' => 'nullable|string',
+            'documents' => 'array'
+        ]);
+
+        // Cria o requerimento
+        $req = Requerimento::create([
+            'user_id' => Auth::id(),
+            'type_id' => $request->type_id,
+            'subject' => \App\Models\TypeRequest::find($request->type_id)->name, // Salva o nome do assunto
+            'description' => $request->description,
+            'status' => 'pending',
+            'protocol' => strtoupper(uniqid('REQ-')), // Gera protocolo único
+        ]);
+
+        // Se tiver documentos (array de IDs vindos do upload)
+        if ($request->has('documents')) {
+            // Atualiza os documentos para pertencerem a este requerimento
+            \App\Models\Document::whereIn('id', $request->documents)
+                ->update(['request_id' => $req->id]);
+        }
+
+        return response()->json($req, 201);
+    }
+
+    /**
+     * Mostra um requerimento específico
+     */
     public function show($id)
     {
         $user = Auth::user();
+        $req = Requerimento::with(['user.course', 'type', 'documents'])->findOrFail($id);
 
-        $request = RequestModel::with(['user.course', 'type', 'documents'])
-            ->findOrFail($id);
-
-        // ADICIONEI 'cradt' AQUI TAMBÉM
-        if (!in_array($user->role, ['admin', 'staff', 'cradt']) && $request->user_id !== $user->id) {
-            return response()->json([
-                'message' => 'Acesso não autorizado'
-            ], 403);
+        // Segurança: Só deixa ver se for dono OU for Admin/Staff/Cradt
+        if ($req->user_id !== $user->id && !in_array($user->role, ['admin', 'staff', 'cradt'])) {
+            return response()->json(['message' => 'Sem permissão'], 403);
         }
 
-        return response()->json($request);
+        return response()->json($req);
     }
-    // ... (Mantenha as funções store, index e show que já fizemos)
 
-    // ATUALIZAR STATUS (Para a CRADT)
+    /**
+     * Atualiza (Usado para mudar status ou editar)
+     */
     public function update(Request $request, $id)
     {
-        $user = Auth::user();
-        $requestModel = RequestModel::findOrFail($id);
-
-        // 1. Segurança: Só Admin/Staff/Cradt pode alterar status
-        if (!in_array($user->role, ['admin', 'staff', 'cradt'])) {
-            return response()->json(['message' => 'Apenas a coordenação pode alterar solicitações.'], 403);
+        $req = Requerimento::findOrFail($id);
+        
+        // Apenas valida status se for enviado
+        if ($request->has('status')) {
+            $req->status = $request->status;
         }
 
-        // 2. Validação
-        $validated = $request->validate([
-            'status' => 'required|in:pending,analyzing,completed,canceled',
-            'observation' => 'nullable|string'
-        ]);
+        if ($request->has('observation')) {
+            $req->observation = $request->observation;
+        }
 
-        // 3. Atualização
-        $requestModel->update([
-            'status' => $validated['status'],
-            'observation' => $request->observation ?? $requestModel->observation
-        ]);
+        $req->save();
 
-        return response()->json([
-            'message' => 'Status atualizado com sucesso!',
-            'data' => $requestModel
-        ]);
+        return response()->json($req);
+    }
+
+    public function destroy($id)
+    {
+        $req = Requerimento::findOrFail($id);
+        $req->delete();
+        return response()->json(['message' => 'Deletado com sucesso']);
     }
 }

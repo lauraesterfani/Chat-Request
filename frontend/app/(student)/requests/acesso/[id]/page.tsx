@@ -191,18 +191,29 @@ export default function RequestDetailsPage() {
                     const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
                     return (
                       <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/30 transition-all shadow-sm bg-white">
+                        
+                        {/* LÓGICA DE EXIBIÇÃO CLICÁVEL (CORRIGIDA) */}
                         {isImage ? (
-                          <img src={fileUrl} alt={doc.name} className="max-w-full rounded-lg border border-slate-200 shadow-sm object-contain max-h-80 bg-slate-100" />
+                          // 1. Imagem: Envolvida em <a> para abrir em nova aba
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block cursor-zoom-in overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
+                            <img 
+                              src={fileUrl} 
+                              alt={doc.name} 
+                              className="w-full h-48 object-contain hover:scale-105 transition-transform duration-300" 
+                            />
+                          </a>
                         ) : (
-                          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+                          // 2. Arquivo: Card inteiro clicável
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer">
                             <FileText size={32} className="text-slate-400" />
                             <span className="text-sm font-medium text-slate-500">Documento PDF ou Arquivo</span>
-                          </div>
+                          </a>
                         )}
+
                         <div className="flex justify-between items-center border-t pt-3 mt-1">
-                          <p className="text-sm font-semibold text-gray-700 truncate max-w-[200px]">{doc.name}</p>
+                          <p className="text-sm font-semibold text-gray-700 truncate max-w-[200px]" title={doc.name}>{doc.name}</p>
                           <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-bold text-[#1A73E8] hover:underline">
-                            ABRIR EM NOVA ABA <ExternalLink size={14} />
+                            BAIXAR <ExternalLink size={14} />
                           </a>
                         </div>
                       </div>

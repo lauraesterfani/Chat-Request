@@ -2,64 +2,75 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request as HttpRequest; 
-use App\Models\Request as Requerimento; 
+use Illuminate\Http\Request as HttpRequest;
+use App\Models\Request as Requerimento;
 use App\Models\Enrollment;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-
+    /**
+     * Lista principal com filtros e paginação
+     */
     public function index(HttpRequest $request)
     {
-        // 1. Inicializa a Query
-        $query = Requerimento::with(['aluno', 'enrollment.course', 'typeRequest']);
+        // 1. Carrega relacionamentos: 'user' (do Request.php) e 'course' (do User.php)
+        $query = Requerimento::with(['user.course', 'type']); 
 
-        // 2. Aplica Filtros Dinâmicos (Critérios de Aceitação)
+        // --- FILTROS ---
 
+        // Status
         if ($request->filled('status')) {
-            $query->situacao($request->input('status'));
+            $query->where('status', $request->input('status'));
         }
 
-        
-        if ($request->filled('aluno_id')) {
-            $query->porAluno($request->input('aluno_id'));
-        }
-
-        
-        if ($request->filled('course_id')) {
-            $courseId = $request->input('course_id');
-            $query->whereHas('enrollment', function($q) use ($courseId) {
-                
-                $q->where('course_id', $courseId); 
+        // Nome do Aluno
+        if ($request->filled('nome')) {
+            $nome = $request->input('nome');
+            $query->whereHas('user', function($q) use ($nome) {
+                $q->where('name', 'like', "%{$nome}%");
             });
         }
-        
-        
-        if ($request->filled('data_inicio')) {
-            $query->dataAbertura(
-                $request->input('data_inicio'), 
-                $request->input('data_fim') ?? null
-            );
+
+        // Matrícula (verifica enrollment_number ou matricula antiga)
+        if ($request->filled('matricula')) {
+            $matricula = $request->input('matricula');
+            $query->whereHas('user', function($q) use ($matricula) {
+                $q->where('enrollment_number', 'like', "%{$matricula}%")
+                  ->orWhere('matricula', 'like', "%{$matricula}%");
+            });
         }
 
-       
+        // Curso
+        if ($request->filled('course_id')) {
+            $courseId = $request->input('course_id');
+            $query->whereHas('user', function($q) use ($courseId) {
+                 $q->where('course_id', $courseId); 
+            });
+        }
 
-        
-        $vencidosCount = Requerimento::vencidos()->count();
-        
-        
+        // Data de Abertura
+        if ($request->filled('data_inicio')) {
+            $query->whereBetween('created_at', [
+                $request->input('data_inicio'), 
+                $request->input('data_fim') ?? now()
+            ]);
+        }
+
+        // Busca paginada
         $requerimentos = $query->latest('created_at')->paginate(15); 
 
-    
         return response()->json([
             'requerimentos' => $requerimentos,
             'alertas' => [
-                'vencidos_total' => $vencidosCount,
+                'vencidos_total' => Requerimento::where('status', 'pending')->count(),
             ],
         ]);
     }
     
+    /**
+     * Estatísticas para os Gráficos (Mantido do original)
+     */
     public function requerimentosPorStatus()
     {
         $statusCounts = Requerimento::select('status', DB::raw('count(*) as total'))
@@ -71,13 +82,17 @@ class DashboardController extends Controller
 
     public function requerimentosPorCurso()
     {
-        // 1. Obter a contagem agrupada pelo course_id na tabela 'enrollments'
-        $courseCounts = Requerimento::join('enrollments', 'requests.enrollment_id', '=', 'enrollments.id')
-                                    ->select('enrollments.course_id', DB::raw('count(*) as total'))
-                                    ->groupBy('enrollments.course_id')
+        // Busca contagem agrupada por user.course_id
+        // (Adaptado para a nova estrutura onde o curso está no User)
+        $courseCounts = Requerimento::join('users', 'requests.user_id', '=', 'users.id')
+                                    ->select('users.course_id', DB::raw('count(*) as total'))
+                                    ->whereNotNull('users.course_id')
+                                    ->groupBy('users.course_id')
                                     ->get();
         
-        // 2. Mapear o course_id para o nome do curso usando a constante FIXED_COURSES
+        // Mapeia IDs para Nomes (usando a constante do Model Enrollment ou buscando do banco)
+        // Se você tiver uma tabela 'courses', seria melhor fazer join com ela. 
+        // Aqui mantive a lógica de constante que você usava antes para compatibilidade.
         $result = $courseCounts->map(function ($item) {
             $courseName = Enrollment::FIXED_COURSES[$item->course_id] ?? 'Curso Desconhecido';
             return [
@@ -90,15 +105,9 @@ class DashboardController extends Controller
         return response()->json($result, 200);
     }
     
-    /**
-     * Retorna o total de requerimentos e o total de usuários.
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function estatisticasGerais()
     {
-        
         $totalRequerimentos = Requerimento::count();
-        
         $totalUsuarios = \App\Models\User::count(); 
 
         return response()->json([

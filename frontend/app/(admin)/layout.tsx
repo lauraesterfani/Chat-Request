@@ -43,7 +43,7 @@ export default function AdminDashboardPage() {
 
           {/* Card: Visualizar Requerimentos */}
           <Link
-            href="/request" 
+            href="/requests" 
             className="group bg-white p-6 rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl hover:border-green-200 transition-all cursor-pointer relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
