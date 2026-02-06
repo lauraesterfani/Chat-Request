@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useRouter } from 'next/navigation'; // Import para redirecionamento
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 
 // Ícone de Carregamento
 const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
@@ -14,7 +13,6 @@ const LoaderCircle = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export default function CradtLoginPage() {
-  // ALTERADO: Usamos setToken em vez de login
   const { setToken } = useAuth();
   const router = useRouter();
 
@@ -53,17 +51,11 @@ export default function CradtLoginPage() {
       }
 
       // 3. SUCESSO: Salva o token e redireciona
-      // O AuthContext vai detetar o token e carregar o utilizador automaticamente
       setToken(data.token);
 
-      // Redireciona para o dashboard administrativo
-      if (data.user.role === 'admin') {
-        router.push('/request'); // Admin vai para o dashboard principal
-      } else if (data.user.role === 'staff') {
-        router.push('/dashboard/admin'); // Staff também vai para o dashboard
-      } else {
-        router.push('/dashboard'); // alunos
-      }
+      // --- MUDANÇA AQUI ---
+      // Redireciona Admin, Staff e Cradt para o mesmo painel de controle
+      router.push('/dashboard/admin');
 
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao tentar entrar.');
@@ -196,6 +188,5 @@ export default function CradtLoginPage() {
         </div>
       </div>
     </div>
-
   );
 }

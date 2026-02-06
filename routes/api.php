@@ -96,10 +96,11 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
 
 /*
 |--------------------------------------------------------------------------
-| ROTAS DE GESTÃO (Admin + Staff)
+| ROTAS DE GESTÃO (Admin + Staff + CRADT)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:api', 'role:admin,staff'])->prefix('dashboard')->group(function () {
+// 👇 AQUI ESTÁ A MUDANÇA: Adicionei ',cradt'
+Route::middleware(['auth:api', 'role:admin,staff,cradt'])->prefix('dashboard')->group(function () {
     Route::get('/requerimentos', [DashboardController::class, 'index']);
     Route::get('/status', [DashboardController::class, 'requerimentosPorStatus']); 
     Route::get('/cursos', [DashboardController::class, 'requerimentosPorCurso']); 

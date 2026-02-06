@@ -8,33 +8,34 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    /**
-     * Lida com a requisição, verificando se o usuário autenticado possui
-     * um dos papéis necessários.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  $roles  Papéis permitidos (separados por vírgula, ex: 'admin,staff')
-     */
     public function handle(Request $request, Closure $next, string $roles): Response
     {
-        // 1. Verificar se o usuário está autenticado
+        // 1. Verifica autenticação
         if (! $request->user()) {
-            // Retorna não autorizado se não houver token Sanctum válido
-            return response()->json(['message' => 'Não autenticado. Token inválido ou ausente.'], 401);
+            return response()->json([
+                'debug_error' => 'Usuario nao encontrado no request',
+                'message' => 'Não autenticado.'
+            ], 401);
         }
 
-        // 2. Obter a lista de papéis necessários
-        // Ex: $roles = 'admin,staff' se torna ['admin', 'staff']
+        // 2. Prepara papéis
         $requiredRoles = explode(',', $roles);
-        $userRole = $request->user()->role;
+        $userRole = $request->user()->role; 
 
-        // 3. Verificar se o papel do usuário está na lista de papéis necessários
+        // 3. Verifica permissão
         if (! in_array($userRole, $requiredRoles)) {
-            // Se o papel do usuário não for um dos papéis permitidos
-            return response()->json(['message' => 'Acesso negado. Você não tem a permissão necessária (' . $userRole . ').'], 403);
+            // AQUI ESTÁ O SEGREDO: Vamos mostrar no erro quem você é!
+            return response()->json([
+                'message' => 'Acesso negado.',
+                'debug_info' => [
+                    'seu_papel_no_banco' => $userRole,
+                    'papeis_exigidos_pela_rota' => $requiredRoles,
+                    'id_do_usuario' => $request->user()->id,
+                    'nome_do_usuario' => $request->user()->name
+                ]
+            ], 403);
         }
 
-        // Se o usuário estiver autenticado e tiver o papel correto, prosseguir
         return $next($request);
     }
 }
