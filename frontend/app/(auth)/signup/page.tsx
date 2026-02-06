@@ -214,19 +214,37 @@ export default function SignupPage() {
     if (isLoading || isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white font-sans">
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white font-sans relative">
+        
+        {/* BOTÃO FIXO NA DIREITA DA TELA INTEIRA */}
+        <button
+            onClick={() => router.push("/")}
+            className="absolute top-8 right-8 z-50 text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-2"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+            >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Voltar para Início
+        </button>
+
             
             {/* LADO ESQUERDO: BRANDING (Apenas Desktop) */}
             <div className="hidden lg:flex lg:w-[45%] xl:w-[40%] bg-[#15803d] relative flex-col justify-between p-12 overflow-hidden h-screen sticky top-0">
                 <div className="relative z-10 flex items-center gap-3">
-                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center text-white font-bold">CR</div>
-                   <span className="text-white font-bold text-xl tracking-tight">Chat Request</span>
+                   <span className="text-white font-bold text-3xl tracking-tight">Chat Request</span>
                 </div>
 
                 <div className="relative z-10 flex flex-col items-start">
                    <div className="w-64 h-64 relative mb-8 self-center">
                       <Image 
-                          src="https://placehold.co/256x256/15803d/ffffff?text=Mascote" 
+                          src="/mascote.png" 
                           alt="Mascote" 
                           className="object-contain drop-shadow-2xl"
                           width={256}  // 👈 Next/Image precisa de width/height
@@ -253,9 +271,11 @@ export default function SignupPage() {
 
             {/* LADO DIREITO: FORMULÁRIO */}
             <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 md:px-12 lg:px-16 xl:px-24 overflow-y-auto">
+                
                 <div className="w-full max-w-xl">
                     
                     <div className="lg:hidden mb-10 text-center">
+                        
                        <Link href="/" className="inline-flex items-center gap-2 justify-center mb-4">
                             <div className="w-10 h-10 bg-[#15803d] rounded-xl flex items-center justify-center">
                               <span className="text-white font-bold">CR</span>
@@ -266,6 +286,7 @@ export default function SignupPage() {
                     </div>
 
                     <div className="hidden lg:block mb-10">
+                        
                       <h1 className="text-3xl font-bold text-[#0f172a]">Criar conta</h1>
                       <p className="text-gray-500 mt-2 text-lg">Preencha seus dados para começar.</p>
                     </div>

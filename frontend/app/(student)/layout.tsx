@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HelpCircle, X, MessageSquare, FileText, CheckCircle, LogOut, ChevronDown } from "lucide-react";
@@ -9,6 +9,7 @@ import { HelpCircle, X, MessageSquare, FileText, CheckCircle, LogOut, ChevronDow
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -23,33 +24,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const isAdmin = ["admin", "staff", "cradt"].includes(user?.role ?? "");
+  // 🔹 Força layout administrativo se for admin/staff OU se estiver em qualquer rota que contenha /request
+  const isAdminLayout =
+    ["admin", "staff", "cradt"].includes(user?.role ?? "") || pathname.includes("/request");
+
 
   return (
     <div className="bg-[#fcfcfc] min-h-screen antialiased font-sans text-slate-700">
 
       {/* 🔹 NAVBAR CONDICIONAL */}
       <header
-        className={`w-full px-6 sm:px-8 py-5 flex items-center justify-between border-b ${
-          isAdmin
-            ? "bg-[#0B0D3A] text-white border-[#0B0D3A]" // Admin → azul escuro
+        className={`w-full px-6 sm:px-8 py-5 flex items-center justify-between border-b ${isAdminLayout
+            ? "bg-[#0B0D3A] text-white border-[#0B0D3A]" // Admin/Staff → azul escuro
             : "bg-white text-slate-700 border-slate-100" // Aluno → branco
-        }`}
+          }`}
       >
         {/* Logo / Título */}
         <Link
-          href={isAdmin ? "/dashboard/admin" : "/me"} // 🔹 Admin → tela principal CRADT
-          className={`tracking-tighter hover:opacity-80 transition-opacity ${
-            isAdmin ? "text-2xl font-bold" : "text-3xl font-bold mb-4 text-[#108542]"
-          }`}
+          href={isAdminLayout ? "/dashboard/admin" : "/me"}
+          className={`tracking-tighter hover:opacity-80 transition-opacity ${isAdminLayout ? "text-2xl font-bold" : "text-3xl font-bold mb-4 text-[#108542]"
+            }`}
         >
-          {isAdmin ? "Painel Administrativo" : "Chat Request"}
+          {isAdminLayout ? "Painel Administrativo" : "Chat Request"}
         </Link>
 
         {isAuthenticated && user && (
           <div className="flex items-center gap-4">
             {/* ❓ BOTÃO DE AJUDA (somente aluno) */}
-            {!isAdmin && (
+            {!isAdminLayout && (
               <button
                 onClick={() => setIsHelpOpen(true)}
                 className="p-2 text-slate-400 hover:text-[#108542] transition-colors"
@@ -63,12 +65,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setOpen(!open)}
-                className={`flex items-center gap-2 ${
-                  isAdmin ? "text-white" : "text-slate-700"
-                } font-bold text-lg group`} 
+                className="flex items-center gap-2 font-bold text-lg group"
               >
-                {/* Nome do aluno em verde */}
-                <span className="text-[#108542]">{user.name}</span>
+                {/* Nome do usuário: branco se admin/staff ou rota /request, verde se aluno */}
+                <span className={isAdminLayout ? "text-white" : "text-[#108542]"}>
+                  {user.name}
+                </span>
                 <ChevronDown
                   size={20}
                   className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}
@@ -91,13 +93,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     </div>
                   </div>
 
-                  {/* 🔹 Botão de sair em vermelho com texto branco */}
+                  {/* 🔹 Botão de sair */}
                   <button
-                    onClick={() => { logout(); router.push("/login"); }}
+                    onClick={() => {
+                      logout();
+                      if (["admin", "staff", "cradt"].includes(user?.role ?? "")) {
+                        router.push("/cradt-login"); // 🔹 Admin/Staff → login administrativo
+                      } else {
+                        router.push("/login"); // 🔹 Aluno → login usuário
+                      }
+                    }}
                     className="w-full py-4 bg-red-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
                   >
                     <LogOut size={14} /> Sair do Sistema
                   </button>
+
                 </div>
               )}
             </div>
@@ -109,7 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <main className="max-w-7xl mx-auto p-4 sm:p-6">{children}</main>
 
       {/* 🔹 MODAL DE AJUDA (somente aluno) */}
-      {!isAdmin && isHelpOpen && (
+      {!isAdminLayout && isHelpOpen && (
         <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="max-w-xs w-full text-center">
             <button
