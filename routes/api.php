@@ -51,6 +51,7 @@ Route::middleware('auth:api')->group(function () {
     // Requerimentos (alunos criam e veem os seus)
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests', [RequestController::class, 'index']); 
+    Route::get('/dashboard/estatisticas', [DashboardController::class, 'index']);
     Route::apiResource('requests', RequestController::class)->except(['index']);
 });
 
@@ -104,5 +105,5 @@ Route::middleware(['auth:api', 'role:admin,staff,cradt'])->prefix('dashboard')->
     Route::get('/requerimentos', [DashboardController::class, 'index']);
     Route::get('/status', [DashboardController::class, 'requerimentosPorStatus']); 
     Route::get('/cursos', [DashboardController::class, 'requerimentosPorCurso']); 
-    Route::get('/estatisticas', [DashboardController::class, 'estatisticasGerais']); 
+    Route::get('/dashboard/estatisticas', [DashboardController::class, 'index']); 
 });
