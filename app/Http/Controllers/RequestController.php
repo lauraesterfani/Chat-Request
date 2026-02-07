@@ -9,22 +9,25 @@ use Illuminate\Support\Facades\DB;
 
 class RequestController extends Controller
 {
+    /**
+     * Lista os requerimentos com FILTROS (Recuperado)
+     */
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        // 1. Query Base
+        // 1. Query Base (Carrega relacionamentos)
         $query = RequestModel::with(['user.course', 'type'])
             ->orderBy('created_at', 'desc');
 
-        // 2. Segurança: Aluno vê apenas os seus
+        // 2. Segurança: Se for aluno, vê apenas os seus
         if ($user->role === 'student') {
             $query->where('user_id', $user->id);
         }
 
-        // --- FILTROS ---
+        // --- FILTROS DE BUSCA ---
 
-        // Nome
+        // Filtro por Nome
         if ($request->filled('name')) {
             $name = $request->input('name');
             $query->whereHas('user', function($q) use ($name) {
@@ -32,7 +35,7 @@ class RequestController extends Controller
             });
         }
 
-        // Matrícula
+        // Filtro por Matrícula
         if ($request->filled('matricula')) {
             $matricula = $request->input('matricula');
             $query->whereHas('user', function($q) use ($matricula) {
@@ -41,7 +44,7 @@ class RequestController extends Controller
             });
         }
 
-        // Curso
+        // Filtro por Curso (ID)
         if ($request->filled('course_id')) {
             $courseId = $request->input('course_id');
             $query->whereHas('user', function($q) use ($courseId) {
@@ -52,47 +55,71 @@ class RequestController extends Controller
         return $query->get();
     }
 
-    // --- MANTENHA AS OUTRAS FUNÇÕES (Store, Show, Update...) ---
-    // (Pode deixar as que já estão lá, só a index que precisava mudar)
+    // --- MANTENHA O RESTO IGUAL (Store, Show, Update...) ---
     
     public function store(Request $request)
     {
-        // ... (seu código de store existente) ...
-        // Vou resumir aqui para não ficar gigante, mas mantenha o seu store original
-        $request->validate(['type_id' => 'required', 'subject' => 'required', 'description' => 'required']);
-        
-        return DB::transaction(function () use ($request) {
-            $req = RequestModel::create([
-                'user_id' => Auth::id(),
-                'type_id' => $request->type_id,
-                'subject' => $request->subject,
-                'description' => $request->description,
-                'status' => 'pending',
-                'protocol' => now()->format('Ymd') . '-' . rand(1000, 9999)
-            ]);
-            if (!empty($request->document_ids)) {
-                $req->documents()->sync($request->document_ids);
-            }
-            return response()->json($req, 201);
-        });
+        $request->validate([
+            'type_id' => 'required|exists:type_requests,id',
+            'subject' => 'required|string',
+            'description' => 'required|string',
+            'document_ids' => 'array'
+        ]);
+
+        try {
+            return DB::transaction(function () use ($request) {
+                $newRequest = RequestModel::create([
+                    'user_id' => Auth::id(),
+                    'type_id' => $request->type_id,
+                    'subject' => $request->subject,
+                    'description' => $request->description,
+                    'status' => 'pending',
+                    'protocol' => now()->format('Ymd') . '-' . rand(1000, 9999)
+                ]);
+
+                if (!empty($request->document_ids)) {
+                    $newRequest->documents()->sync($request->document_ids);
+                }
+
+                return response()->json(['message' => 'Sucesso', 'id' => $newRequest->id], 201);
+            });
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erro', 'error' => $e->getMessage()], 500);
+        }
     }
 
     public function show($id)
     {
         $user = Auth::user();
-        $req = RequestModel::with(['user.course', 'type', 'documents'])->findOrFail($id);
-        if (!in_array($user->role, ['admin', 'staff', 'cradt']) && $req->user_id !== $user->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        $request = RequestModel::with(['user.course', 'type', 'documents'])->findOrFail($id);
+
+        if (!in_array($user->role, ['admin', 'staff', 'cradt']) && $request->user_id !== $user->id) {
+            return response()->json(['message' => 'Acesso não autorizado'], 403);
         }
-        return response()->json($req);
+
+        return response()->json($request);
     }
 
     public function update(Request $request, $id)
     {
-        $req = RequestModel::findOrFail($id);
-        $req->update($request->only(['status', 'observation']));
-        return response()->json($req);
+        $user = Auth::user();
+        $req = RequestModel::findOrFail($id); // Corrigido para buscar o modelo
+
+        if (!in_array($user->role, ['admin', 'staff', 'cradt'])) {
+            return response()->json(['message' => 'Não autorizado'], 403);
+        }
+
+        $req->update([
+            'status' => $request->status,
+            'observation' => $request->observation ?? $req->observation
+        ]);
+
+        return response()->json(['message' => 'Atualizado']);
     }
-    
-    public function destroy($id) { RequestModel::destroy($id); return response()->json(['ok'=>true]); }
+
+    public function destroy($id)
+    {
+        RequestModel::findOrFail($id)->delete();
+        return response()->json(['message' => 'Deletado']);
+    }
 }

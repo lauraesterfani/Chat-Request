@@ -9,6 +9,26 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    {
+        // Define o prazo de alerta (ex: 5 dias atrás)
+        $prazoLimite = Carbon::now()->subDays(5);
+
+        // Estatísticas Gerais
+        $stats = [
+            'total_requerimentos' => RequestModel::count(),
+            'total_usuarios'      => User::where('role', 'student')->count(),
+            'pendentes'           => RequestModel::where('status', 'pending')->count(),
+            'em_analise'          => RequestModel::where('status', 'analyzing')->count(),
+            
+            // --- NOVO: Contagem de Atrasados ---
+            // Conta pedidos que NÃO estão finalizados (completed/canceled) E são antigos
+            'atrasados' => RequestModel::whereNotIn('status', ['completed', 'canceled'])
+                                     ->where('created_at', '<', $prazoLimite)
+                                     ->count()
+        ];
+
+        return response()->json($stats);
+    }
     /**
      * Lista principal com filtros e paginação
      */
