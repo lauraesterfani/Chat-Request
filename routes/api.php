@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\TypeRequestController;
 use App\Http\Controllers\TypeDocumentsController;
+use App\Http\Controllers\StaffController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,11 +54,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/requests', [RequestController::class, 'index']); 
     Route::get('/dashboard/estatisticas', [DashboardController::class, 'index']);
     Route::apiResource('requests', RequestController::class)->except(['index']);
+    Route::apiResource('staffs', StaffController::class);
 });
 
 
 /*
-|--------------------------------------------------------------------------
+|
 | ROTAS DE STAFF
 |--------------------------------------------------------------------------
 | Apenas usuários com role=staff
@@ -80,6 +82,7 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::get('/requests', [RequestController::class, 'index']); 
 
     // Gestão de usuários
+   
     Route::apiResource('user', UserController::class)->except('store');
 
     // Cadastro de staff
@@ -100,7 +103,7 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
 | ROTAS DE GESTÃO (Admin + Staff + CRADT)
 |--------------------------------------------------------------------------
 */
-// 👇 AQUI ESTÁ A MUDANÇA: Adicionei ',cradt'
+
 Route::middleware(['auth:api', 'role:admin,staff,cradt'])->prefix('dashboard')->group(function () {
     Route::get('/requerimentos', [DashboardController::class, 'index']);
     Route::get('/status', [DashboardController::class, 'requerimentosPorStatus']); 

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { UserPlus, Users, FileText, LayoutDashboard, AlertTriangle, Clock, Loader2 } from "lucide-react";
+import { UserPlus, Users, FileText, LayoutDashboard, AlertTriangle, Clock, Loader2, FileType } from "lucide-react";
 import { useRouter } from "next/navigation";
+
 
 const API_BASE = "http://127.0.0.1:8000/api";
 
@@ -73,24 +74,38 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F4F6F8]">
       
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0B0D3A] text-white flex-col p-6 shadow-lg shrink-0">
+     <aside className="hidden md:flex w-64 bg-[#0B0D3A] text-white flex-col p-6 shadow-lg shrink-0">
         <h1 className="text-2xl font-bold mb-4 flex items-center gap-2 truncate">
            <LayoutDashboard size={24} /> Chat Request
         </h1>
         <p className="text-xs opacity-60 mb-8 uppercase tracking-widest">Painel Administrativo</p>
         
         <nav className="space-y-2 sticky top-6"> 
+           {/* Link Visão Geral */}
            <Link href="/dashboard/admin" className="flex items-center gap-3 px-4 py-3 bg-white/10 rounded-xl text-blue-100 font-medium">
              <LayoutDashboard size={18} /> 
              <span>Visão Geral</span>
            </Link>
+
+           {/* Link Todos Pedidos */}
            <Link href="/requests" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
              <FileText size={18} /> 
              <span>Todos Pedidos</span>
            </Link>
+
+           {/* Link Tipos de Requerimento (NOVO - AGORA DENTRO DO NAV) */}
+           <Link href="/dashboard/admin/types" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+             <FileType size={18} /> 
+             <span>Tipos de Requerimento</span>
+           </Link>
+
+                    <Link href="/dashboard/admin/staff" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+            <Users size={18} /> 
+            <span>Equipe CRADT</span>
+              </Link>
         </nav>
       </aside>
-
+      
       {/* Conteúdo Principal */}
       <main className="flex-1 p-6 md:p-10 w-full min-w-0">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -152,7 +167,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Card Staff */}
-            <Link href="/staffs" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer">
+            <Link href="/dashboard/admin/staff" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer">
                <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
                  <Users size={28} />
                </div>

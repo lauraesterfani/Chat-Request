@@ -16,7 +16,9 @@ class DashboardController extends Controller
     public function index()
     {
         // Define o prazo de alerta (5 dias atrás)
-        $prazoLimite = Carbon::now()->subDays(5);
+        $prazoLimite = Carbon::now()->subDays(
+            
+        );
 
         $stats = [
             'total_requerimentos' => RequestModel::count(),
