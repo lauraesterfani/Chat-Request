@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\CourseController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\DocumentController;
@@ -12,101 +11,85 @@ use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\TypeRequestController;
 use App\Http\Controllers\TypeDocumentsController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\CourseController;
 
 /*
 |--------------------------------------------------------------------------
-| ROTAS PÚBLICAS
+| ROTAS PÚBLICAS (Sem Login)
 |--------------------------------------------------------------------------
 */
 Route::get('/', fn() => response()->json(["api" => "Online", "status" => "OK"]));
-
-// Autenticação e Cadastro
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/staff', [AuthController::class, 'loginStaff']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
-
-// Listas públicas
 Route::get('/courses', [CourseController::class, 'index']); 
-Route::get('/type-requests', [TypeRequestController::class, 'index']); 
-
 
 /*
 |--------------------------------------------------------------------------
-| ROTAS PROTEGIDAS (auth:api)
+| ROTAS AUTENTICADAS (Todos Logados: Aluno, Staff, Admin)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:api')->group(function () {
-    // Dados do usuário
+    // Dados do Usuário
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
-
-    // Atualizar matrícula
+    
+    // Aluno: Atualizações
     Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
-
-    // Uploads e mensagens
     Route::post('/documents/upload', [DocumentController::class, 'upload']);
     Route::post('/messages', [MessageController::class, 'store']);
-
-    // Requerimentos (alunos criam e veem os seus)
+    
+    // Aluno: Criar e Ver seus Pedidos
     Route::post('/requests', [RequestController::class, 'store']);
-    Route::get('/requests', [RequestController::class, 'index']); 
-    Route::get('/dashboard/estatisticas', [DashboardController::class, 'index']);
-    Route::apiResource('requests', RequestController::class)->except(['index']);
-    Route::apiResource('staffs', StaffController::class);
+    Route::get('/my-requests', [RequestController::class, 'index']); 
+    
+    // --- LISTAS GERAIS (Correção do Erro 403/404) ---
+    // Todos precisam VER os tipos para criar pedidos ou gerenciar
+    Route::get('/type-requests', [TypeRequestController::class, 'index']);
+    
+    // Permitir ver a equipe (nomes/emails) para saber quem contatar
+    // Isso resolve o 404 do Staff e do Admin
+    Route::get('/staffs', [StaffController::class, 'index']); 
 });
-
-
-/*
-|
-| ROTAS DE STAFF
-|--------------------------------------------------------------------------
-| Apenas usuários com role=staff
-*/
-Route::middleware(['auth:api', 'role:staff'])->prefix('staff')->group(function () {
-    // Gestão de admins
-    Route::get('/admins', [UserController::class, 'listAdmins']);
-    Route::post('/admins', [UserController::class, 'storeAdmin']);
-});
-
 
 /*
 |--------------------------------------------------------------------------
-| ROTAS DE ADMIN
+| ROTAS EXCLUSIVAS DE T.I. (STAFF)
 |--------------------------------------------------------------------------
-| Apenas usuários com role=admin
+| Poder Supremo: Criar e Excluir Configurações
 */
-Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
-    // Ver todos os requerimentos
-    Route::get('/requests', [RequestController::class, 'index']); 
-
-    // Gestão de usuários
-   
-    Route::apiResource('user', UserController::class)->except('store');
-
-    // Cadastro de staff
-    Route::post('/staff/register', [UserController::class, 'storeStaff']);
-
-    // Tipos de requerimento e documentos
-    Route::apiResource('type-requests', TypeRequestController::class)->except(['index']);
+Route::middleware(['auth:api', 'role:staff'])->group(function () {
+    // Gestão de Equipe (Só TI cria/deleta)
+    Route::post('/staffs', [StaffController::class, 'store']);
+    Route::delete('/staffs/{id}', [StaffController::class, 'destroy']);
+    
+    // Gestão de Tipos (Só TI cria/deleta)
+    Route::post('/type-requests', [TypeRequestController::class, 'store']);
+    Route::put('/type-requests/{id}', [TypeRequestController::class, 'update']);
+    Route::delete('/type-requests/{id}', [TypeRequestController::class, 'destroy']);
+    
+    // Outras configs sensíveis
     Route::apiResource('type-documents', TypeDocumentsController::class); 
-    Route::post('/type-requests/{id}/sync-documents', [TypeRequestController::class, 'syncDocumentTypes']);
-
-    // Deletar matrícula
     Route::delete('enrollment/{enrollment}', [EnrollmentController::class, 'destroy']);
 });
 
-
 /*
 |--------------------------------------------------------------------------
-| ROTAS DE GESTÃO (Admin + Staff + CRADT)
+| ROTAS EXCLUSIVAS DA CRADT (ADMIN)
 |--------------------------------------------------------------------------
+| Operacional: Ver todos os pedidos e Dashboard
 */
-
-Route::middleware(['auth:api', 'role:admin,staff,cradt'])->prefix('dashboard')->group(function () {
-    Route::get('/requerimentos', [DashboardController::class, 'index']);
-    Route::get('/status', [DashboardController::class, 'requerimentosPorStatus']); 
-    Route::get('/cursos', [DashboardController::class, 'requerimentosPorCurso']); 
+Route::middleware(['auth:api', 'role:admin'])->group(function () {
+    // Ver e Responder Requerimentos
+    Route::get('/requests', [RequestController::class, 'index']); 
+    Route::get('/requests/{id}', [RequestController::class, 'show']);
+    Route::put('/requests/{id}', [RequestController::class, 'update']);
+    
+    // Dashboard
+    Route::get('/dashboard/requerimentos', [DashboardController::class, 'index']);
     Route::get('/dashboard/estatisticas', [DashboardController::class, 'index']); 
+    Route::get('/dashboard/graficos/status', [DashboardController::class, 'requerimentosPorStatus']); 
+    Route::get('/dashboard/graficos/cursos', [DashboardController::class, 'requerimentosPorCurso']); 
 });

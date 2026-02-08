@@ -12,6 +12,9 @@ export default function TypeRequestsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<any>(null);
   
+  // Estado para guardar o papel do usuário
+  const [userRole, setUserRole] = useState<string>("");
+
   // Campos do Formulário
   const [formData, setFormData] = useState({
     name: "",
@@ -35,6 +38,20 @@ export default function TypeRequestsPage() {
 
   useEffect(() => {
     fetchTypes();
+
+    // Busca os dados do usuário atual para saber o Role
+    const fetchMe = async () => {
+        try {
+            const token = localStorage.getItem("jwt_token");
+            const res = await axios.get(`${API_BASE}/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setUserRole(res.data.role);
+        } catch (error) {
+            console.error("Erro ao buscar permissões do usuário", error);
+        }
+    };
+    fetchMe();
   }, []);
 
   const openModal = (type: any = null) => {
@@ -91,12 +108,16 @@ export default function TypeRequestsPage() {
             </h1>
             <p className="text-gray-500 text-sm">Gerencie as opções disponíveis para os alunos</p>
           </div>
-          <button 
-            onClick={() => openModal()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold hover:bg-blue-700 transition-all shadow-md"
-          >
-            <Plus size={20} /> Novo Tipo
-          </button>
+          
+          {/* SÓ MOSTRA O BOTÃO SE NÃO FOR CRADT */}
+          {userRole !== 'cradt' && (
+            <button 
+                onClick={() => openModal()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold hover:bg-blue-700 transition-all shadow-md"
+            >
+                <Plus size={20} /> Novo Tipo
+            </button>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -117,18 +138,23 @@ export default function TypeRequestsPage() {
                                 <td className="px-6 py-4 font-bold text-gray-800">{type.name}</td>
                                 <td className="px-6 py-4 text-gray-500 text-sm">{type.description || "---"}</td>
                                 <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                    <button 
-                                        onClick={() => openModal(type)}
-                                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                                    >
-                                        <Edit size={18} />
-                                    </button>
-                                    <button 
-                                        onClick={() => handleDelete(type.id)}
-                                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    {/* SÓ MOSTRA AS AÇÕES SE NÃO FOR CRADT */}
+                                    {userRole !== 'cradt' && (
+                                        <>
+                                            <button 
+                                                onClick={() => openModal(type)}
+                                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(type.id)}
+                                                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         ))}

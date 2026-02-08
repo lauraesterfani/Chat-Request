@@ -2,58 +2,81 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str; // <--- IMPORTANTE: Para gerar o ID
 
 class StaffController extends Controller
 {
-    /**
-     * Lista todos os administradores/staff
-     */
+    // --- LISTAGEM ---
     public function index()
     {
-        // Busca usuários que NÃO são alunos (ou seja, admin, staff, cradt)
-        $staffs = User::where('role', '!=', 'student')->get();
-        return response()->json($staffs);
+        try {
+            $staffs = DB::table('users')
+                        ->where('role', '!=', 'student')
+                        ->select('id', 'name', 'email', 'role') 
+                        ->get();
+
+            return response()->json($staffs);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
-    /**
-     * Cria um novo funcionário (Admin)
-     */
+    // --- CRIAÇÃO COM UUID ---
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:6',
+                'role' => 'required',
+            ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'admin', // Ou 'staff', dependendo de como você configurou
-            'matricula' => 'STAFF-' . rand(1000, 9999), // Gera uma matrícula fictícia
-        ]);
+            // Gera um ID único (UUID) manualmente
+            $uuid = (string) Str::uuid();
 
-        return response()->json($user, 201);
+            // Insere no banco
+            DB::table('users')->insert([
+                'id' => $uuid, // <--- AQUI ESTAVA FALTANDO!
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => $request->role,
+                'matricula' => 'STAFF-' . rand(1000, 9999),
+                'cpf' => '000.000.000-' . rand(10, 99),
+                'phone' => '(00) 00000-0000',
+                'birthday' => '2000-01-01',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            
+            // Busca o usuário criado para devolver ao front
+            $newUser = DB::table('users')->where('id', $uuid)->first();
+            
+            return response()->json($newUser, 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'ERRO NO SERVIDOR: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    /**
-     * Remove um funcionário
-     */
+    // --- EXCLUSÃO ---
     public function destroy($id)
     {
-        $user = User::findOrFail($id);
-        
-        // Segurança básica: não deixar deletar a si mesmo (opcional no front, mas bom no back)
-        if ($user->id === auth()->id()) {
-             return response()->json(['error' => 'Você não pode se deletar.'], 403);
+        try {
+            if (auth()->id() == $id) {
+                throw new \Exception('Você não pode se excluir.');
+            }
+            DB::table('users')->where('id', $id)->delete();
+            return response()->json(['message' => 'Excluído.']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
         }
-
-        $user->delete();
-        return response()->json(['message' => 'Funcionário removido.']);
     }
 }
