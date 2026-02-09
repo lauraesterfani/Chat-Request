@@ -241,11 +241,11 @@ export default function GuidedChatPage() {
           id: Date.now() + 1,
           role: "bot",
           text: "Qual requerimento você deseja abrir?",
-          options: allTypes.map((t: any) => ({
-            label: t.name,
-            value: t.id,
-            action: "select_type",
-          })),
+          options: Array.isArray(allTypes) ? allTypes.map((t: any) => ({
+    label: t.name,
+    value: t.id,
+    action: "select_type",
+})): []
         },
       ]);
     } else if (opt.action === "select_type") {

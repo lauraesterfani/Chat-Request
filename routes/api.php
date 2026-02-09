@@ -24,7 +24,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/staff', [AuthController::class, 'loginStaff']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 Route::get('/courses', [CourseController::class, 'index']); 
-
+Route::get('/type-requests', [TypeRequestController::class, 'index']);
 /*
 |--------------------------------------------------------------------------
 | ROTAS AUTENTICADAS (Todos Logados: Aluno, Staff, Admin)
@@ -35,7 +35,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
-    
+    Route::get('/requests', [RequestController::class, 'index']); 
     // Aluno: Atualizações
     Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
     Route::post('/documents/upload', [DocumentController::class, 'upload']);
@@ -47,7 +47,7 @@ Route::middleware('auth:api')->group(function () {
     
     // --- LISTAS GERAIS (Correção do Erro 403/404) ---
     // Todos precisam VER os tipos para criar pedidos ou gerenciar
-    Route::get('/type-requests', [TypeRequestController::class, 'index']);
+    
     
     // Permitir ver a equipe (nomes/emails) para saber quem contatar
     // Isso resolve o 404 do Staff e do Admin
@@ -83,7 +83,7 @@ Route::middleware(['auth:api', 'role:staff'])->group(function () {
 */
 Route::middleware(['auth:api', 'role:admin'])->group(function () {
     // Ver e Responder Requerimentos
-    Route::get('/requests', [RequestController::class, 'index']); 
+    
     Route::get('/requests/{id}', [RequestController::class, 'show']);
     Route::put('/requests/{id}', [RequestController::class, 'update']);
     
