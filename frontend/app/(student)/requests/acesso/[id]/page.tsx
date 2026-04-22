@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { X, FileText, Check, Ban, Clock, ChevronLeft, ExternalLink } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/api";
 
 // --- Subcomponente: Modal de Confirmação ---
 function ModalConfirm({ status, onConfirm, onCancel, statusLabels }: any) {
@@ -187,7 +187,7 @@ export default function RequestDetailsPage() {
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {request.documents.map((doc: any) => {
-                    const fileUrl = `http://127.0.0.1:8000/storage/${doc.path.replace("public/", "")}`;
+                    const fileUrl = `storage/${doc.path.replace("public/", "")}`;
                     const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
                     return (
                       <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/30 transition-all shadow-sm bg-white">

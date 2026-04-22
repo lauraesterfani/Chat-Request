@@ -6,7 +6,7 @@ import Link from "next/link";
 import { UserPlus, Users, FileText, LayoutDashboard, AlertTriangle, Clock, Loader2, FileType, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/api";
 
 export default function DashboardPage() {
   const router = useRouter();

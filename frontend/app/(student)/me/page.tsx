@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList, CheckCircle2 } from 'lucide-react';
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/api";
 
 // 🔹 CONFIGURAÇÃO COM OS NOMES EXATOS DO SEU BANCO DE DADOS
 // Agora o "match" vai acontecer e o upload vai aparecer!

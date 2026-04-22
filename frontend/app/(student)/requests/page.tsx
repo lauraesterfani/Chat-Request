@@ -5,7 +5,7 @@ import axios from "axios";
 import Link from "next/link";
 import { Eye, Loader2, Plus, FileText, Search, FilterX } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/api";
 
 export default function RequestsPage() {
   const [requests, setRequests] = useState<any[]>([]);

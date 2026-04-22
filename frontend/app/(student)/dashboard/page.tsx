@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Trash2, UserPlus, Users, X, Save, ShieldAlert } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/api";
 
 export default function StaffPage() {
   const [staffs, setStaffs] = useState<any[]>([]);

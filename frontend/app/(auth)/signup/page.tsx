@@ -16,7 +16,7 @@ interface Course {
 
 // 💡 HOOK useAuth (Mantém a lógica local por enquanto)
 const useAuth = () => {
-    const REGISTER_URL = 'http://127.0.0.1:8000/api/register';
+    const REGISTER_URL = '/api/register';
 
     const register = useCallback(async (userData: any) => {
         console.log("[API REAL] Tentativa de Registo com:", userData);
@@ -129,7 +129,7 @@ export default function SignupPage() {
 
     // 2. Carregar Cursos do Backend
     useEffect(() => {
-        const COURSES_URL = 'http://127.0.0.1:8000/api/courses';
+        const COURSES_URL = '/api/courses';
         
         const fetchCourses = async () => {
             setIsCoursesLoading(true); 

@@ -13,7 +13,7 @@ export default function CradtFilters({ onFilter }: CradtFiltersProps) {
 
   useEffect(() => {
     // Carrega os cursos para o select
-    axios.get("http://127.0.0.1:8000/api/courses")
+    axios.get("/api/courses")
       .then(res => setCourses(res.data.data || res.data))
       .catch(err => console.error(err));
   }, []);

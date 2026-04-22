@@ -4,7 +4,7 @@ import React, { useState, useEffect, createContext, useContext, useCallback, use
 
 // === CONFIGURAÇÃO GLOBAL DA APLICAÇÃO (CORRIGIDA) ===
 // 👇 O SEGREDO ESTÁ AQUI: Trocamos localhost por 127.0.0.1
-const BASE_URL = 'http://127.0.0.1:8000/api';
+const BASE_URL = '/api';
 
 const REGISTER_URL = `${BASE_URL}/register`;
 const LOGIN_URL = `${BASE_URL}/login`;
