@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { FaWhatsapp } from "react-icons/fa";
 
 const API_BASE = "/api";
 
@@ -85,6 +86,8 @@ interface Message {
   options?: { label: string; action: string; icon?: React.ReactNode; value?: any }[];
   items?: { subject: string; status: string }[];
 }
+
+
 
 export default function GuidedChatPage() {
   const { token, user } = useAuth();
@@ -362,6 +365,7 @@ export default function GuidedChatPage() {
         {loading && <div className="flex ml-4"><Loader2 className="animate-spin text-[#15803d] w-5 h-5" /></div>}
         <div ref={bottomRef} className="h-4" />
       </main>
+      
 
       {/* 🔹 FOOTER (Apenas Input, sem botões extras) */}
       <footer className="p-6 bg-white border-t border-gray-100">
@@ -403,7 +407,16 @@ export default function GuidedChatPage() {
               placeholder={step === "waiting_file" ? `${files.length} arquivo(s) selecionados...` : "Escreva sua mensagem aqui..."}
               className="flex-1 bg-[#f8fafc] border border-gray-100 rounded-2xl px-6 py-4 text-sm outline-none focus:ring-2 focus:ring-[#15803d]/10 focus:border-[#15803d] transition-all text-slate-600 placeholder:text-slate-300"
             />
-
+    {/* 🔹 BOTÃO FIXO DO WHATSAPP */}
+      <a
+        href="https://wa.me/5581988224907?text=Olá,%20gostaria%20de%20falar%20com%20a%20CRADT."
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-full shadow-lg flex items-center gap-2 transition-colors"
+      >
+        <FaWhatsapp className="w-6 h-6" />
+        <span className="font-semibold">Falar com a CRADT</span>
+      </a>
             {/* Botão de Enviar */}
             {step === "waiting_file" ? (
               <button
@@ -423,7 +436,7 @@ export default function GuidedChatPage() {
               </button>
             )}
           </form>
-          {/* OS BOTÕES QUE ESTAVAM AQUI FORAM REMOVIDOS */}
+          
         </div>
       </footer>
     </div>

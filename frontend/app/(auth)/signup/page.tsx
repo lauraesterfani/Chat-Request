@@ -83,7 +83,7 @@ const EyeIcon = (props: React.SVGProps<SVGSVGElement> & { isVisible: boolean, on
 
 export default function SignupPage() {
 
-    const router = useRouter(); // 👈 AGORA É O ROUTER REAL
+    const router = useRouter(); // 
     const { register, isAuthenticated, isLoading } = useAuth();
     
     // Campos de cadastro
