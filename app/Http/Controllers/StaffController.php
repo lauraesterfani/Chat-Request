@@ -2,81 +2,76 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str; // <--- IMPORTANTE: Para gerar o ID
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use App\Models\StaffAdmin;
 
-class StaffController extends Controller
+class StaffAdminController extends Controller
 {
-    // --- LISTAGEM ---
-    public function index()
-    {
-        try {
-            $staffs = DB::table('users')
-                        ->where('role', '!=', 'student')
-                        ->select('id', 'name', 'email', 'role') 
-                        ->get();
-
-            return response()->json($staffs);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    // --- CRIAÇÃO COM UUID ---
+    /**
+     * Cadastrar novo Admin/Staff
+     */
     public function store(Request $request)
     {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:6',
-                'role' => 'required',
-            ]);
+        $request->validate([
+            'name'  => 'required|string|max:255',
+            'email' => 'required|email|unique:staff_admins',
+            'phone' => 'required|string|max:20',
+            'cpf'   => 'required|string|unique:staff_admins',
+            'role'  => 'required|in:admin,staff',
+        ]);
 
-            // Gera um ID único (UUID) manualmente
-            $uuid = (string) Str::uuid();
+        // Gerar senha aleatória
+        $password = Str::random(10);
 
-            // Insere no banco
-            DB::table('users')->insert([
-                'id' => $uuid, // <--- AQUI ESTAVA FALTANDO!
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'matricula' => 'STAFF-' . rand(1000, 9999),
-                'cpf' => '000.000.000-' . rand(10, 99),
-                'phone' => '(00) 00000-0000',
-                'birthday' => '2000-01-01',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            
-            // Busca o usuário criado para devolver ao front
-            $newUser = DB::table('users')->where('id', $uuid)->first();
-            
-            return response()->json($newUser, 201);
+        // Criar usuário
+        $user = StaffAdmin::create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'phone'    => $request->phone,
+            'cpf'      => $request->cpf,
+            'role'     => $request->role,
+            'password' => Hash::make($password),
+        ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'ERRO NO SERVIDOR: ' . $e->getMessage()
-            ], 500);
-        }
+        // Enviar senha por e-mail (texto puro)
+        Mail::raw("Olá {$user->name}, sua conta foi criada com sucesso.\n\nSua senha de acesso é: {$password}\n\nPor favor, altere sua senha após o primeiro login.", function ($message) use ($user) {
+            $message->to($user->email)
+                    ->subject('Sua senha de acesso');
+        });
+
+        return response()->json([
+            'message' => 'Cadastro realizado com sucesso! A senha foi enviada por e-mail.'
+        ]);
     }
 
-    // --- EXCLUSÃO ---
-    public function destroy($id)
+    /**
+     * Alterar senha
+     */
+    public function changePassword(Request $request)
     {
-        try {
-            if (auth()->id() == $id) {
-                throw new \Exception('Você não pode se excluir.');
-            }
-            DB::table('users')->where('id', $id)->delete();
-            return response()->json(['message' => 'Excluído.']);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 400);
+        $request->validate([
+            'current_password' => 'required',
+            'new_password'     => 'required|min:8|confirmed',
+        ]);
+
+        $user = auth()->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'Senha atual incorreta'], 400);
         }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json(['message' => 'Senha alterada com sucesso!']);
     }
+
+    public function index()
+{
+    return StaffAdmin::all();
+}
+
 }
