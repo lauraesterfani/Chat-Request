@@ -83,15 +83,15 @@ export default function RequestsPage() {
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-[#0B0D3A] flex items-center gap-2">
-              <FileText className="text-blue-600" /> Todos os Pedidos
+            <h1 className="text-3xl font-bold text-[#000000] flex items-center gap-2">
+              <FileText className="text-emerald-600" /> Todos os Pedidos
             </h1>
             <p className="text-gray-500 text-sm mt-1">
               Gerencie e filtre as solicitações recebidas
             </p>
           </div>
 
-          <Link href="/requests/new" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg">
+          <Link href="/requests/new" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg">
             <Plus size={20} /> Novo Pedido
           </Link>
         </div>
@@ -109,7 +109,7 @@ export default function RequestsPage() {
                 value={filters.name}
                 onChange={handleFilterChange}
                 placeholder="Ex: Dylan"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition-all"
               />
             </div>
 
@@ -122,7 +122,7 @@ export default function RequestsPage() {
                 value={filters.matricula}
                 onChange={handleFilterChange}
                 placeholder="Ex: 2024..."
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition-all"
               />
             </div>
 
@@ -133,7 +133,7 @@ export default function RequestsPage() {
                 name="course_id"
                 value={filters.course_id}
                 onChange={handleFilterChange}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all cursor-pointer"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition-all cursor-pointer"
               >
                 <option value="">Todos os Cursos</option>
                 {courses.map((course) => (
@@ -148,7 +148,7 @@ export default function RequestsPage() {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="flex-1 bg-[#0B0D3A] text-white px-4 py-2.5 rounded-xl font-bold hover:opacity-90 transition-all flex justify-center items-center gap-2 text-sm"
+                className="flex-1 bg-[#004d40] text-white px-4 py-2.5 rounded-xl font-bold hover:opacity-90 transition-all flex justify-center items-center gap-2 text-sm"
               >
                 <Search size={16} /> Filtrar
               </button>
