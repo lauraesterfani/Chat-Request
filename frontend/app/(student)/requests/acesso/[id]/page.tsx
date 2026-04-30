@@ -1,10 +1,13 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { X, FileText, Check, Ban, Clock, ChevronLeft, ExternalLink } from "lucide-react";
 
+
 const API_BASE = "/api";
+
 
 // --- Subcomponente: Modal de Confirmação ---
 function ModalConfirm({ status, onConfirm, onCancel, statusLabels }: any) {
@@ -14,16 +17,16 @@ function ModalConfirm({ status, onConfirm, onCancel, statusLabels }: any) {
         <button onClick={onCancel} className="absolute top-4 right-4 text-slate-400 hover:text-black transition">
           <X size={20} />
         </button>
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Confirmar alteração</h2>
+        <h2 className="text-lg font-bold text-black-800 mb-4">Confirmar alteração</h2>
         <p className="text-sm text-slate-600 mb-6">
           Tem certeza que deseja mudar o status para:{" "}
-          <span className="font-semibold text-[#1A73E8]">{statusLabels[status] || status}</span>?
+          <span className="font-semibold text-[#004d40]">{statusLabels[status] || status}</span>?
         </p>
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
             Cancelar
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm font-bold bg-[#1A73E8] text-white rounded-lg hover:bg-[#1662c4] transition">
+          <button onClick={onConfirm} className="px-4 py-2 text-sm font-bold bg-emerald-700 text-white rounded-lg hover:bg-emerald-600 transition">
             Confirmar
           </button>
         </div>
@@ -32,11 +35,13 @@ function ModalConfirm({ status, onConfirm, onCancel, statusLabels }: any) {
   );
 }
 
+
 // --- Componente Principal ---
 export default function RequestDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+
 
   // Estados de Dados
   const [request, setRequest] = useState<any>(null);
@@ -44,11 +49,12 @@ export default function RequestDetailsPage() {
   const [updating, setUpdating] = useState(false);
   const [observation, setObservation] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(null);
-  
+ 
   // Estados de UI (Modais e Alertas)
   const [showConfirm, setShowConfirm] = useState(false);
   const [nextStatus, setNextStatus] = useState("");
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
 
   const statusColors: any = {
     pending: "bg-red-100 text-red-700 border-red-200",
@@ -57,6 +63,7 @@ export default function RequestDetailsPage() {
     canceled: "bg-gray-200 text-gray-800 border-gray-300",
   };
 
+
   const statusLabels: any = {
     pending: "Pendente",
     analyzing: "Em Análise",
@@ -64,11 +71,13 @@ export default function RequestDetailsPage() {
     canceled: "Indeferido",
   };
 
+
   // Carregamento Inicial
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("jwt_token");
       if (!token) return router.push("/login");
+
 
       try {
         const [meRes, reqRes] = await Promise.all([
@@ -76,8 +85,9 @@ export default function RequestDetailsPage() {
           fetch(`${API_BASE}/requests/${id}`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
 
+
         if (meRes.ok) setCurrentUser(await meRes.json());
-        
+       
         if (reqRes.ok) {
           const data = await reqRes.json();
           setRequest(data);
@@ -92,8 +102,10 @@ export default function RequestDetailsPage() {
       }
     };
 
+
     if (id) fetchData();
   }, [id, router]);
+
 
   // Lógica de Feedback
   const handleFeedback = (msg: string, type: 'success' | 'error') => {
@@ -101,26 +113,29 @@ export default function RequestDetailsPage() {
     setTimeout(() => setFeedback(null), 4000);
   };
 
+
   // Lógica de Alteração de Status
   const handleStatusClick = (status: string) => {
     setNextStatus(status);
     setShowConfirm(true);
   };
 
+
   const confirmStatusChange = async () => {
     setShowConfirm(false);
     setUpdating(true);
-    
+   
     try {
       const token = localStorage.getItem("jwt_token");
       const res = await fetch(`${API_BASE}/requests/${id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ status: nextStatus, observation }),
       });
+
 
       if (res.ok) {
         setRequest((prev: any) => ({ ...prev, status: nextStatus, observation }));
@@ -135,16 +150,19 @@ export default function RequestDetailsPage() {
     }
   };
 
+
   if (loading || !request) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
         <p className="text-slate-500 animate-pulse">Carregando detalhes...</p>
       </div>
     );
   }
 
+
   const isAdmin = ["admin", "staff", "cradt"].includes(currentUser?.role);
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -160,9 +178,10 @@ export default function RequestDetailsPage() {
         </div>
       )}
 
+
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         {/* Header */}
-        <div className="bg-[#0B0D3A] p-6 text-white flex justify-between items-center">
+        <div className="bg-[#004d40] p-6 text-white flex justify-between items-center">
           <button onClick={() => router.back()} className="p-2 hover:bg-white/10 rounded-full transition">
             <ChevronLeft size={24} />
           </button>
@@ -171,6 +190,7 @@ export default function RequestDetailsPage() {
             {statusLabels[request.status] || request.status}
           </span>
         </div>
+
 
         <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Coluna Principal: Conteúdo */}
@@ -182,24 +202,25 @@ export default function RequestDetailsPage() {
               </div>
             </section>
 
+
             <section>
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documentos Anexados</h3>
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {request.documents.map((doc: any) => {
-                    const fileUrl = `storage/${doc.path.replace("public/", "")}`;
+                    const fileUrl = `http://localhost:8000/storage/${doc.path.replace("public/", "")}`;
                     const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
                     return (
-                      <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/30 transition-all shadow-sm bg-white">
-                        
+                      <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-200 rounded-xl hover:border-emerald-400 hover:bg-gray-50/30 transition-all shadow-sm bg-white">
+                       
                         {/* LÓGICA DE EXIBIÇÃO CLICÁVEL (CORRIGIDA) */}
                         {isImage ? (
                           // 1. Imagem: Envolvida em <a> para abrir em nova aba
                           <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block cursor-zoom-in overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
-                            <img 
-                              src={fileUrl} 
-                              alt={doc.name} 
-                              className="w-full h-48 object-contain hover:scale-105 transition-transform duration-300" 
+                            <img
+                              src={fileUrl}
+                              alt={doc.name}
+                              className="w-full h-48 object-contain hover:scale-105 transition-transform duration-300"
                             />
                           </a>
                         ) : (
@@ -210,9 +231,10 @@ export default function RequestDetailsPage() {
                           </a>
                         )}
 
+
                         <div className="flex justify-between items-center border-t pt-3 mt-1">
                           <p className="text-sm font-semibold text-gray-700 truncate max-w-[200px]" title={doc.name}>{doc.name}</p>
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-bold text-[#1A73E8] hover:underline">
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-bold text-green-600 hover:underline">
                             BAIXAR <ExternalLink size={14} />
                           </a>
                         </div>
@@ -225,6 +247,7 @@ export default function RequestDetailsPage() {
               )}
             </section>
           </div>
+
 
           {/* Coluna Lateral: Sidebar */}
           <div className="space-y-6">
@@ -240,11 +263,12 @@ export default function RequestDetailsPage() {
               </div>
             </div>
 
+
             {isAdmin && (
-              <div className="bg-white p-5 rounded-xl border-2 border-blue-100 shadow-md">
-                <h3 className="text-[10px] font-black text-blue-600 uppercase mb-4 tracking-widest text-center">Área da Coordenação</h3>
+              <div className="bg-white p-5 rounded-xl border-2 border-gray-100 shadow-md">
+                <h3 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest text-center">Área da Coordenação</h3>
                 <textarea
-                  className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-4 min-h-[120px] transition-all"
+                  className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none mb-4 min-h-[120px] transition-all"
                   placeholder="Justifique o deferimento ou indeferimento..."
                   value={observation}
                   onChange={(e) => setObservation(e.target.value)}
@@ -270,6 +294,7 @@ export default function RequestDetailsPage() {
           </div>
         </div>
       </div>
+
 
       {showConfirm && (
         <ModalConfirm
