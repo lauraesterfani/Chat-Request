@@ -67,10 +67,10 @@ export default function StaffSignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#E5E5E5]">
+    <div className="min-h-screen flex bg-[#fcfcfc]">
       {/* Painel esquerdo */}
-      <aside className="w-64 bg-[#0B0D3A] text-white flex flex-col p-6">
-        <h1 className="text-2xl font-bold mb-4">Chat Request</h1>
+      <aside className="w-64 bg-slate-900 text-white flex flex-col p-6">
+        <h1 className="text-2xl font-bold mb-4 tracking-tighter">Chat Request</h1>
         <p className="text-sm opacity-80">
           Cadastro de membros da equipe
         </p>
@@ -78,18 +78,18 @@ export default function StaffSignupPage() {
 
       {/* Conteúdo */}
       <main className="flex-1 p-10">
-        <h2 className="text-2xl font-semibold mb-6">
+        <h2 className="text-2xl font-semibold mb-6 text-slate-800 tracking-tighter">
           Cadastrar novo staff
         </h2>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow p-8 max-w-xl space-y-4"
+          className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 p-8 max-w-xl space-y-4"
         >
           <input
             name="name"
             placeholder="Nome completo"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           />
@@ -98,7 +98,7 @@ export default function StaffSignupPage() {
             name="email"
             type="email"
             placeholder="Email institucional"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           />
@@ -106,7 +106,7 @@ export default function StaffSignupPage() {
           <input
             name="cpf"
             placeholder="CPF"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           />
@@ -114,7 +114,7 @@ export default function StaffSignupPage() {
           <input
             name="phone"
             placeholder="Telefone"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           />
@@ -122,14 +122,14 @@ export default function StaffSignupPage() {
           <input
             name="matricula"
             placeholder="Matrícula"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           />
 
           <select
             name="course_id"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           >
@@ -144,7 +144,7 @@ export default function StaffSignupPage() {
           <input
             type="date"
             name="birthday"
-            className="w-full border rounded-lg p-3"
+            className="w-full border border-slate-200 bg-slate-50 rounded-2xl p-3 outline-none focus:border-[#108542] focus:ring-2 focus:ring-emerald-100"
             onChange={handleChange}
             required
           />
@@ -152,7 +152,7 @@ export default function StaffSignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#1A73E8] text-white rounded-lg p-3 hover:opacity-90 transition"
+            className="w-full bg-slate-900 text-white rounded-2xl p-3 font-bold hover:bg-slate-800 transition"
           >
             {loading ? "Cadastrando..." : "Cadastrar staff"}
           </button>
