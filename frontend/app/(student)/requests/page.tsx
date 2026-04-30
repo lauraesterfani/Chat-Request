@@ -3,23 +3,23 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { Eye, Loader2, Plus, FileText, Search, FilterX } from "lucide-react";
+import { Eye, Loader2, FileText, Search, FilterX } from "lucide-react";
 
 const API_BASE = "/api";
 
 export default function RequestsPage() {
-  const [requests, setRequests] = useState<any[]>([]);
+  const [allRequests, setAllRequests] = useState<any[]>([]); 
+  const [filteredRequests, setFilteredRequests] = useState<any[]>([]); 
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados dos Filtros
   const [filters, setFilters] = useState({
     name: "",
     matricula: "",
-    course_id: ""
+    course_id: "",
+    status: "" 
   });
 
-  // Busca Cursos para o Select
   const fetchCourses = async () => {
     try {
       const res = await axios.get(`${API_BASE}/courses`);
@@ -29,18 +29,29 @@ export default function RequestsPage() {
     }
   };
 
-  // Busca Requerimentos (com filtros opcionais)
-  const fetchRequests = async (appliedFilters = {}) => {
+  const fetchRequests = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("jwt_token");
       const res = await axios.get(`${API_BASE}/requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: appliedFilters, // Envia filtros na URL
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
-      setRequests(dados);
+      
+      // Ordenação: Pendentes primeiro
+      dados.sort((a: any, b: any) => {
+        if (a.status === "pending" && b.status !== "pending") return -1;
+        if (a.status !== "pending" && b.status === "pending") return 1;
+        return 0;
+      });
+
+      setAllRequests(dados);
+
+      // Na carga inicial, esconde os cancelados (indeferidos)
+      const iniciais = dados.filter((req: any) => req.status !== "canceled");
+      setFilteredRequests(iniciais);
+
     } catch (error) {
       console.error("Erro ao buscar requerimentos:", error);
     } finally {
@@ -50,123 +61,113 @@ export default function RequestsPage() {
 
   useEffect(() => {
     fetchCourses();
-    fetchRequests();
+    fetchRequests(); 
   }, []);
 
-  // Atualiza inputs
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    let result = [...allRequests];
+
+    // Filtro de Nome
+    if (filters.name) {
+      result = result.filter(req => 
+        req.user?.name?.toLowerCase().includes(filters.name.toLowerCase())
+      );
+    }
+
+    // Filtro de Matrícula
+    if (filters.matricula) {
+      result = result.filter(req => 
+        (req.user?.enrollment_number || req.user?.matricula)?.includes(filters.matricula)
+      );
+    }
+
+    // Filtro de Curso
+    if (filters.course_id) {
+      result = result.filter(req => String(req.user?.course_id) === String(filters.course_id));
+    }
+
+    // --- LÓGICA DE STATUS (CANCELED) ---
+    if (filters.status) {
+      // Se selecionou um status específico, mostra exatamente ele
+      result = result.filter(req => req.status === filters.status);
+    } else {
+      // Se não tem status selecionado (Todos), esconde os indeferidos (canceled)
+      result = result.filter(req => req.status !== "canceled");
+    }
+
+    setFilteredRequests(result);
+  };
+
+  const clearFilters = () => {
+    setFilters({ name: "", matricula: "", course_id: "", status: "" });
+    // Volta para o estado inicial: tudo menos os cancelados
+    setFilteredRequests(allRequests.filter(req => req.status !== "canceled"));
+  };
+
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Botão Pesquisar
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanFilters: any = {};
-    if (filters.name) cleanFilters.name = filters.name;
-    if (filters.matricula) cleanFilters.matricula = filters.matricula;
-    if (filters.course_id) cleanFilters.course_id = filters.course_id;
-    
-    fetchRequests(cleanFilters);
-  };
-
-  // Botão Limpar
-  const clearFilters = () => {
-    setFilters({ name: "", matricula: "", course_id: "" });
-    fetchRequests({});
   };
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] p-8">
       <div className="max-w-6xl mx-auto">
         
-        {/* Cabeçalho */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-[#000000] flex items-center gap-2">
-              <FileText className="text-emerald-600" /> Todos os Pedidos
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Gerencie e filtre as solicitações recebidas
-            </p>
-          </div>
-
-          
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-[#000000] flex items-center gap-2">
+            <FileText className="text-emerald-600" /> Todos os Pedidos
+          </h1>
         </div>
 
-        {/* --- ÁREA DE FILTROS --- */}
+        {/* Filtros */}
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            
-            {/* Input Nome */}
+          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Nome do Aluno</label>
-              <input
-                type="text"
-                name="name"
-                value={filters.name}
-                onChange={handleFilterChange}
-                placeholder="Ex: Dylan"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition-all"
-              />
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Nome</label>
+              <input type="text" name="name" value={filters.name} onChange={handleFilterChange} placeholder="Ex: Dylan" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
             </div>
 
-            {/* Input Matrícula */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Matrícula</label>
-              <input
-                type="text"
-                name="matricula"
-                value={filters.matricula}
-                onChange={handleFilterChange}
-                placeholder="Ex: 2024..."
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition-all"
-              />
+              <input type="text" name="matricula" value={filters.matricula} onChange={handleFilterChange} placeholder="Ex: 2024..." className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
             </div>
 
-            {/* Select Curso */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Curso</label>
-              <select
-                name="course_id"
-                value={filters.course_id}
-                onChange={handleFilterChange}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition-all cursor-pointer"
-              >
+              <select name="course_id" value={filters.course_id} onChange={handleFilterChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm cursor-pointer">
                 <option value="">Todos os Cursos</option>
                 {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.name}
-                  </option>
+                  <option key={course.id} value={course.id}>{course.name}</option>
                 ))}
               </select>
             </div>
 
-            {/* Botões */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Status</label>
+              <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm cursor-pointer">
+                <option value="">Todos </option>
+                <option value="pending">Pendentes</option>
+                <option value="analyzing">Em Análise</option>
+                <option value="completed">Deferidos</option>
+                <option value="canceled">Indeferidos</option>
+              </select>
+            </div>
+
             <div className="flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 bg-[#004d40] text-white px-4 py-2.5 rounded-xl font-bold hover:opacity-90 transition-all flex justify-center items-center gap-2 text-sm"
-              >
+              <button type="submit" className="flex-1 bg-[#004d40] text-white px-4 py-2.5 rounded-xl font-bold hover:opacity-90 transition-all flex justify-center items-center gap-2 text-sm">
                 <Search size={16} /> Filtrar
               </button>
-              
-              {(filters.name || filters.matricula || filters.course_id) && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="px-3 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all"
-                  title="Limpar Filtros"
-                >
+              {(filters.name || filters.matricula || filters.course_id || filters.status) && (
+                <button type="button" onClick={clearFilters} className="px-3 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all">
                   <FilterX size={18} />
                 </button>
               )}
             </div>
-
           </form>
         </div>
 
-        {/* Tabela de Resultados */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
@@ -183,45 +184,35 @@ export default function RequestsPage() {
               {loading ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="flex justify-center items-center gap-2 text-gray-400">
+                    <div className="flex justify-center items-center gap-2 text-emerald-600 font-bold">
                       <Loader2 className="animate-spin" /> Carregando...
                     </div>
                   </td>
                 </tr>
-              ) : requests.length === 0 ? (
+              ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    Nenhum pedido encontrado.
-                  </td>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">Nenhum pedido encontrado.</td>
                 </tr>
               ) : (
-                requests.map((req) => (
+                filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="px-6 py-4 font-mono text-xs text-gray-500">
-                      {req.protocol || `#${req.id}`}
-                    </td>
-                    <td className="px-6 py-4 font-medium text-gray-900">
-                      {req.type?.name || req.subject}
-                    </td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-500">{req.protocol || `#${req.id}`}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{req.type?.name || req.subject}</td>
                     <td className="px-6 py-4 text-gray-600">
                       <div className="flex flex-col">
                         <span className="font-bold text-xs text-slate-700">{req.user?.name || "---"}</span>
                         <span className="text-[10px] text-slate-400">{req.user?.enrollment_number || req.user?.matricula}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">
-                      {req.user?.course?.name || "---"}
-                    </td>
+                    <td className="px-6 py-4 text-gray-500 text-xs">{req.user?.course?.name || "---"}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         req.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' : 
                         req.status === 'analyzing' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
-                        req.status === 'canceled' ? 'bg-gray-100 text-gray-600 border border-gray-200' :
-                        'bg-red-50 text-red-600 border border-red-100'
+                        req.status === 'canceled' ? 'bg-red-50 text-red-600 border border-red-100' :
+                        'bg-blue-100 text-blue-700 border border-blue-200'
                       }`}>
-                        {req.status === 'pending' ? 'Pendente' : 
-                         req.status === 'analyzing' ? 'Em Análise' :
-                         req.status === 'completed' ? 'Deferido' : 'Indeferido'}
+                        {req.status === 'pending' ? 'Pendente' : req.status === 'analyzing' ? 'Em Análise' : req.status === 'completed' ? 'Deferido' : 'Indeferido'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
