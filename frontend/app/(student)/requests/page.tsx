@@ -227,7 +227,7 @@ export default function RequestsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <Link href={`/requests/acesso/${req.id}`} className="inline-flex items-center justify-center p-2 text-blue-600 bg-blue-50 rounded-full hover:bg-blue-600 hover:text-white transition-all">
+                      <Link href={`/requests/acesso/${req.id}`} className="inline-flex items-center justify-center p-2 text-emerald-600 bg-emerald-50 rounded-full hover:bg-emerald-600 hover:text-white transition-all">
                         <Eye size={18} />
                       </Link>
                     </td>
