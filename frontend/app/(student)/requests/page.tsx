@@ -91,9 +91,7 @@ export default function RequestsPage() {
             </p>
           </div>
 
-          <Link href="/requests/new" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg">
-            <Plus size={20} /> Novo Pedido
-          </Link>
+          
         </div>
 
         {/* --- ÁREA DE FILTROS --- */}
