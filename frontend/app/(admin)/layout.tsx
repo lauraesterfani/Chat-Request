@@ -22,7 +22,7 @@ export default function AdminDashboardPage() {
                 C
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">Painel CRADT</h1>
+                <h1 className="text-xl font-bold text-gray-800"> CRADT</h1>
                 <p className="text-xs text-green-600 font-medium">Administração Acadêmica</p>
               </div>
            </div>

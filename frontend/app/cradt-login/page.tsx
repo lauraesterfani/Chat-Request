@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from "next/image";
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -65,29 +66,45 @@ export default function CradtLoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-[#0f172a] font-sans overflow-hidden">
+    <div className="min-h-screen w-full flex bg-[#fcfcfc] font-sans overflow-hidden">
 
       {/* LADO ESQUERDO: DESTAQUE INSTITUCIONAL */}
-      <div className="hidden lg:flex lg:w-[60%] relative flex-col justify-end p-16 overflow-hidden">
-        <div className="absolute inset-0 bg-[#020617]">
-          <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[100px]"></div>
-          <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-5"></div>
-        </div>
+<div className="hidden lg:flex lg:w-[55%] relative flex-col justify-center items-center p-12 overflow-hidden">
+  <div className="absolute inset-0 bg-gradient-to-br from-green-900 to-[#15803d]">
+    <div className="absolute top-[-20%] left-[-10%] w-[700px] h-[700px] bg-green-500/20 rounded-full blur-[120px]"></div>
+    <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-emerald-400/20 rounded-full blur-[100px]"></div>
+    <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10 mix-blend-overlay"></div>
+  </div>
 
-        <div className="relative z-10 max-w-2xl">
-          <div className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium uppercase tracking-wider">
-            Acesso Restrito
-          </div>
-          <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
-            Gestão Acadêmica <br />
-            <span className="text-blue-500">Eficiente e Segura.</span>
-          </h1>
-          <p className="text-slate-400 text-lg leading-relaxed">
-            Bem-vindo ao Sistema CRADT. Utilize suas credenciais institucionais para gerenciar requerimentos, analisar processos e comunicar-se com os discentes.
-          </p>
-        </div>
+  <div className="relative z-10 flex flex-col items-center text-center max-w-2xl animate-fade-in-up">
+    <div className="w-80 h-80 relative mb-8 transform hover:scale-105 transition-transform duration-500">
+      <Image
+        src="/mascote.png"
+        alt="Mascote Estudante"
+        fill
+        className="object-contain drop-shadow-2xl"
+        priority
+      />
+    </div>
+
+    <div>
+      <div className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-100 text-xs font-medium uppercase tracking-wider">
+        Acesso Restrito
       </div>
+
+      <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
+        Gestão Acadêmica <br />
+        <span className="text-emerald-200">Eficiente e Segura.</span>
+      </h1>
+
+      <p className="text-emerald-50/90 text-lg leading-relaxed">
+        Bem-vindo ao Sistema CRADT. Utilize suas credenciais institucionais para
+        gerenciar requerimentos, analisar processos e comunicar-se com os
+        discentes.
+      </p>
+    </div>
+  </div>
+</div>
 
 
       {/* LADO DIREITO: FORMULÁRIO DE LOGIN */}
@@ -142,8 +159,7 @@ export default function CradtLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-800 placeholder:text-slate-400"
-                placeholder="nome@cradt.edu.br"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-[#108542] focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                 required
               />
             </div>
@@ -156,7 +172,7 @@ export default function CradtLoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-800 placeholder:text-slate-400"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-[#108542] focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-slate-800 placeholder:text-slate-400"
                 placeholder="••••••••"
                 required
               />
@@ -165,7 +181,7 @@ export default function CradtLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#0f172a] text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
+              className="w-full bg-[#15803d] text-white font-bold py-3.5 rounded-xl hover:bg-green-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

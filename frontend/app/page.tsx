@@ -160,7 +160,7 @@ export default function LandingPage() {
           SECTION AZUL: ACESSO CRADT / FOOTER
           (Baseado na Home 3.png)
       ========================================= */}
-            <footer id="cradt" className="bg-[#0f172a] text-white pt-20 pb-10 px-6 rounded-t-[3rem] -mt-8 relative z-10">
+            <footer id="cradt" className="bg-[#004d40] text-white pt-20 pb-10 px-6 rounded-t-[3rem] -mt-8 relative z-10">
                 <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
 
                     {/* Coluna 1: Marca e Descrição */}
@@ -169,7 +169,7 @@ export default function LandingPage() {
 
                             <span className="text-2xl font-bold tracking-tight">Chat Request</span>
                         </div>
-                        <p className="text-gray-400 leading-relaxed">
+                        <p className="text-white-400 leading-relaxed">
                             Modernizando a comunicação acadêmica. Uma solução completa para facilitar a vida de alunos e servidores.
                         </p>
                     </div>
@@ -178,7 +178,7 @@ export default function LandingPage() {
                     <div className="grid grid-cols-2 gap-16">
                         <div>
                             <h4 className="font-bold text-lg mb-6 text-white">Plataforma</h4>
-                            <ul className="space-y-3 text-gray-400">
+                            <ul className="space-y-3 text-white-400">
                                 <li><Link href="/login" className="hover:text-[#15803d] transition-colors">Login Aluno</Link></li>
                                 <li><Link href="/signup" className="hover:text-[#15803d] transition-colors">Cadastro</Link></li>
                                 <li><Link href="#como-funciona" className="hover:text-[#15803d] transition-colors">Funcionalidades</Link></li>
@@ -188,10 +188,10 @@ export default function LandingPage() {
                         {/* Coluna 3: Acesso Administrativo (CRADT) */}
                         <div>
                             <h4 className="font-bold text-lg mb-6 text-white">Área Restrita</h4>
-                            <ul className="space-y-3 text-gray-400">
+                            <ul className="space-y-3 text-white-400">
                                 <li className="flex flex-col gap-2">
                                     <span className="text-sm opacity-60">Acesso exclusivo para servidores</span>
-                                    <Link href="/cradt-login" className="inline-flex items-center gap-2 text-blue-300 hover:text-blue-100 transition-colors font-medium">
+                                    <Link href="/cradt-login" className="inline-flex items-center gap-2 text-emerald-light-300 hover:text-emerald-100 transition-colors font-medium">
                                         Acesso CRADT
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />

@@ -79,10 +79,125 @@ const fetchStaffs = async () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] p-8">
+    <div className="min-h-screen bg-[#fcfcfc] p-4 sm:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tighter flex items-center gap-2">
+              <Users className="text-[#108542]" /> Gestão de Acessos
+            </h1>
+            <p className="text-slate-500 text-sm">Gerencie quem tem acesso ao sistema</p>
+          </div>
+          
+          {/* SÓ O PESSOAL DO TI (STAFF) PODE CRIAR GENTE NOVA */}
+          {userRole === 'staff' && (
+            <button 
+                onClick={() => setModalOpen(true)}
+                className="bg-emerald-900 text-white px-4 py-2.5 rounded-2xl flex items-center gap-2 font-bold hover:bg-emerald-800 transition-all shadow-lg"
+            >
+                <UserPlus size={20} /> Novo Usuário
+            </button>
+          )}
+        </div>
+
+        <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden">
+            {loading ? (
+                <div className="p-8 text-center text-gray-500">Carregando...</div>
+            ) : (
+                <table className="w-full text-left">
+                    <thead className="bg-slate-50 text-gray-500 font-bold uppercase text-xs border-b border-slate-100">
+                        <tr>
+                            <th className="px-6 py-4">Nome</th>
+                            <th className="px-6 py-4">Email</th>
+                            <th className="px-6 py-4">Departamento</th>
+                            <th className="px-6 py-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {staffs.map((user) => (
+                            <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-800">{user.name}</td>
+                                <td className="px-6 py-4 text-slate-500 text-sm">{user.email}</td>
+                                <td className="px-6 py-4">
+                                    {user.role === 'staff' ? (
+                                        <span className="px-2 py-1 rounded-md text-xs font-bold uppercase bg-emerald-100 text-emerald-700">
+                                            Suporte TI (Staff)
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-1 rounded-md text-xs font-bold uppercase bg-slate-200 text-slate-700">
+                                            CRADT (Admin)
+                                        </span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    {/* SÓ O TI (STAFF) PODE EXCLUIR */}
+                                    {userRole === 'staff' && (
+                                        <button 
+                                            onClick={() => handleDelete(user.id)}
+                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </div>
+      </div>
+
+      {/* MODAL */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-[2rem] shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <ShieldAlert className="text-[#108542]" size={20}/> Novo Acesso
+                    </h2>
+                    <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSave} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Nome Completo</label>
+                        <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
+                        <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Senha</label>
+                        <input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500" required minLength={6} />
+                    </div>
+
+                    {/* SELETOR SIMPLIFICADO */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Departamento / Função</label>
+                        <select 
+                            value={formData.role}
+                            onChange={(e) => setFormData({...formData, role: e.target.value})}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500"
+                        >
+                            <option value="admin">CRADT (Secretaria)</option>
+                            <option value="staff">Suporte TI (Staff)</option>
+                            <option value="admin">Coordenação</option>
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1 ml-1">
+                            *CRADT: Acessa pedidos. TI: Acessa configurações.
+                        </p>
+                    </div>
+                    
+                    <div className="flex gap-3 pt-4">
+                        <button type="button" onClick={() => setModalOpen(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-emerald-200 transition-colors">Cancelar</button>
+                        <button type="submit" className="flex-1 px-4 py-3 bg-emerald-900 text-white font-bold rounded-2xl hover:bg-emerald-800 transition-colors">Criar</button>
+                    </div>
+                </form>
+            </div>
             <h1 className="text-3xl font-bold text-[#0B0D3A] flex items-center gap-2">
               <Users className="text-purple-600" /> Gestão de Equipe
             </h1>

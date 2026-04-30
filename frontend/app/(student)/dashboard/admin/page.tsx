@@ -75,7 +75,7 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F4F6F8]">
       
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0B0D3A] text-white flex-col p-6 shadow-lg shrink-0">
+      <aside className="hidden md:flex w-64 bg-[#004d40] text-white flex-col p-6 shadow-lg shrink-0">
         <h1 className="text-2xl font-bold mb-4 flex items-center gap-2 truncate">
            <LayoutDashboard size={24} /> Chat Request
         </h1>
@@ -126,18 +126,18 @@ export default function DashboardPage() {
         {userRole === 'staff' ? (
              <div className="max-w-4xl mx-auto mt-10">
                 <div className="bg-white rounded-3xl p-10 shadow-sm border border-gray-100 text-center">
-                    <div className="w-20 h-20 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
                         <ShieldCheck size={40} />
                     </div>
-                    <h2 className="text-3xl font-bold text-[#0B0D3A] mb-4">Painel Técnico (TI)</h2>
+                    <h2 className="text-3xl font-bold text-[#000000] mb-4">Painel Técnico (TI)</h2>
                     <p className="text-gray-500 max-w-lg mx-auto mb-10">
                         Bem-vindo à área de configuração. Utilize os atalhos abaixo para gerenciar as definições do sistema e permissões de acesso.
                     </p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                        <Link href="/dashboard/admin/types" className="group p-6 border border-gray-100 rounded-2xl hover:border-blue-500 hover:shadow-lg transition-all text-left">
+                        <Link href="/dashboard/admin/types" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
                             <div className="flex items-center justify-between mb-4">
-                                <span className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                                     <FileType size={24} />
                                 </span>
                             </div>
@@ -145,9 +145,9 @@ export default function DashboardPage() {
                             <p className="text-sm text-gray-400 mt-1">Criar e editar opções de solicitação.</p>
                         </Link>
 
-                        <Link href="/dashboard/admin/staff" className="group p-6 border border-gray-100 rounded-2xl hover:border-purple-500 hover:shadow-lg transition-all text-left">
+                        <Link href="/dashboard/admin/staff" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
                             <div className="flex items-center justify-between mb-4">
-                                <span className="p-3 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                                     <Users size={24} />
                                 </span>
                             </div>
@@ -163,7 +163,7 @@ export default function DashboardPage() {
           
           <div className="flex justify-between items-end mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-[#0B0D3A]">Visão Geral</h2>
+              <h2 className="text-3xl font-bold text-[#000000]">Visão Geral</h2>
               <p className="text-gray-500">Acompanhamento da equipe CRADT.</p>
             </div>
             <div className="text-right hidden sm:block">
@@ -197,7 +197,7 @@ export default function DashboardPage() {
             
             {/* Card Total */}
             <Link href="/requests" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer">
-               <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
                  <FileText size={28} />
                </div>
                <div>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
 
             {/* Card Pendentes */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
-               <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
                  <Clock size={28} />
                </div>
                <div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
 
             {/* Card Equipe (Visualização apenas) */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
-               <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
                  <Users size={28} />
                </div>
                <div>

@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* 🔹 NAVBAR CONDICIONAL */}
       <header
         className={`w-full px-6 sm:px-8 py-5 flex items-center justify-between border-b ${isAdminLayout
-            ? "bg-[#0B0D3A] text-white border-[#0B0D3A]" // Admin/Staff → azul escuro
+            ? "bg-[#004d40] text-white border-[#004d40]" // Admin/Staff → azul escuro
             : "bg-white text-slate-700 border-slate-100" // Aluno → branco
           }`}
       >
@@ -79,19 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
               {open && (
                 <div className="absolute right-0 mt-4 w-72 bg-white border border-slate-100 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-7 z-50 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="mb-5">
-                    <p className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-2 ml-1">CPF</p>
-                    <div className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 font-bold text-sm italic">
-                      {user.cpf}
-                    </div>
-                  </div>
-
-                  <div className="mb-7">
-                    <p className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-2 ml-1">Telefone</p>
-                    <div className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 font-bold text-sm italic">
-                      {user.phone}
-                    </div>
-                  </div>
+ 
 
                   {/* 🔹 Botão de sair */}
                   <button

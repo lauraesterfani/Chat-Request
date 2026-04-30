@@ -98,29 +98,29 @@ export default function TypeRequestsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] p-8">
+    <div className="min-h-screen bg-[#fcfcfc] p-4 sm:p-6">
       <div className="max-w-5xl mx-auto">
         
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-[#0B0D3A] flex items-center gap-2">
-              <FileType className="text-blue-600" /> Tipos de Requerimento
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tighter flex items-center gap-2">
+              <FileType className="text-[#108542]" /> Tipos de Requerimento
             </h1>
-            <p className="text-gray-500 text-sm">Gerencie as opções disponíveis para os alunos</p>
+            <p className="text-slate-500 text-sm">Gerencie as opções disponíveis para os alunos</p>
           </div>
           
           {/* SÓ MOSTRA O BOTÃO SE NÃO FOR CRADT */}
           {userRole !== 'cradt' && (
             <button 
                 onClick={() => openModal()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold hover:bg-blue-700 transition-all shadow-md"
+                className="bg-emerald-900 text-white px-4 py-2.5 rounded-2xl flex items-center gap-2 font-bold hover:bg-emerald-800 transition-all shadow-lg"
             >
                 <Plus size={20} /> Novo Tipo
             </button>
           )}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden">
             {loading ? (
                 <div className="p-8 text-center text-gray-500">Carregando...</div>
             ) : (
@@ -143,7 +143,7 @@ export default function TypeRequestsPage() {
                                         <>
                                             <button 
                                                 onClick={() => openModal(type)}
-                                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
                                             >
                                                 <Edit size={18} />
                                             </button>
@@ -185,7 +185,7 @@ export default function TypeRequestsPage() {
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                             placeholder="Ex: Abono de Faltas"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                             required
                         />
                     </div>
@@ -196,7 +196,7 @@ export default function TypeRequestsPage() {
                             value={formData.description}
                             onChange={(e) => setFormData({...formData, description: e.target.value})}
                             placeholder="Ex: Solicitação para justificar ausências..."
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all h-24 resize-none"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-24 resize-none"
                         />
                     </div>
                     
@@ -210,7 +210,7 @@ export default function TypeRequestsPage() {
                         </button>
                         <button 
                             type="submit" 
-                            className="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 flex justify-center items-center gap-2 transition-colors shadow-lg shadow-blue-200"
+                            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex justify-center items-center gap-2 transition-colors shadow-lg shadow-blue-200"
                         >
                             <Save size={18} /> Salvar
                         </button>
