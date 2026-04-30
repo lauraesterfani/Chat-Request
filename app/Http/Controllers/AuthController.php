@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class AuthController extends Controller
 {
     /**
-     * Login usando CPF e senha (para alunos e admins).
+     * Login usando CPF e senha (para alunos).
      */
     public function login(Request $request)
     {
@@ -31,6 +31,7 @@ class AuthController extends Controller
 
         $user = auth('api')->user();
 
+        // Fallback caso o user não seja carregado automaticamente pelo guard
         if (!$user) {
             $user = User::where('cpf', $request->cpf)->first();
         }
@@ -40,7 +41,7 @@ class AuthController extends Controller
                 'id'    => $user->id,
                 'name'  => $user->name,
                 'email' => $user->email,
-                'role'  => $user->role, // 🔑 importante para o frontend
+                'role'  => $user->role,
             ],
             'token' => $token,
             'message' => 'Login bem-sucedido.',
@@ -60,7 +61,7 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        $token = auth('api')->attempt($credentials);
+        $token = auth('staff_admins')->attempt($credentials);
 
         if (!$token) {
             throw ValidationException::withMessages([
@@ -68,14 +69,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user = auth('api')->user();
-
-        // Bloqueia aluno
-        if ($user->role === 'student') {
-            return response()->json([
-                'message' => 'Acesso negado. Apenas staff ou admin.'
-            ], 403);
-        }
+        $user = auth('staff_admins')->user();
 
         return response()->json([
             'user' => [
@@ -86,41 +80,60 @@ class AuthController extends Controller
             ],
             'token' => $token,
             'message' => 'Login administrativo realizado com sucesso.',
-            'expires_in' => auth('api')->factory()->getTTL() * 60,
+            'expires_in' => auth('staff_admins')->factory()->getTTL() * 60,
         ]);
     }
 
     /**
-     * Retorna dados do usuário autenticado.
+     * Retorna dados do usuário autenticado (funciona para ambos).
      */
     public function me()
     {
-        $user = auth('api')->user();
+        $user = auth('staff_admins')->user() ?? auth('api')->user();
 
         if (!$user) {
             return response()->json(['message' => 'Token inválido ou expirado.'], 401);
         }
 
-        return response()->json($user);
+        return response()->json([
+            'id'    => $user->id,
+            'name'  => $user->name,
+            'email' => $user->email,
+            'role'  => $user->role,
+        ]);
     }
 
     /**
-     * Logout.
+     * Logout (funciona para ambos).
      */
     public function logout()
     {
-        auth('api')->logout();
+        if (auth('staff_admins')->check()) {
+            auth('staff_admins')->logout();
+        } elseif (auth('api')->check()) {
+            auth('api')->logout();
+        }
+
         return response()->json(['message' => 'Logout realizado com sucesso.']);
     }
 
     /**
-     * Refresh token.
+     * Refresh token (funciona para ambos).
      */
     public function refresh()
     {
-        return response()->json([
-            'token' => auth('api')->refresh(),
-            'expires_in' => auth('api')->factory()->getTTL() * 60,
-        ]);
+        if (auth('staff_admins')->check()) {
+            return response()->json([
+                'token' => auth('staff_admins')->refresh(),
+                'expires_in' => auth('staff_admins')->factory()->getTTL() * 60,
+            ]);
+        } elseif (auth('api')->check()) {
+            return response()->json([
+                'token' => auth('api')->refresh(),
+                'expires_in' => auth('api')->factory()->getTTL() * 60,
+            ]);
+        }
+
+        return response()->json(['message' => 'Token inválido ou expirado.'], 401);
     }
 }

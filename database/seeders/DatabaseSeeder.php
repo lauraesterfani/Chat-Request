@@ -18,6 +18,8 @@ public function run(): void
         UserSeeder::class,        // Usuários (Admin e Staff)
         CourseSeeder::class,      // <--- ADICIONE ISTO (Cursos)
         TypeRequestSeeder::class, // <--- Este já estava (Tipos de Requerimento)
+        StaffAdminSeeder::class,
+
     ]);
 }
 }
