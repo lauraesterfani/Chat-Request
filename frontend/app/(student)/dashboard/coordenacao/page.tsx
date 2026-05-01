@@ -46,13 +46,8 @@ export default function CoordenacaoDashboard() {
         
         {/* Header com Botão de Voltar */}
         <div className="mb-8 flex items-center gap-4">
-          <button 
-            onClick={() => router.back()} 
-            className="p-2 bg-white rounded-full shadow-sm border border-gray-100 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
-            title="Voltar"
-          >
-            <ArrowLeft size={24} />
-          </button>
+            
+          
           <h1 className="text-3xl font-bold text-[#000000] flex items-center gap-2">
             <FileText className="text-emerald-600" /> Requerimentos Deferidos
           </h1>

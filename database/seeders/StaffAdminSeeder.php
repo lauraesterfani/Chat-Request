@@ -24,6 +24,7 @@ class StaffAdminSeeder extends Seeder
                 'phone' => '81888888888',
                 'role' => 'staff',
                 'password' => Hash::make('staff123'),
+                'must_change_password' => false,
             ]
         );
 
@@ -37,6 +38,7 @@ StaffAdmin::firstOrCreate(
         'role' => 'coordenacao',
         'course_id' => DB::table('courses')->where('code', 'TSI-2025')->value('id'),
         'password' => Hash::make('coord123'),
+        'must_change_password' => false,
     ]
 );
 
@@ -50,6 +52,7 @@ StaffAdmin::firstOrCreate(
                 'phone' => '81999999999',
                 'role' => 'admin',
                 'password' => Hash::make('admin123'),
+                'must_change_password' => false,
             ]
         );
     }

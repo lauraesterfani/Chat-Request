@@ -15,6 +15,7 @@ class StaffAdmin extends Authenticatable implements JWTSubject
         'phone',
         'role',
         'password',
+        'must_change_password',
     ];
 
     protected $hidden = [

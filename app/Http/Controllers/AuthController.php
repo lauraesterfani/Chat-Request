@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -20,7 +20,6 @@ class AuthController extends Controller
         ]);
 
         $credentials = $request->only('cpf', 'password');
-
         $token = auth('api')->attempt($credentials);
 
         if (!$token) {
@@ -29,12 +28,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user = auth('api')->user();
-
-        // Fallback caso o user não seja carregado automaticamente pelo guard
-        if (!$user) {
-            $user = User::where('cpf', $request->cpf)->first();
-        }
+        $user = auth('api')->user() ?? User::where('cpf', $request->cpf)->first();
 
         return response()->json([
             'user' => [
@@ -60,7 +54,6 @@ class AuthController extends Controller
         ]);
 
         $credentials = $request->only('email', 'password');
-
         $token = auth('staff_admins')->attempt($credentials);
 
         if (!$token) {
@@ -70,6 +63,21 @@ class AuthController extends Controller
         }
 
         $user = auth('staff_admins')->user();
+
+        // Se for primeiro acesso, força redefinição
+        if ($user->must_change_password) {
+            return response()->json([
+                'redirect' => '/reset-password',
+                'message'  => 'Você precisa redefinir sua senha antes de continuar.',
+                'token'    => $token,
+                'user'     => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                    'role'  => $user->role,
+                ],
+            ], 200);
+        }
 
         return response()->json([
             'user' => [
@@ -85,7 +93,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Retorna dados do usuário autenticado (funciona para ambos).
+     * Retorna dados do usuário autenticado.
      */
     public function me()
     {
@@ -104,7 +112,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout (funciona para ambos).
+     * Logout.
      */
     public function logout()
     {
@@ -118,7 +126,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Refresh token (funciona para ambos).
+     * Refresh token.
      */
     public function refresh()
     {
@@ -135,5 +143,27 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Token inválido ou expirado.'], 401);
+    }
+
+    /**
+     * Redefinição de senha para staff/admin.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'new_password' => 'required|min:8|confirmed'
+        ]);
+
+        $user = auth('staff_admins')->user() ?? auth('api')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Usuário não autenticado'], 401);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->must_change_password = false;
+        $user->save();
+
+        return response()->json(['message' => 'Senha redefinida com sucesso']);
     }
 }

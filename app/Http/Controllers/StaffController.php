@@ -46,7 +46,13 @@ class StaffAdminController extends Controller
             'message' => 'Cadastro realizado com sucesso! A senha foi enviada por e-mail.'
         ]);
     }
+public function destroy($id)
+{
+    $staff = StaffAdmin::findOrFail($id);
+    $staff->delete();
 
+    return response()->json(['message' => 'Removido com sucesso']);
+}
     /**
      * Alterar senha
      */

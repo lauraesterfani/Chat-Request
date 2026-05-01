@@ -22,56 +22,63 @@ export default function CradtLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      // 1. Faz a requisição de Login manualmente
-      const response = await fetch('/api/login/staff', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+  try {
+    const response = await fetch('/api/login/staff', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Credenciais inválidas.');
-      }
-
-      // 2. Verificação de Segurança: Bloqueia alunos nesta tela
-      if (data.user.role === 'student') {
-        setError('Acesso negado. Alunos devem utilizar o Portal do Estudante.');
-        setLoading(false);
-        return;
-      }
-
-      // 3. SUCESSO: Salva o token
-      setToken(data.token);
-
-     
-      // Redireciona conforme o perfil
-      if (data.user.role === 'admin') {
-        router.push('/dashboard/admin');
-      } else if (data.user.role === 'staff') {
-        router.push('/dashboard/admin');
-      } else if (data.user.role === 'coordenacao') {
-        router.push('/dashboard/coordenacao');
-      } else {
-        setError('Perfil não reconhecido.');
-      }
-
-    } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro ao tentar entrar.');
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(data.message || 'Credenciais inválidas.');
     }
-  };
+
+    // Se o backend mandou redirecionar para reset
+    if (data.redirect) {
+      // salva token antes de redirecionar
+      setToken(data.token);
+      localStorage.setItem("jwt_token", data.token);
+      router.push(data.redirect);
+      return;
+    }
+
+    // Bloqueia alunos nesta tela
+    if (data.user.role === 'student') {
+      setError('Acesso negado. Alunos devem utilizar o Portal do Estudante.');
+      setLoading(false);
+      return;
+    }
+
+    // Salva token
+    setToken(data.token);
+    localStorage.setItem("jwt_token", data.token);
+
+    // Redireciona conforme perfil
+    if (data.user.role === 'admin' || data.user.role === 'staff') {
+      router.push('/dashboard/admin');
+    } else if (data.user.role === 'coordenacao') {
+      router.push('/dashboard/coordenacao');
+    } else {
+      setError('Perfil não reconhecido.');
+    }
+
+  } catch (err: any) {
+    setError(err.message || 'Ocorreu um erro ao tentar entrar.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen w-full flex bg-[#fcfcfc] font-sans overflow-hidden">

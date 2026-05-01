@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-      Schema::create('staff_admins', function (Blueprint $table) {
+     Schema::create('staff_admins', function (Blueprint $table) {
     $table->id();
     $table->string('name');
     $table->string('email')->unique();
@@ -20,8 +20,10 @@ return new class extends Migration
     $table->enum('role', ['admin', 'staff', 'coordenacao']);
     $table->foreignUuid('course_id')->nullable()->constrained('courses')->onDelete('cascade');
     $table->string('password');
+    $table->boolean('must_change_password')->default(false); // <- novo campo
     $table->timestamps();
 });
+
 
 
     }

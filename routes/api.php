@@ -35,7 +35,6 @@ Route::get('/type-requests', [TypeRequestController::class, 'index']);
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:api,staff_admins')->group(function () {
-    
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
@@ -54,26 +53,25 @@ Route::middleware('auth:api,staff_admins')->group(function () {
 
 Route::middleware(['auth:staff_admins'])->get('/admins', [StaffAdminController::class, 'admins']);
 
-
 /*
 |--------------------------------------------------------------------------
 | ROTAS EXCLUSIVAS DE T.I. (STAFF)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:staff_admins', 'role:staff'])->group(function () {
-    
-    // Agrupado corretamente: GET para listar, POST para criar
     Route::get('/staff-admins', [StaffAdminController::class, 'index']);
     Route::post('/staff-admins', [StaffAdminController::class, 'store']);
     
-    // Outras rotas de gestão
     Route::post('/staffs', [StaffController::class, 'store']);
     Route::delete('/staffs/{id}', [StaffController::class, 'destroy']);
     
     Route::post('/type-requests', [TypeRequestController::class, 'store']);
     Route::put('/type-requests/{id}', [TypeRequestController::class, 'update']);
     Route::delete('/type-requests/{id}', [TypeRequestController::class, 'destroy']);
+
+    Route::delete('/staff-admins/{id}', [StaffAdminController::class, 'destroy']);
 });
+
 /*
 |--------------------------------------------------------------------------
 | ROTAS EXCLUSIVAS DA CRADT (ADMIN)
@@ -82,7 +80,6 @@ Route::middleware(['auth:staff_admins', 'role:staff'])->group(function () {
 Route::middleware('auth:api,staff_admins')->group(function () {
     Route::get('/requests', [RequestController::class, 'index']);
     Route::get('/requests/{id}', [RequestController::class, 'show']); 
-
     Route::put('/requests/{id}', [RequestController::class, 'update']);
     
     Route::get('/dashboard/requerimentos', [DashboardController::class, 'index']);
@@ -90,3 +87,11 @@ Route::middleware('auth:api,staff_admins')->group(function () {
     Route::get('/dashboard/graficos/status', [DashboardController::class, 'requerimentosPorStatus']); 
     Route::get('/dashboard/graficos/cursos', [DashboardController::class, 'requerimentosPorCurso']); 
 });
+
+/*
+|--------------------------------------------------------------------------
+| ROTAS DE REDEFINIÇÃO DE SENHA (Primeiro acesso)
+|--------------------------------------------------------------------------
+*/
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+    ->middleware('auth:staff_admins');

@@ -12,43 +12,52 @@ class StaffAdminController extends Controller
 {
     public function index()
     {
-        // Usando query direta para garantir que não há cache de resultado
         $staffs = StaffAdmin::select('id', 'name', 'email', 'role', 'cpf', 'phone')->get();
         return response()->json($staffs);
     }
-public function admins()
+
+    public function admins()
+    {
+        return StaffAdmin::where('role', 'admin')->get();
+    }
+
+    public function destroy($id)
 {
-    return StaffAdmin::where('role', 'admin')->get();
+    $staff = StaffAdmin::findOrFail($id);
+    $staff->delete();
+
+    return response()->json(['message' => 'Removido com sucesso']);
 }
 
     public function store(Request $request)
-{
-    try {
-        // Removi a senha do validate, pois agora ela é aleatória
-        $data = $request->validate([
-            'name'  => 'required|string',
-            'email' => 'required|email|unique:staff_admins,email',
-            'role'  => 'required|string',
-            'cpf'   => 'nullable|string|unique:staff_admins,cpf',
-        ]);
+    {
+        try {
+            $data = $request->validate([
+                'name'  => 'required|string',
+                'email' => 'required|email|unique:staff_admins,email',
+                'role'  => 'required|string|in:admin,staff,coordenacao',
+                'cpf'   => 'nullable|string|unique:staff_admins,cpf',
+                'course_id' => 'nullable|exists:courses,id'
+            ]);
 
-        $tempPassword = \Illuminate\Support\Str::random(10);
-        $data['password'] = \Illuminate\Support\Facades\Hash::make($tempPassword);
+            // gera senha aleatória
+            $tempPassword = \Illuminate\Support\Str::random(10);
+            $data['password'] = Hash::make($tempPassword);
+            $data['must_change_password'] = true; // flag para redefinição obrigatória
 
-        $staff = StaffAdmin::create($data);
+            $staff = StaffAdmin::create($data);
 
-        return response()->json([
-            'message' => 'Criado com sucesso!',
-            'temp_password' => $tempPassword,
-            'user' => $staff
-        ], 201);
+            // retorna a senha temporária junto com os dados
+            return response()->json([
+                'message' => 'Criado com sucesso!',
+                'user' => $staff,
+                'temp_password' => $tempPassword
+            ], 201);
 
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        // Se cair aqui, o Laravel vai dizer EXATAMENTE qual campo está duplicado
-        return response()->json(['errors' => $e->errors()], 422);
-    } catch (\Exception $e) {
-        // Se cair aqui, é um erro de banco ou de código (Ex: coluna faltando)
-        return response()->json(['error_tecnico' => $e->getMessage()], 500);
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        } catch (Exception $e) {
+            return response()->json(['error_tecnico' => $e->getMessage()], 500);
+        }
     }
-}
 }
