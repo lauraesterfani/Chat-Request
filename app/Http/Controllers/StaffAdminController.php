@@ -16,6 +16,10 @@ class StaffAdminController extends Controller
         $staffs = StaffAdmin::select('id', 'name', 'email', 'role', 'cpf', 'phone')->get();
         return response()->json($staffs);
     }
+public function admins()
+{
+    return StaffAdmin::where('role', 'admin')->get();
+}
 
     public function store(Request $request)
 {

@@ -10,24 +10,29 @@ use Illuminate\Support\Facades\DB;
 class RequestController extends Controller
 {
     /**
-     * Lista os requerimentos com FILTROS (Recuperado)
+     * Lista os requerimentos com FILTROS
      */
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        // 1. Query Base (Carrega relacionamentos)
+        // Query base com relacionamentos
         $query = RequestModel::with(['user.course', 'type'])
             ->orderBy('created_at', 'desc');
 
-        // 2. Segurança: Se for aluno, vê apenas os seus
+        // Se for aluno, vê apenas os seus
         if ($user->role === 'student') {
             $query->where('user_id', $user->id);
         }
 
-        // --- FILTROS DE BUSCA ---
+        // Se for coordenação, vê apenas os requerimentos do curso vinculado
+        if ($user->role === 'coordenacao') {
+            $query->whereHas('user', function($q) use ($user) {
+                $q->where('course_id', $user->course_id);
+            });
+        }
 
-        // Filtro por Nome
+        // Filtros
         if ($request->filled('name')) {
             $name = $request->input('name');
             $query->whereHas('user', function($q) use ($name) {
@@ -35,7 +40,6 @@ class RequestController extends Controller
             });
         }
 
-        // Filtro por Matrícula
         if ($request->filled('matricula')) {
             $matricula = $request->input('matricula');
             $query->whereHas('user', function($q) use ($matricula) {
@@ -44,7 +48,6 @@ class RequestController extends Controller
             });
         }
 
-        // Filtro por Curso (ID)
         if ($request->filled('course_id')) {
             $courseId = $request->input('course_id');
             $query->whereHas('user', function($q) use ($courseId) {
@@ -55,8 +58,9 @@ class RequestController extends Controller
         return $query->get();
     }
 
-    // --- MANTENHA O RESTO IGUAL (Store, Show, Update...) ---
-    
+    /**
+     * Cria um novo requerimento
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -88,22 +92,39 @@ class RequestController extends Controller
         }
     }
 
+    /**
+     * Mostra detalhes de um requerimento
+     */
     public function show($id)
     {
         $user = Auth::user();
         $request = RequestModel::with(['user.course', 'type', 'documents'])->findOrFail($id);
 
-        if (!in_array($user->role, ['admin', 'staff', 'cradt']) && $request->user_id !== $user->id) {
-            return response()->json(['message' => 'Acesso não autorizado'], 403);
+        // Admin, staff, cradt podem ver tudo
+        if (in_array($user->role, ['admin', 'staff', 'cradt'])) {
+            return response()->json($request);
         }
 
-        return response()->json($request);
+        // Coordenação só pode ver se o requerimento é do curso dela
+        if ($user->role === 'coordenacao' && $request->user->course_id === $user->course_id) {
+            return response()->json($request);
+        }
+
+        // Aluno só pode ver os seus
+        if ($user->role === 'student' && $request->user_id === $user->id) {
+            return response()->json($request);
+        }
+
+        return response()->json(['message' => 'Acesso não autorizado'], 403);
     }
 
+    /**
+     * Atualiza status/observação de um requerimento
+     */
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        $req = RequestModel::findOrFail($id); // Corrigido para buscar o modelo
+        $req = RequestModel::findOrFail($id);
 
         if (!in_array($user->role, ['admin', 'staff', 'cradt'])) {
             return response()->json(['message' => 'Não autorizado'], 403);
@@ -117,6 +138,9 @@ class RequestController extends Controller
         return response()->json(['message' => 'Atualizado']);
     }
 
+    /**
+     * Deleta um requerimento
+     */
     public function destroy($id)
     {
         RequestModel::findOrFail($id)->delete();

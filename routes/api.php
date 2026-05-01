@@ -52,6 +52,9 @@ Route::middleware('auth:api,staff_admins')->group(function () {
     Route::get('/staffs', [StaffController::class, 'index']); 
 });
 
+Route::middleware(['auth:staff_admins'])->get('/admins', [StaffAdminController::class, 'admins']);
+
+
 /*
 |--------------------------------------------------------------------------
 | ROTAS EXCLUSIVAS DE T.I. (STAFF)
@@ -76,9 +79,10 @@ Route::middleware(['auth:staff_admins', 'role:staff'])->group(function () {
 | ROTAS EXCLUSIVAS DA CRADT (ADMIN)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:staff_admins', 'role:admin'])->group(function () {
-    
-    Route::get('/requests/{id}', [RequestController::class, 'show']);
+Route::middleware('auth:api,staff_admins')->group(function () {
+    Route::get('/requests', [RequestController::class, 'index']);
+    Route::get('/requests/{id}', [RequestController::class, 'show']); 
+
     Route::put('/requests/{id}', [RequestController::class, 'update']);
     
     Route::get('/dashboard/requerimentos', [DashboardController::class, 'index']);

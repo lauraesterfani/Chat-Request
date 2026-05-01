@@ -52,7 +52,7 @@ export default function LandingPage() {
                     </h1>
 
                     <p className="text-lg text-gray-500 leading-relaxed max-w-md">
-                        Uma plataforma intuitiva para alunos e coordenadores. Envie documentos, acompanhe status e resolva pendências sem filas.
+                        Uma plataforma intuitiva para alunos e Coordenaçãoes. Envie documentos, acompanhe status e resolva pendências sem filas.
                     </p>
 
                     <div className="flex flex-row gap-4 pt-2">

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Trash2, UserPlus, Users, X, ShieldAlert } from "lucide-react";
+import { Trash2, UserPlus, Users, X, ShieldAlert, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 const API_BASE = "/api";
 
@@ -17,22 +18,36 @@ export default function StaffPage() {
     phone: "",
     cpf: "",
     role: "admin",
+    course_id: "" // Para Coordenaçãoes
   });
 
-const fetchStaffs = async () => {
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("jwt_token");
-    const res = await axios.get(`${API_BASE}/staff-admins`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setStaffs(res.data);
-  } catch (error) {
-    console.error("Erro ao buscar equipe", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  const [courses, setCourses] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const token = localStorage.getItem("jwt_token");
+      const res = await axios.get(`${API_BASE}/courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCourses(res.data);
+    };
+    fetchCourses();
+  }, []);
+
+  const fetchStaffs = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const res = await axios.get(`${API_BASE}/staff-admins`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setStaffs(res.data);
+    } catch (error) {
+      console.error("Erro ao buscar equipe", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchStaffs();
@@ -43,26 +58,22 @@ const fetchStaffs = async () => {
     try {
       const token = localStorage.getItem("jwt_token");
       const response = await axios.post(`${API_BASE}/staff-admins`, formData, {
-  headers: { Authorization: `Bearer ${token}` },
-});
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setModalOpen(false);
-      setFormData({ name: "", email: "", phone: "", cpf: "", role: "admin" });
+      setFormData({ name: "", email: "", phone: "", cpf: "", role: "admin", course_id: "" });
       fetchStaffs();
       alert(`Criado com sucesso! Senha temporária: ${response.data.temp_password}`);
     } catch (error: any) {
-  if (error.response?.status === 422) {
-    // Erro de validação
-    alert("Erro de validação: " + JSON.stringify(error.response.data.errors));
-  } else if (error.response?.data?.error_tecnico) {
-    // Erro técnico vindo do backend
-    alert("Erro técnico: " + error.response.data.error_tecnico);
-  } else {
-    // Caso não tenha nada no JSON
-    alert("Erro inesperado: " + (error.message || "sem detalhes"));
-  }
-}
-
+      if (error.response?.status === 422) {
+        alert("Erro de validação: " + JSON.stringify(error.response.data.errors));
+      } else if (error.response?.data?.error_tecnico) {
+        alert("Erro técnico: " + error.response.data.error_tecnico);
+      } else {
+        alert("Erro inesperado: " + (error.message || "sem detalhes"));
+      }
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -81,16 +92,22 @@ const fetchStaffs = async () => {
   return (
     <div className="min-h-screen bg-[#F4F6F8] p-8">
       <div className="max-w-5xl mx-auto">
+        
+        {/* Botão Voltar */}
+        <Link href="/dashboard/admin" className="flex items-center gap-2 text-gray-500 hover:text-emerald-600 mb-4 transition-colors">
+          <ArrowLeft size={20} /> Voltar
+        </Link>
+
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-[#0B0D3A] flex items-center gap-2">
-              <Users className="text-purple-600" /> Gestão de Equipe
+              <Users className="text-emerald-600" /> Gestão de Equipe
             </h1>
             <p className="text-gray-500 text-sm">Gerencie os administradores e staff do sistema</p>
           </div>
           <button
             onClick={() => setModalOpen(true)}
-            className="bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold hover:bg-purple-700 transition-all shadow-md"
+            className="bg-emerald-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold hover:bg-emerald-700 transition-all shadow-md"
           >
             <UserPlus size={20} /> Novo Usuário
           </button>
@@ -111,11 +128,11 @@ const fetchStaffs = async () => {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {staffs.map((user) => (
-                  <tr key={user.id} className="hover:bg-purple-50/30 transition-colors">
+                  <tr key={user.id} className="hover:bg-emerald-50/30 transition-colors">
                     <td className="px-6 py-4 font-bold text-gray-800">{user.name}</td>
                     <td className="px-6 py-4 text-gray-500 text-sm">{user.email}</td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs font-bold uppercase">
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold uppercase">
                         {user.role}
                       </span>
                     </td>
@@ -137,118 +154,141 @@ const fetchStaffs = async () => {
       </div>
 
       {/* MODAL DE CADASTRO */}
-{modalOpen && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-      <div className="flex justify-between items-center mb-6 border-b pb-4">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <ShieldAlert className="text-purple-600" size={20} /> Novo Usuário
-        </h2>
-        <button
-          onClick={() => setModalOpen(false)}
-          className="text-gray-400 hover:text-red-500 transition-colors"
-        >
-          <X size={24} />
-        </button>
-      </div>
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          {/* Ajustado: h-full max-h-[90vh] e overflow-y-auto para permitir scroll */}
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <ShieldAlert className="text-emerald-600" size={20} /> Novo Usuário
+              </h2>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-      <form onSubmit={handleSave} className="space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            Nome Completo
-          </label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-            required
-          />
-        </div>
+            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                />
+              </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            Email de Acesso
-          </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-            required
-          />
-        </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Email de Acesso
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                />
+              </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            Telefone
-          </label>
-          <input
-            type="text"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-            required
-          />
-        </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                />
+              </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            CPF
-          </label>
-          <input
-            type="text"
-            value={formData.cpf}
-            onChange={(e) =>
-              setFormData({ ...formData, cpf: e.target.value })
-            }
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-            required
-          />
-        </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  CPF
+                </label>
+                <input
+                  type="text"
+                  value={formData.cpf}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cpf: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                />
+              </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">
-            Função
-          </label>
-          <select
-            value={formData.role}
-            onChange={(e) =>
-              setFormData({ ...formData, role: e.target.value })
-            }
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-            required
-          >
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
-        </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Função
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  required
+                >
+                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                  <option value="coordenacao">Coordenação</option>
+                </select>
+              </div>
 
-        <div className="flex gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => setModalOpen(false)}
-            className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="flex-1 px-4 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 flex justify-center items-center gap-2 shadow-lg shadow-purple-200"
-          >
-            <UserPlus size={18} /> Criar Usuário
-          </button>
+              {formData.role === "coordenacao" && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Curso Vinculado
+                  </label>
+                  <select
+                    value={formData.course_id || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, course_id: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    required
+                  >
+                    <option value="">Selecione um curso</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 sticky bottom-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex justify-center items-center gap-2 shadow-lg shadow-emerald-200"
+                >
+                  <UserPlus size={18} /> Criar Usuário
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
+      )}
     </div>
-  </div>
-)}
-</div> 
   );
 }

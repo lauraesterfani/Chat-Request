@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { Eye, Loader2, FileText, Search, FilterX } from "lucide-react";
+import { useRouter } from "next/navigation"; // Importado para funcionalidade de voltar
+import { Eye, Loader2, FileText, Search, FilterX, ArrowLeft } from "lucide-react"; // ArrowLeft adicionado
 
 const API_BASE = "/api";
 
 export default function RequestsPage() {
-  const [allRequests, setAllRequests] = useState<any[]>([]); 
-  const [filteredRequests, setFilteredRequests] = useState<any[]>([]); 
+  const router = useRouter(); // Hook para navegação
+  const [allRequests, setAllRequests] = useState<any[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,7 +19,7 @@ export default function RequestsPage() {
     name: "",
     matricula: "",
     course_id: "",
-    status: "" 
+    status: ""
   });
 
   const fetchCourses = async () => {
@@ -36,10 +38,9 @@ export default function RequestsPage() {
       const res = await axios.get(`${API_BASE}/requests`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
-      
-      // Ordenação: Pendentes primeiro
+
       dados.sort((a: any, b: any) => {
         if (a.status === "pending" && b.status !== "pending") return -1;
         if (a.status !== "pending" && b.status === "pending") return 1;
@@ -47,8 +48,6 @@ export default function RequestsPage() {
       });
 
       setAllRequests(dados);
-
-      // Na carga inicial, esconde os cancelados (indeferidos)
       const iniciais = dados.filter((req: any) => req.status !== "canceled");
       setFilteredRequests(iniciais);
 
@@ -61,39 +60,32 @@ export default function RequestsPage() {
 
   useEffect(() => {
     fetchCourses();
-    fetchRequests(); 
+    fetchRequests();
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    
     let result = [...allRequests];
 
-    // Filtro de Nome
     if (filters.name) {
-      result = result.filter(req => 
+      result = result.filter(req =>
         req.user?.name?.toLowerCase().includes(filters.name.toLowerCase())
       );
     }
 
-    // Filtro de Matrícula
     if (filters.matricula) {
-      result = result.filter(req => 
+      result = result.filter(req =>
         (req.user?.enrollment_number || req.user?.matricula)?.includes(filters.matricula)
       );
     }
 
-    // Filtro de Curso
     if (filters.course_id) {
       result = result.filter(req => String(req.user?.course_id) === String(filters.course_id));
     }
 
-    // --- LÓGICA DE STATUS (CANCELED) ---
     if (filters.status) {
-      // Se selecionou um status específico, mostra exatamente ele
       result = result.filter(req => req.status === filters.status);
     } else {
-      // Se não tem status selecionado (Todos), esconde os indeferidos (canceled)
       result = result.filter(req => req.status !== "canceled");
     }
 
@@ -102,7 +94,6 @@ export default function RequestsPage() {
 
   const clearFilters = () => {
     setFilters({ name: "", matricula: "", course_id: "", status: "" });
-    // Volta para o estado inicial: tudo menos os cancelados
     setFilteredRequests(allRequests.filter(req => req.status !== "canceled"));
   };
 
@@ -115,9 +106,17 @@ export default function RequestsPage() {
     <div className="min-h-screen bg-[#F4F6F8] p-8">
       <div className="max-w-6xl mx-auto">
         
-        <div className="mb-8">
+        {/* Header com Botão de Voltar */}
+        <div className="mb-8 flex items-center gap-4">
+          <button 
+            onClick={() => router.back()} 
+            className="p-2 bg-white rounded-full shadow-sm border border-gray-100 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+            title="Voltar"
+          >
+            <ArrowLeft size={24} />
+          </button>
           <h1 className="text-3xl font-bold text-[#000000] flex items-center gap-2">
-            <FileText className="text-emerald-600" /> Todos os Pedidos
+            <FileText className="text-emerald-600" /> Todos os Requerimentos
           </h1>
         </div>
 
@@ -210,13 +209,13 @@ export default function RequestsPage() {
                         req.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' : 
                         req.status === 'analyzing' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
                         req.status === 'canceled' ? 'bg-red-50 text-red-600 border border-red-100' :
-                        'bg-blue-100 text-blue-700 border border-blue-200'
+                        'bg-emerald-100 text-emerald-700 border border-emerald-200'
                       }`}>
                         {req.status === 'pending' ? 'Pendente' : req.status === 'analyzing' ? 'Em Análise' : req.status === 'completed' ? 'Deferido' : 'Indeferido'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <Link href={`/requests/acesso/${req.id}`} className="inline-flex items-center justify-center p-2 text-blue-600 bg-blue-50 rounded-full hover:bg-blue-600 hover:text-white transition-all">
+                      <Link href={`/requests/acesso/${req.id}`} className="inline-flex items-center justify-center p-2 text-emerald-600 bg-emerald-50 rounded-full hover:bg-blue-600 hover:text-white transition-all">
                         <Eye size={18} />
                       </Link>
                     </td>

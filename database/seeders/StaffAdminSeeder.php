@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\StaffAdmin;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+
 
 class StaffAdminSeeder extends Seeder
 {
@@ -24,6 +26,20 @@ class StaffAdminSeeder extends Seeder
                 'password' => Hash::make('staff123'),
             ]
         );
+
+        // Usuário inicial COORDENAÇÃO
+StaffAdmin::firstOrCreate(
+    ['email' => 'coordenacao@cradt.edu.br'],
+    [
+        'name' => 'Coordenação TSI',
+        'cpf' => '22222222222',
+        'phone' => '81777777777',
+        'role' => 'coordenacao',
+        'course_id' => DB::table('courses')->where('code', 'TSI-2025')->value('id'),
+        'password' => Hash::make('coord123'),
+    ]
+);
+
 
         // Usuário inicial ADMIN
         StaffAdmin::firstOrCreate(

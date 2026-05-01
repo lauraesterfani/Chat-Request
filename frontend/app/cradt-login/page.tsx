@@ -51,12 +51,20 @@ export default function CradtLoginPage() {
         return;
       }
 
-      // 3. SUCESSO: Salva o token e redireciona
+      // 3. SUCESSO: Salva o token
       setToken(data.token);
 
-      // --- MUDANÇA AQUI ---
-      // Redireciona Admin, Staff e Cradt para o mesmo painel de controle
-      router.push('/dashboard/admin');
+     
+      // Redireciona conforme o perfil
+      if (data.user.role === 'admin') {
+        router.push('/dashboard/admin');
+      } else if (data.user.role === 'staff') {
+        router.push('/dashboard/admin');
+      } else if (data.user.role === 'coordenacao') {
+        router.push('/dashboard/coordenacao');
+      } else {
+        setError('Perfil não reconhecido.');
+      }
 
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao tentar entrar.');
@@ -136,7 +144,7 @@ export default function CradtLoginPage() {
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-6">
               
-              <span className="text-xl font-bold text-[#0f172a] tracking-tight">Chat Request <span className="font-normal text-slate-500"></span></span>
+              <span className="text-xl font-bold text-[#0f172a] tracking-tight">Chat Request <span className="font-normal text-slate-500"> </span></span>
             </div>
 
             <h2 className="text-2xl font-bold text-[#0f172a]">Acesso Administrativo</h2>
