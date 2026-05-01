@@ -17,7 +17,7 @@ function ModalConfirm({ status, onConfirm, onCancel, statusLabels }: any) {
         <h2 className="text-lg font-bold text-slate-800 mb-4">Confirmar alteração</h2>
         <p className="text-sm text-slate-600 mb-6">
           Tem certeza que deseja mudar o status para:{" "}
-          <span className="font-semibold text-emerald-600">{statusLabels[status] || status}</span>?
+          <span className="font-semibold text-[#004d40]">{statusLabels[status] || status}</span>?
         </p>
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">
@@ -38,12 +38,12 @@ export default function RequestDetailsPage() {
   const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
+  // Estados
   const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [observation, setObservation] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(null);
-  
   const [showConfirm, setShowConfirm] = useState(false);
   const [nextStatus, setNextStatus] = useState("");
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -74,7 +74,6 @@ export default function RequestDetailsPage() {
         ]);
 
         if (meRes.ok) setCurrentUser(await meRes.json());
-        
         if (reqRes.ok) {
           const data = await reqRes.json();
           setRequest(data);
@@ -105,12 +104,11 @@ export default function RequestDetailsPage() {
   const confirmStatusChange = async () => {
     setShowConfirm(false);
     setUpdating(true);
-    
     try {
       const token = localStorage.getItem("jwt_token");
       const res = await fetch(`${API_BASE}/requests/${id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
@@ -134,7 +132,7 @@ export default function RequestDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
-        <p className="text-slate-500 animate-pulse font-medium">Carregando detalhes...</p>
+        <p className="text-slate-500 animate-pulse font-medium text-sm">Carregando detalhes...</p>
       </div>
     );
   }
@@ -157,7 +155,7 @@ export default function RequestDetailsPage() {
 
       <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
         
-        {/* Header - Alterado para Verde Petróleo */}
+        {/* Header Verde Petróleo */}
         <div className="bg-[#004d40] p-6 text-white flex justify-between items-center">
           <button onClick={() => router.back()} className="p-2 hover:bg-white/10 rounded-full transition">
             <ChevronLeft size={24} />
@@ -170,10 +168,11 @@ export default function RequestDetailsPage() {
 
         <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
           
+          {/* Conteúdo Principal */}
           <div className="md:col-span-2 space-y-8">
             <section>
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Descrição do Requerimento</h3>
-              <div className="bg-gray-50 p-6 rounded-2xl text-gray-700 border border-gray-100 leading-relaxed">
+              <div className="bg-gray-50 p-6 rounded-2xl text-gray-700 border border-gray-100 leading-relaxed text-sm">
                 {request.description || "Nenhuma descrição fornecida."}
               </div>
             </section>
@@ -183,11 +182,10 @@ export default function RequestDetailsPage() {
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {request.documents.map((doc: any) => {
-                    const fileUrl = `storage/${doc.path.replace("public/", "")}`;
+                    const fileUrl = `http://localhost:8000/storage/${doc.path.replace("public/", "")}`;
                     const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
                     return (
                       <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/30 transition-all bg-white shadow-sm">
-                        
                         {isImage ? (
                           <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block cursor-zoom-in overflow-hidden rounded-xl bg-gray-50 border border-gray-100">
                             <img src={fileUrl} alt={doc.name} className="w-full h-48 object-contain hover:scale-105 transition-transform duration-500" />
@@ -195,10 +193,9 @@ export default function RequestDetailsPage() {
                         ) : (
                           <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition cursor-pointer">
                             <FileText size={32} className="text-emerald-600" />
-                            <span className="text-sm font-medium text-gray-500 font-bold uppercase tracking-tighter">Visualizar Documento PDF</span>
+                            <span className="text-sm font-bold text-gray-500 uppercase tracking-tighter">Visualizar Documento PDF</span>
                           </a>
                         )}
-
                         <div className="flex justify-between items-center px-1">
                           <p className="text-sm font-bold text-gray-700 truncate max-w-[250px]" title={doc.name}>{doc.name}</p>
                           <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline">
@@ -215,6 +212,7 @@ export default function RequestDetailsPage() {
             </section>
           </div>
 
+          {/* Sidebar Lateral */}
           <div className="space-y-6">
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
               <h3 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">Solicitante</h3>
@@ -230,25 +228,34 @@ export default function RequestDetailsPage() {
 
             {isAdmin && (
               <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm">
-                <h3 className="text-[10px] font-black text-emerald-700 uppercase mb-4 tracking-widest text-center">Área da Coordenação</h3>
+                <h3 className="text-[11px] font-black text-emerald-800 uppercase mb-4 tracking-widest text-center">
+                  Área da Coordenação
+                </h3>
+                
                 <textarea
-                  className="w-full text-sm p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4 min-h-[120px] transition-all"
+                  className="w-full text-sm p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4 min-h-[120px] transition-all text-gray-700"
                   placeholder="Justifique a decisão..."
                   value={observation}
                   onChange={(e) => setObservation(e.target.value)}
                 />
+
                 <div className="space-y-2">
                   <button onClick={() => handleStatusClick("analyzing")} disabled={updating}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-700 text-[10px] font-black rounded-xl hover:bg-amber-100 transition disabled:opacity-50 tracking-widest">
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-700 text-[10px] font-black rounded-xl hover:bg-amber-100 transition disabled:opacity-50 tracking-widest border border-amber-100"
+                  >
                     <Clock size={16} /> EM ANÁLISE
                   </button>
+                  
                   <div className="grid grid-cols-2 gap-2">
                     <button onClick={() => handleStatusClick("canceled")} disabled={updating}
-                      className="flex items-center justify-center gap-1 py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-100 transition tracking-widest">
+                      className="flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-100 transition tracking-widest border border-red-100"
+                    >
                       <Ban size={16} /> INDEFERIR
                     </button>
+                    
                     <button onClick={() => handleStatusClick("completed")} disabled={updating}
-                      className="flex items-center justify-center gap-1 py-3 bg-[#004d40] text-white text-[10px] font-black rounded-xl hover:opacity-90 shadow-sm transition tracking-widest">
+                      className="flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-xl hover:bg-emerald-100 transition tracking-widest border border-emerald-100"
+                    >
                       <Check size={16} /> DEFERIR
                     </button>
                   </div>

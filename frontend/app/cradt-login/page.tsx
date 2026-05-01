@@ -135,10 +135,8 @@ export default function CradtLoginPage() {
 
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-[#0f172a] rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-slate-900/20">
-                CR
-              </div>
-              <span className="text-xl font-bold text-[#0f172a] tracking-tight">Chat Request <span className="font-normal text-slate-500">| Staff</span></span>
+              
+              <span className="text-xl font-bold text-[#0f172a] tracking-tight">Chat Request <span className="font-normal text-slate-500"></span></span>
             </div>
 
             <h2 className="text-2xl font-bold text-[#0f172a]">Acesso Administrativo</h2>
