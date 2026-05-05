@@ -204,16 +204,20 @@ export default function RequestsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500 text-xs">{req.user?.course?.name || "---"}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        req.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' : 
-                        req.status === 'analyzing' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
-                        req.status === 'canceled' ? 'bg-red-50 text-red-600 border border-red-100' :
-                        'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                      }`}>
-                        {req.status === 'pending' ? 'Pendente' : req.status === 'analyzing' ? 'Em Análise' : req.status === 'completed' ? 'Deferido' : 'Indeferido'}
-                      </span>
-                    </td>
+                  <td className="px-6 py-4">
+  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+    req.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' : 
+    req.status === 'analyzing' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
+    req.status === 'pending'   ? 'bg-red-100 text-red-700 border border-red-200' :
+    req.status === 'canceled'  ? 'bg-red-50 text-red-600 border border-red-100' :
+    'bg-slate-100 text-slate-500'
+  }`}>
+    {req.status === 'pending' ? 'Pendente' : 
+     req.status === 'analyzing' ? 'Em Análise' : 
+     req.status === 'completed' ? 'Deferido' : 
+     'Indeferido'}
+  </span>
+</td>
                     <td className="px-6 py-4 text-center">
                       <Link href={`/requests/acesso/${req.id}`} className="inline-flex items-center justify-center p-2 text-emerald-600 bg-emerald-50 rounded-full hover:bg-blue-600 hover:text-white transition-all">
                         <Eye size={18} />

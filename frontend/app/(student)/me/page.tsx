@@ -7,8 +7,7 @@ import { FaWhatsapp } from "react-icons/fa";
 
 const API_BASE = "/api";
 
-// 🔹 CONFIGURAÇÃO COM OS NOMES EXATOS DO SEU BANCO DE DADOS
-// Agora o "match" vai acontecer e o upload vai aparecer!
+// 🔹 CONFIGURAÇÃO DE TIPOS DE REQUERIMENTO
 const REQUEST_CONFIG: Record<string, {
   descriptionMessage: string;
   attachmentMessage?: string;
@@ -18,65 +17,43 @@ const REQUEST_CONFIG: Record<string, {
   "Justificativa de Falta / 2ª Chamada": {
     descriptionMessage: "Descreva o motivo da falta ou da perda da prova.",
     attachmentMessage: "📎 Anexe o(s) atestado(s) médico(s) ou declaração de trabalho.",
-    minAttachments: 1, // Ativa o clipe
+    minAttachments: 1,
     maxAttachments: 10
   },
   "Isenção de Disciplinas (Aproveitamento)": {
     descriptionMessage: "Informe quais disciplinas deseja aproveitar.",
     attachmentMessage: "📎 Anexe seu Histórico Escolar e as Ementas das disciplinas.",
-    minAttachments: 1, // Ativa o clipe
+    minAttachments: 1,
     maxAttachments: 10
   },
   "Dispensa de Prática de Educação Física": {
     descriptionMessage: "Informe o motivo da dispensa.",
     attachmentMessage: "📎 Anexe o atestado médico ou declaração militar.",
-    minAttachments: 1, // Ativa o clipe
+    minAttachments: 1,
     maxAttachments: 10
   },
   "Guia de Transferência": {
     descriptionMessage: "Para qual instituição você deseja se transferir?",
     attachmentMessage: "📎 Anexe a declaração de vaga da instituição de destino.",
-    minAttachments: 1, // Ativa o clipe
+    minAttachments: 1,
     maxAttachments: 10
   },
   "Comp. de Matrícula / Transferência de Turno": {
     descriptionMessage: "Descreva a complementação ou o turno desejado.",
     attachmentMessage: "📎 Se houver, anexe documentos comprobatórios (ex: declaração de trabalho).",
-    minAttachments: 1, // Ativa o clipe
+    minAttachments: 1,
     maxAttachments: 10
   },
-  
-  // -- Itens que geralmente não pedem anexo obrigatório (mas você pode alterar se quiser) --
-  "Trancamento de Matrícula": {
-    descriptionMessage: "Explique o motivo do trancamento.",
-  },
-  "Ajuste de Matrícula Semestral": {
-    descriptionMessage: "Quais disciplinas você deseja incluir ou excluir?",
-  },
-  "Autorização para cursar em outra IES": {
-    descriptionMessage: "Qual a instituição e quais disciplinas pretende cursar?",
-  },
-  "Cancelamento de Matrícula": {
-    descriptionMessage: "Qual o motivo do cancelamento do vínculo?",
-  },
-  "Declaração de Matrícula / Vínculo": {
-    descriptionMessage: "Para qual finalidade você precisa da declaração?",
-  },
-  "Diploma / Certificado de Conclusão": {
-    descriptionMessage: "Informe o ano e semestre de conclusão (Ex: 2024.2).",
-  },
-  "Ementa de Disciplina": {
-    descriptionMessage: "De qual disciplina você precisa da ementa?",
-  },
-  "Histórico Escolar": {
-    descriptionMessage: "Informe o ano e semestre de referência.",
-  },
-  "Reabertura de Matrícula": {
-    descriptionMessage: "Qual o motivo da reabertura?",
-  },
-  "Revisão de Nota ou Faltas": {
-    descriptionMessage: "Especifique a disciplina e o motivo da revisão.",
-  },
+  "Trancamento de Matrícula": { descriptionMessage: "Explique o motivo do trancamento." },
+  "Ajuste de Matrícula Semestral": { descriptionMessage: "Quais disciplinas você deseja incluir ou excluir?" },
+  "Autorização para cursar em outra IES": { descriptionMessage: "Qual a instituição e quais disciplinas pretende cursar?" },
+  "Cancelamento de Matrícula": { descriptionMessage: "Qual o motivo do cancelamento do vínculo?" },
+  "Declaração de Matrícula / Vínculo": { descriptionMessage: "Para qual finalidade você precisa da declaração?" },
+  "Diploma / Certificado de Conclusão": { descriptionMessage: "Informe o ano e semestre de conclusão (Ex: 2024.2)." },
+  "Ementa de Disciplina": { descriptionMessage: "De qual disciplina você precisa da ementa?" },
+  "Histórico Escolar": { descriptionMessage: "Informe o ano e semestre de referência." },
+  "Reabertura de Matrícula": { descriptionMessage: "Qual o motivo da reabertura?" },
+  "Revisão de Nota ou Faltas": { descriptionMessage: "Especifique a disciplina e o motivo da revisão." },
 };
 
 interface Message {
@@ -86,8 +63,6 @@ interface Message {
   options?: { label: string; action: string; icon?: React.ReactNode; value?: any }[];
   items?: { subject: string; status: string }[];
 }
-
-
 
 export default function GuidedChatPage() {
   const { token, user } = useAuth();
@@ -112,6 +87,7 @@ export default function GuidedChatPage() {
     { label: " Meus Pedidos", action: "view_requests", icon: <ClipboardList size={16} /> },
   ];
 
+  // Efeitos
   useEffect(() => {
     if (user) {
       setMessages([{
@@ -131,6 +107,23 @@ export default function GuidedChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Handlers de Arquivo
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selected = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...selected]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearAllFiles = () => {
+    setFiles([]);
+  };
+
+  // Lógica de Fluxo
   const cancelFlow = () => {
     setStep("idle");
     setFiles([]);
@@ -138,13 +131,6 @@ export default function GuidedChatPage() {
       ...prev,
       { id: Date.now(), role: "bot", text: "A operação foi cancelada. Posso ajudar em algo mais?", options: initialOptions },
     ]);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selected = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...selected]);
-    }
   };
 
   const finalizeRequest = async (currentDescription?: string) => {
@@ -155,7 +141,6 @@ export default function GuidedChatPage() {
     setLoading(true);
     try {
       const documentIds: string[] = [];
-      // Upload dos arquivos, se houver
       if (files.length > 0) {
         for (const file of files) {
           const formData = new FormData();
@@ -170,7 +155,6 @@ export default function GuidedChatPage() {
         }
       }
 
-      // Envio do requerimento
       await fetch(`${API_BASE}/requests`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -213,11 +197,9 @@ export default function GuidedChatPage() {
     setTempData((prev) => ({ ...prev, description: text }));
 
     if (tempData.minAttachments === 0) {
-      // Se não precisa de anexo, envia direto
       setStep("idle");
       finalizeRequest(text);
     } else {
-      // Se precisa de anexo, vai para o passo de espera
       setStep("waiting_file");
       setMessages((prev) => [
         ...prev,
@@ -236,7 +218,6 @@ export default function GuidedChatPage() {
       const data = await res.json();
       const allTypes = data.data || data || [];
 
-      // Mostra as opções vindas do banco
       setMessages((prev) => [
         ...prev,
         { id: Date.now(), role: "user", text: opt.label },
@@ -245,16 +226,14 @@ export default function GuidedChatPage() {
           role: "bot",
           text: "Qual requerimento você deseja abrir?",
           options: Array.isArray(allTypes) ? allTypes.map((t: any) => ({
-    label: t.name,
-    value: t.id,
-    action: "select_type",
-})): []
+            label: t.name,
+            value: t.id,
+            action: "select_type",
+          })) : []
         },
       ]);
     } else if (opt.action === "select_type") {
-      // 🔹 BUSCA A CONFIGURAÇÃO USANDO O NOME CORRETO
       const config = REQUEST_CONFIG[opt.label];
-      
       setTempData({
         typeId: opt.value,
         typeName: opt.label,
@@ -302,14 +281,12 @@ export default function GuidedChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#f8fafc] font-sans text-slate-700 selection:bg-green-100 antialiased font-normal">
+    <div className="flex flex-col h-[100dvh] bg-[#f8fafc] font-sans text-slate-700 antialiased">
       
       {/* 🔹 ÁREA DE MENSAGENS */}
-      <main className="flex-1 overflow-y-auto px-4 py-8 space-y-8 scrollbar-hide max-w-4xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto px-4 py-8 space-y-8 max-w-4xl mx-auto w-full scrollbar-hide">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} w-full animate-fade-in-up`}>
-            
-            {/* Ícone do Bot */}
             {msg.role === "bot" && (
               <div className="flex items-center gap-2 mb-2 ml-1">
                 <div className="w-8 h-8 rounded-full border border-gray-100 flex items-center justify-center overflow-hidden bg-white shadow-sm">
@@ -319,20 +296,18 @@ export default function GuidedChatPage() {
               </div>
             )}
 
-            {/* Balão de Mensagem */}
-            <div className={`p-5 shadow-sm transition-all text-base leading-relaxed tracking-tight
-                ${msg.role === "user"
-                  ? "bg-[#15803d] text-white rounded-3xl rounded-tr-none max-w-[85%]"
-                  : "bg-white border border-gray-100 text-slate-700 rounded-3xl rounded-tl-none max-w-[90%]"
-                }`}
+            <div className={`p-5 shadow-sm transition-all text-base leading-relaxed
+              ${msg.role === "user"
+                ? "bg-[#15803d] text-white rounded-3xl rounded-tr-none max-w-[85%]"
+                : "bg-white border border-gray-100 text-slate-700 rounded-3xl rounded-tl-none max-w-[90%]"
+              }`}
             >
               {msg.text}
 
-              {/* Lista de Pedidos (Status) */}
               {msg.items && (
                 <div className="mt-4 space-y-3">
                   {msg.items.map((req, i) => (
-                    <div key={i} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md">
+                    <div key={i} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-gray-100">
                       <span className="text-sm font-medium text-slate-600 italic">{req.subject}</span>
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full 
                         ${req.status === "Concluído" ? "bg-green-100 text-green-700" : 
@@ -345,14 +320,13 @@ export default function GuidedChatPage() {
                 </div>
               )}
 
-              {/* Botões de Opções */}
               {msg.options && (
                 <div className="flex flex-wrap gap-2 mt-5">
                   {msg.options.map((opt, i) => (
                     <button
                       key={i}
                       onClick={() => handleAction(opt)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-slate-600 text-sm rounded-full hover:border-[#15803d] hover:text-[#15803d] hover:shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-slate-600 text-sm rounded-full hover:border-[#15803d] hover:text-[#15803d] transition-all transform active:scale-95"
                     >
                       {opt.icon} {opt.label}
                     </button>
@@ -365,80 +339,81 @@ export default function GuidedChatPage() {
         {loading && <div className="flex ml-4"><Loader2 className="animate-spin text-[#15803d] w-5 h-5" /></div>}
         <div ref={bottomRef} className="h-4" />
       </main>
-      
 
-      {/* 🔹 FOOTER (Apenas Input, sem botões extras) */}
-      <footer className="p-6 bg-white border-t border-gray-100">
+      {/* 🔹 FOOTER */}
+      <footer className="p-6 bg-white border-t border-gray-100 relative">
         <div className="max-w-4xl mx-auto">
+          
+          {/* Lista de Anexos Acima do Input */}
+          {files.length > 0 && (
+            <div className="flex flex-col gap-2 mb-4 animate-fade-in">
+              {files.map((file, i) => (
+                <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-gray-200">
+                  <span className="text-sm text-slate-600 truncate">{file.name}</span>
+                  <button type="button" onClick={() => removeFile(i)} className="text-red-500"><XCircle size={18} /></button>
+                </div>
+              ))}
+              <button type="button" onClick={clearAllFiles} className="self-end text-xs text-red-500 mt-1">Cancelar todos</button>
+            </div>
+          )}
+
           <form onSubmit={handleSendMessage} className="flex gap-3 items-center">
-            
-            {/* Botão Cancelar */}
             {step !== "idle" && (
-              <button
-                type="button"
-                onClick={cancelFlow}
-                className="p-3 text-slate-300 hover:text-red-500 transition-colors"
-                title="Cancelar"
-              >
-                <XCircle size={24} />
-              </button>
+              <button type="button" onClick={cancelFlow} className="p-3 text-slate-300 hover:text-red-500"><XCircle size={24} /></button>
             )}
 
-            {/* Botão de Anexo (Só aparece quando step é "waiting_file") */}
             {step === "waiting_file" && (
-              <div className="flex gap-2">
+              <>
                 <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-4 bg-[#f8fafc] text-[#15803d] rounded-2xl border border-gray-100 hover:bg-[#dcfce7] transition-all"
-                  title="Anexar arquivos"
+                  className="p-4 bg-[#f8fafc] text-[#15803d] rounded-2xl border border-gray-100 hover:bg-[#dcfce7]"
                 >
                   <Paperclip size={20} />
                 </button>
-              </div>
+              </>
             )}
 
-            {/* Campo de Texto */}
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               disabled={step !== "description"}
-              placeholder={step === "waiting_file" ? `${files.length} arquivo(s) selecionados...` : "Escreva sua mensagem aqui..."}
-              className="flex-1 bg-[#f8fafc] border border-gray-100 rounded-2xl px-6 py-4 text-sm outline-none focus:ring-2 focus:ring-[#15803d]/10 focus:border-[#15803d] transition-all text-slate-600 placeholder:text-slate-300"
+              placeholder={step === "waiting_file" ? `${files.length} arquivo(s) prontos...` : "Escreva sua mensagem aqui..."}
+              className="flex-1 bg-[#f8fafc] border border-gray-100 rounded-2xl px-6 py-4 text-sm outline-none focus:border-[#15803d] transition-all"
             />
-    {/* 🔹 BOTÃO FIXO DO WHATSAPP */}
-      <a
-        href="https://wa.me/5581988224907?text=Olá,%20gostaria%20de%20falar%20com%20a%20CRADT."
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-full shadow-lg flex items-center gap-2 transition-colors"
-      >
-        <FaWhatsapp className="w-6 h-6" />
-        <span className="font-semibold">Falar com a CRADT</span>
-      </a>
-            {/* Botão de Enviar */}
+
             {step === "waiting_file" ? (
               <button
                 type="button"
                 onClick={() => finalizeRequest(tempData.description)}
-                className="px-6 py-4 bg-[#15803d] text-white rounded-2xl text-sm font-normal shadow-lg shadow-green-100 hover:bg-[#166534] transition-all transform active:scale-95"
+                className="px-6 py-4 bg-[#15803d] text-white rounded-2xl text-sm font-semibold hover:bg-[#166534] transition-all"
               >
-                Enviar {files.length} anexo(s)
+                Enviar {files.length > 0 ? files.length : ''}
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={step !== "description" || !inputValue.trim()}
-                className="p-4 bg-[#15803d] text-white rounded-2xl hover:bg-[#166534] disabled:bg-slate-100 disabled:text-slate-300 shadow-lg shadow-green-100 transition-all transform active:scale-95"
+                className="p-4 bg-[#15803d] text-white rounded-2xl disabled:bg-slate-100 disabled:text-slate-300 transition-all"
               >
                 <Send size={20} />
               </button>
             )}
           </form>
-          
         </div>
       </footer>
+
+      {/* 🔹 WHATSAPP FLUTUANTE */}
+      <a
+        href="https://wa.me/5581988224907?text=Olá,%20gostaria%20de%20falar%20com%20a%20CRADT."
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-28 right-6 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all z-50 transform hover:scale-105"
+      >
+        <FaWhatsapp className="w-6 h-6" />
+        <span className="font-semibold text-sm">Falar com a CRADT</span>
+      </a>
     </div>
   );
 }
