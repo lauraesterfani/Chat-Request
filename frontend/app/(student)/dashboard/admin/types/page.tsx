@@ -92,8 +92,11 @@ export default function TypeRequestsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchTypes();
-    } catch (error) {
-      alert("Erro ao excluir.");
+    } catch (error: any) {
+      // CAPTURA A MENSAGEM DO LARAVEL:
+      // Se o Laravel mandou o erro 422, a mensagem estará em error.response.data.error
+      const mensagemErro = error.response?.data?.error || "Erro ao excluir.";
+      alert(mensagemErro);
     }
   };
 

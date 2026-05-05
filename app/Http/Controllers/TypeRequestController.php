@@ -14,7 +14,6 @@ class TypeRequestController extends Controller
 {
     /**
      * Lista todos os tipos de requerimentos.
-     * (PÚBLICO - Usado pelo Chat e pelo Admin)
      */
     public function index()
     {
@@ -24,7 +23,6 @@ class TypeRequestController extends Controller
 
     /**
      * Cria um novo tipo de requerimento.
-     * (ADMIN)
      */
     public function store(Request $request)
     {
@@ -36,7 +34,6 @@ class TypeRequestController extends Controller
             ]);
 
             $validated['id'] = (string) Str::uuid();
-
             $typeRequest = TypeRequest::create($validated);
 
             return response()->json($typeRequest, 201); 
@@ -50,7 +47,6 @@ class TypeRequestController extends Controller
 
     /**
      * Exibe o tipo de requerimento especificado.
-     * (ADMIN)
      */
     public function show($id) 
     {
@@ -61,7 +57,6 @@ class TypeRequestController extends Controller
 
     /**
      * Atualiza o tipo de requerimento especificado.
-     * (ADMIN)
      */
     public function update(Request $request, $id)
     {
@@ -88,25 +83,35 @@ class TypeRequestController extends Controller
 
     /**
      * Remove o tipo de requerimento especificado.
-     * (ADMIN)
+     * Sprint: Bloqueio de exclusão caso esteja em uso.
      */
     public function destroy($id)
     {
         try {
             $typeRequest = TypeRequest::find($id);
-            if (!$typeRequest) return response()->json(['error' => 'Not found'], 404);
+            
+            if (!$typeRequest) {
+                return response()->json(['error' => 'Não encontrado'], 404);
+            }
+
+            // Verifica se existem requerimentos vinculados usando o relacionamento do Model
+            if ($typeRequest->requests()->exists()) {
+                return response()->json([
+                    'error' => 'Erro ao excluir porque está em uso'
+                ], 422);
+            }
 
             $typeRequest->delete(); 
             return response()->json(['message' => 'Excluído com sucesso.'], 200);
+
         } catch (\Exception $e) {
-            Log::error("Erro ao excluir: " . $e->getMessage());
-            return response()->json(['error' => 'Erro ao excluir.'], 500);
+        Log::error("Erro ao excluir TypeRequest: " . $e->getMessage());
+        return response()->json(['error' => 'Erro ao excluir o registro.'], 500);
         }
     }
 
     /**
      * Sincroniza documentos a um tipo de requerimento.
-     * (ADMIN)
      */
     public function syncDocumentTypes(Request $request, string $requestTypeId)
     {
@@ -125,8 +130,7 @@ class TypeRequestController extends Controller
 
         try {
             $requestType = TypeRequest::findOrFail($requestTypeId);
-            // Garanta que o Model TypeRequest tem o método documentTypes()
-            $requestType->documentTypes()->sync($request->document_type_ids); 
+            $requestType->typeDocuments()->sync($request->document_type_ids); 
 
             return response()->json(['message' => 'Sincronizado com sucesso'], 200);
         } catch (\Exception $e) {
