@@ -2,14 +2,25 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, AlertCircle, Paperclip } from "lucide-react";
 
 const API_BASE = "/api";
+
+// MAPA DE DOCUMENTOS (Baseado na sua lista de itens a-j)
+const DOCUMENTOS_NECESSARIOS: Record<string, string> = {
+  "justificativa": "Atestado Médico (a), Declaração da Empresa (d) ou Ementas (i).",
+  "transferência": "Declaração de Transferência (c), Históricos (f, g ou h) e Ementas (i).",
+  "isenção": "Histórico Escolar (f, g ou h) e Ementas das disciplinas (i).",
+  "educação física": "Atestado Médico (a) ou Declaração de Unidade Militar (j).",
+  "colação": "Atestado Médico (a) ou Cópia da CTPS (b) e Declaração da Empresa (d).",
+  "transferência de turno": "Atestado Médico (a) ou Declaração de Unidade Militar (j).",
+  "análise curricular": "Declaração de Transferência (c), Históricos e Ementas (i)."
+};
 
 export default function NewRequestPage() {
   const router = useRouter();
 
-  // Estados dos Campos (Mantendo como estavam)
+  // Estados dos Campos
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState("");
@@ -18,19 +29,25 @@ export default function NewRequestPage() {
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // 1. Lógica de Identificação de Anexo (Original)
-  const requiresFile = useMemo(() => {
+  // 1. Lógica de Identificação de Anexo (Reforçada)
+  const infoAnexo = useMemo(() => {
     const selectedType = requestTypes.find(t => String(t.id) === String(typeId));
-    if (!selectedType) return false;
+    if (!selectedType) return { requires: false, doc: "" };
+
     const name = selectedType.name.toLowerCase();
-    const typesWithAnexo = [
-      "aproveitamento", "isenção", "justificativa", "falta", 
-      "chamada", "educação física", "transferência", "cancelamento"
-    ];
-    return typesWithAnexo.some(keyword => name.includes(keyword));
+    
+    // Procura no mapa se o nome do requerimento exige documentos
+    const chaveEncontrada = Object.keys(DOCUMENTOS_NECESSARIOS).find(key => name.includes(key));
+    
+    return {
+      requires: !!chaveEncontrada || name.includes("anexo"),
+      doc: chaveEncontrada ? DOCUMENTOS_NECESSARIOS[chaveEncontrada] : "documento comprobatório"
+    };
   }, [typeId, requestTypes]);
 
-  // 2. Carrega tipos e faz a SELEÇÃO AUTOMÁTICA via localStorage
+  const requiresFile = infoAnexo.requires;
+
+  // 2. Carrega tipos de requerimento
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("jwt_token");
@@ -42,11 +59,9 @@ export default function NewRequestPage() {
           const data = await res.json();
           setRequestTypes(data);
 
-          // PEGA O ID QUE A SUA HOME SALVOU
           const savedId = localStorage.getItem('selected_type_id');
           if (savedId) {
             setTypeId(savedId);
-            // Limpa para não selecionar sozinho na próxima vez que entrar direto
             localStorage.removeItem('selected_type_id'); 
           }
         }
@@ -57,9 +72,46 @@ export default function NewRequestPage() {
     fetchData();
   }, []);
 
+  // 3. Função de Envio com BLOQUEIO
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // ... sua lógica de envio (omitida para brevidade, mantenha a sua original)
+    setErrorMsg("");
+
+    // TRAVA CRÍTICA: Se precisa de arquivo e o estado 'file' está vazio, cancela o envio
+    if (requiresFile && !file) {
+      setErrorMsg(`Ei, você esqueceu de anexar o documento! Para este pedido, preciso de: ${infoAnexo.doc}`);
+      // Rola para o erro para garantir que o usuário veja
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return; 
+    }
+
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const formData = new FormData();
+      formData.append("type_request_id", typeId);
+      formData.append("subject", subject);
+      formData.append("description", description);
+      if (file) formData.append("file", file);
+
+      const res = await fetch(`${API_BASE}/requests`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        router.push("/me");
+      } else {
+        const errData = await res.json();
+        setErrorMsg(errData.message || "Erro ao enviar requerimento.");
+      }
+    } catch (error) {
+      setErrorMsg("Falha na comunicação com o servidor.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -72,15 +124,26 @@ export default function NewRequestPage() {
         </div>
 
         <div className="p-8">
+          {/* Alerta de Erro Visual */}
+          {errorMsg && (
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 flex items-center gap-3 animate-pulse">
+              <AlertCircle size={20} />
+              <p className="text-sm font-bold">{errorMsg}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Campo Tipo (Onde a seleção automática aparece) */}
+            {/* Tipo de Solicitação */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Solicitação</label>
               <select 
                 className="block w-full px-4 py-3 border-gray-300 rounded-lg border focus:ring-green-500 transition-all"
                 value={typeId}
-                onChange={(e) => setTypeId(e.target.value)}
+                onChange={(e) => {
+                  setTypeId(e.target.value);
+                  setErrorMsg(""); // Limpa erro ao mudar
+                }}
                 required
               >
                 <option value="">Selecione uma opção...</option>
@@ -88,47 +151,50 @@ export default function NewRequestPage() {
               </select>
             </div>
 
-            {/* Campo Assunto */}
+            {/* Assunto */}
             <div>
                <label className="block text-sm font-semibold text-gray-700 mb-2">Assunto</label>
                <input 
                  type="text" 
-                 className="block w-full px-4 py-3 rounded-lg border-gray-300 border focus:ring-green-500 transition-all" 
-                 placeholder="Ex: Correção de nota"
+                 className="block w-full px-4 py-3 rounded-lg border-gray-300 border focus:ring-green-500" 
                  value={subject} 
                  onChange={(e) => setSubject(e.target.value)} 
                  required 
                />
             </div>
 
-            {/* Campo Descrição */}
+            {/* Descrição */}
             <div>
                <label className="block text-sm font-semibold text-gray-700 mb-2">Descrição Detalhada</label>
                <textarea 
-                 className="block w-full px-4 py-3 rounded-lg border-gray-300 border h-32 resize-none focus:ring-green-500 transition-all" 
-                 placeholder="Descreva sua solicitação..."
+                 className="block w-full px-4 py-3 rounded-lg border-gray-300 border h-32 resize-none focus:ring-green-500" 
                  value={description} 
                  onChange={(e) => setDescription(e.target.value)} 
                  required 
                />
             </div>
 
-            {/* Área de Anexo (Apenas se necessário) */}
+            {/* Área de Anexo Dinâmica */}
             {requiresFile && (
-              <div className="rounded-xl border-2 border-dashed border-yellow-400 bg-yellow-50 p-6">
-                <label className="block text-sm font-bold text-gray-800 mb-1">Anexo Obrigatório</label>
+              <div className={`rounded-xl border-2 border-dashed p-6 transition-all ${!file && errorMsg ? 'border-red-500 bg-red-50' : 'border-yellow-400 bg-yellow-50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Paperclip size={18} className="text-gray-600" />
+                  <label className="block text-sm font-bold text-gray-800">Anexo Obrigatório</label>
+                </div>
+                <p className="text-xs text-gray-600 mb-3 italic">Necessário: {infoAnexo.doc}</p>
                 <input 
                   type="file" 
-                  onChange={(e) => setFile(e.target.files?.[0] || null)} 
-                  className="mt-2 block w-full text-sm text-slate-500"
-                  required
+                  onChange={(e) => {
+                    setFile(e.target.files?.[0] || null);
+                    setErrorMsg("");
+                  }} 
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
                 />
               </div>
             )}
 
-            {/* Botões de Ação */}
+            {/* Botões */}
             <div className="flex gap-4 pt-4">
-              {/* BOTÃO CANCELAR: Vai para a página principal /me */}
               <button
                 type="button"
                 onClick={() => router.push('/me')} 
@@ -140,7 +206,7 @@ export default function NewRequestPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-[2] bg-[#108542] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#0d6e36] transition-all"
+                className="flex-[2] bg-[#108542] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#0d6e36] transition-all disabled:opacity-50"
               >
                 {loading ? "Enviando..." : "Enviar Requerimento"}
               </button>
