@@ -7,55 +7,6 @@ import { FaWhatsapp } from "react-icons/fa";
 
 const API_BASE = "/api";
 
-// 🔹 CONFIGURAÇÃO DE TIPOS DE REQUERIMENTO
-const REQUEST_CONFIG: Record<string, {
-  descriptionMessage: string;
-  attachmentMessage?: string;
-  minAttachments?: number;
-  maxAttachments?: number;
-}> = {
-  "Justificativa de Falta / 2ª Chamada": {
-    descriptionMessage: "Descreva o motivo da falta ou da perda da prova.",
-    attachmentMessage: "📎 Anexe o(s) atestado(s) médico(s) ou declaração de trabalho.",
-    minAttachments: 1,
-    maxAttachments: 10
-  },
-  "Isenção de Disciplinas (Aproveitamento)": {
-    descriptionMessage: "Informe quais disciplinas deseja aproveitar.",
-    attachmentMessage: "📎 Anexe seu Histórico Escolar e as Ementas das disciplinas.",
-    minAttachments: 1,
-    maxAttachments: 10
-  },
-  "Dispensa de Prática de Educação Física": {
-    descriptionMessage: "Informe o motivo da dispensa.",
-    attachmentMessage: "📎 Anexe o atestado médico ou declaração militar.",
-    minAttachments: 1,
-    maxAttachments: 10
-  },
-  "Guia de Transferência": {
-    descriptionMessage: "Para qual instituição você deseja se transferir?",
-    attachmentMessage: "📎 Anexe a declaração de vaga da instituição de destino.",
-    minAttachments: 1,
-    maxAttachments: 10
-  },
-  "Comp. de Matrícula / Transferência de Turno": {
-    descriptionMessage: "Descreva a complementação ou o turno desejado.",
-    attachmentMessage: "📎 Se houver, anexe documentos comprobatórios (ex: declaração de trabalho).",
-    minAttachments: 1,
-    maxAttachments: 10
-  },
-  "Trancamento de Matrícula": { descriptionMessage: "Explique o motivo do trancamento." },
-  "Ajuste de Matrícula Semestral": { descriptionMessage: "Quais disciplinas você deseja incluir ou excluir?" },
-  "Autorização para cursar em outra IES": { descriptionMessage: "Qual a instituição e quais disciplinas pretende cursar?" },
-  "Cancelamento de Matrícula": { descriptionMessage: "Qual o motivo do cancelamento do vínculo?" },
-  "Declaração de Matrícula / Vínculo": { descriptionMessage: "Para qual finalidade você precisa da declaração?" },
-  "Diploma / Certificado de Conclusão": { descriptionMessage: "Informe o ano e semestre de conclusão (Ex: 2024.2)." },
-  "Ementa de Disciplina": { descriptionMessage: "De qual disciplina você precisa da ementa?" },
-  "Histórico Escolar": { descriptionMessage: "Informe o ano e semestre de referência." },
-  "Reabertura de Matrícula": { descriptionMessage: "Qual o motivo da reabertura?" },
-  "Revisão de Nota ou Faltas": { descriptionMessage: "Especifique a disciplina e o motivo da revisão." },
-};
-
 interface Message {
   id: string | number;
   role: "bot" | "user";
@@ -79,7 +30,7 @@ export default function GuidedChatPage() {
     typeName: "",
     description: "",
     minAttachments: 0,
-    maxAttachments: 10,
+    attachmentInstructions: ""
   });
 
   const initialOptions = [
@@ -123,7 +74,6 @@ export default function GuidedChatPage() {
     setFiles([]);
   };
 
-  // Lógica de Fluxo
   const cancelFlow = () => {
     setStep("idle");
     setFiles([]);
@@ -179,7 +129,7 @@ export default function GuidedChatPage() {
 
       setStep("idle");
       setFiles([]);
-      setTempData((prev) => ({ ...prev, description: "" }));
+      setTempData({ typeId: "", typeName: "", description: "", minAttachments: 0, attachmentInstructions: "" });
     } catch {
       setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "Houve um erro no envio. Por favor, tente novamente." }]);
     } finally {
@@ -196,6 +146,7 @@ export default function GuidedChatPage() {
     setMessages((prev) => [...prev, { id: Date.now(), role: "user", text }]);
     setTempData((prev) => ({ ...prev, description: text }));
 
+    // Se o requerimento não precisa de anexos, finaliza direto
     if (tempData.minAttachments === 0) {
       setStep("idle");
       finalizeRequest(text);
@@ -206,7 +157,7 @@ export default function GuidedChatPage() {
         {
           id: Date.now() + 1,
           role: "bot",
-          text: REQUEST_CONFIG[tempData.typeName]?.attachmentMessage || "📎 Por favor, anexe os documentos necessários abaixo.",
+          text: `📎 Por favor, realize o envio dos arquivos solicitados:\n${tempData.attachmentInstructions}`,
         },
       ]);
     }
@@ -229,18 +180,30 @@ export default function GuidedChatPage() {
             label: t.name,
             value: t.id,
             action: "select_type",
+            descriptionRaw: t.description // Passa a descrição vinda do banco
           })) : []
         },
       ]);
     } else if (opt.action === "select_type") {
-      const config = REQUEST_CONFIG[opt.label];
+      const rawDescription = opt.descriptionRaw || "";
+      
+      // 🔮 LÓGICA DO PONTO E VÍRGULA: Divide a string no ';'
+      const parts = rawDescription.split(";");
+      
+      const botMessage = parts[0]?.trim(); // O que está ANTES do ';' é a pergunta
+      const documentsRequired = parts[1]?.trim(); // O que está DEPOIS do ';' é o anexo
+
+      // Se houver texto válido após o ';', ativa a necessidade de anexo
+      const hasAttachment = documentsRequired ? 1 : 0;
+
       setTempData({
         typeId: opt.value,
         typeName: opt.label,
         description: "",
-        minAttachments: config?.minAttachments ?? 0,
-        maxAttachments: config?.maxAttachments ?? 10,
+        minAttachments: hasAttachment,
+        attachmentInstructions: documentsRequired || "",
       });
+
       setStep("description");
       setMessages((prev) => [
         ...prev,
@@ -248,7 +211,7 @@ export default function GuidedChatPage() {
         {
           id: Date.now() + 1,
           role: "bot",
-          text: config?.descriptionMessage || "Por favor, descreva o motivo da sua solicitação:"
+          text: botMessage || "Por favor, descreva o motivo da sua solicitação:"
         },
       ]);
     } else if (opt.action === "view_requests") {
@@ -296,7 +259,7 @@ export default function GuidedChatPage() {
               </div>
             )}
 
-            <div className={`p-5 shadow-sm transition-all text-base leading-relaxed
+            <div className={`p-5 shadow-sm transition-all text-base leading-relaxed whitespace-pre-line
               ${msg.role === "user"
                 ? "bg-[#15803d] text-white rounded-3xl rounded-tr-none max-w-[85%]"
                 : "bg-white border border-gray-100 text-slate-700 rounded-3xl rounded-tl-none max-w-[90%]"
@@ -344,7 +307,7 @@ export default function GuidedChatPage() {
       <footer className="p-6 bg-white border-t border-gray-100 relative">
         <div className="max-w-4xl mx-auto">
           
-          {/* Lista de Anexos Acima do Input */}
+          {/* Lista de Anexos */}
           {files.length > 0 && (
             <div className="flex flex-col gap-2 mb-4 animate-fade-in">
               {files.map((file, i) => (
@@ -362,6 +325,7 @@ export default function GuidedChatPage() {
               <button type="button" onClick={cancelFlow} className="p-3 text-slate-300 hover:text-red-500"><XCircle size={24} /></button>
             )}
 
+            {/* O clipe de anexo só aparece se o passo atual for o de esperar arquivos */}
             {step === "waiting_file" && (
               <>
                 <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />

@@ -57,7 +57,7 @@ class RequestPolicy
     public function create(User $user): Response
     {
         // Apenas Students podem criar novos requerimentos.
-        return $user->isStudent()
+        return $user->isStudent  || $user->isStaff()
             ? Response::allow()
             : Response::deny('Apenas alunos podem criar requerimentos.');
     }

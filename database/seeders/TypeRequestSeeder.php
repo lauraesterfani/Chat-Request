@@ -17,88 +17,96 @@ class TypeRequestSeeder extends Seeder
             // --- Grupo: Matrícula e Ingresso ---
             [
                 'name' => 'Ajuste de Matrícula Semestral',
-                'description' => 'Solicitação para inclusão ou exclusão de disciplinas fora do prazo regular.',
+                'description' => 'Quais disciplinas você deseja incluir ou excluir?',
                 'icon' => 'calendar'
             ],
             [
                 'name' => 'Trancamento de Matrícula',
-                'description' => 'Suspensão temporária das atividades acadêmicas. O prazo de validade segue o regimento.',
+                'description' => 'Explique o motivo do trancamento.',
                 'icon' => 'pause'
             ],
             [
                 'name' => 'Reabertura de Matrícula',
-                'description' => 'Solicitação para retornar ao curso após período de trancamento ou abandono justificado.',
+                'description' => 'Qual o motivo da reabertura?',
                 'icon' => 'lock-open'
             ],
             [
                 'name' => 'Cancelamento de Matrícula',
-                'description' => 'Desligamento definitivo do curso e da instituição.',
+                'description' => 'Qual o motivo do cancelamento do vínculo?',
                 'icon' => 'x-circle'
             ],
             [
                 'name' => 'Comp. de Matrícula / Transferência de Turno',
-                'description' => 'Solicitação para mudar de turno ou complementar carga horária em outro horário.',
+                'description' => 'Descreva a complementação ou o turno desejado. ; Se houver, anexe documentos comprobatórios (ex: declaração de trabalho).',
                 'icon' => 'refresh-cw'
             ],
 
             // --- Grupo: Documentação e Certificados ---
             [
                 'name' => 'Declaração de Matrícula / Vínculo',
-                'description' => 'Documento que comprova que o aluno está regularmente matriculado no período atual.',
+                'description' => 'Para qual finalidade você precisa da declaração?',
                 'icon' => 'file-text'
             ],
             [
                 'name' => 'Histórico Escolar',
-                'description' => 'Documento oficial contendo notas, frequência e carga horária de todas as disciplinas cursadas.',
+                'description' => 'Informe o ano e semestre de referência.',
                 'icon' => 'clipboard'
             ],
             [
                 'name' => 'Ementa de Disciplina',
-                'description' => 'Conteúdo programático detalhado das disciplinas cursadas (útil para transferências).',
+                'description' => 'De qual disciplina você precisa da ementa?',
                 'icon' => 'book'
             ],
             [
                 'name' => 'Diploma / Certificado de Conclusão',
-                'description' => 'Solicitação de expedição de diploma (1ª ou 2ª via) ou certificado de conclusão de curso.',
+                'description' => 'Informe o ano e semestre de conclusão (Ex: 2024.2).',
                 'icon' => 'award'
             ],
             [
                 'name' => 'Guia de Transferência',
-                'description' => 'Documento necessário para levar seu vínculo acadêmico para outra instituição.',
+                'description' => 'Para qual instituição você deseja se transferir? ; Anexe a declaração de vaga da instituição de destino.',
                 'icon' => 'external-link'
             ],
 
             // --- Grupo: Aproveitamento e Justificativas ---
             [
                 'name' => 'Isenção de Disciplinas (Aproveitamento)',
-                'description' => 'Requer Histórico Escolar e Ementas das disciplinas cursadas em outra instituição (Anexos F, G, H, I).',
+                'description' => 'Informe quais disciplinas deseja aproveitar. ; Anexe seu Histórico Escolar e as Ementas das disciplinas.',
                 'icon' => 'check-square'
             ],
             [
                 'name' => 'Justificativa de Falta / 2ª Chamada',
-                'description' => 'Requer comprovação documental (Atestado Médico, Declaração de Trabalho ou Militar).',
+                'description' => 'Descreva o motivo da falta ou da perda da prova. ; Anexe o(s) atestado(s) médico(s) ou declaração de trabalho.',
                 'icon' => 'alert-circle'
             ],
             [
                 'name' => 'Revisão de Nota ou Faltas',
-                'description' => 'Solicitação de verificação de notas lançadas ou contagem de faltas (especificar unidade/disciplina).',
+                'description' => 'Especifique a disciplina e o motivo da revisão.',
                 'icon' => 'search'
             ],
             [
                 'name' => 'Dispensa de Prática de Educação Física',
-                'description' => 'Exclusivo para casos previstos em lei. Requer Atestado Médico, CTPS ou Declaração Militar.',
+                'description' => 'Informe o motivo da dispensa. ; Anexe o atestado médico ou declaração militar.',
                 'icon' => 'activity'
             ],
             [
                 'name' => 'Autorização para cursar em outra IES',
-                'description' => 'Permissão para cursar disciplinas em outras Instituições de Ensino Superior.',
+                'description' => 'Qual a instituição e quais disciplinas pretende cursar?',
                 'icon' => 'globe'
             ],
         ];
 
         foreach ($types as $type) {
-            // VERIFICAÇÃO DE SEGURANÇA: Só insere se o nome não existir
-            if (DB::table('type_requests')->where('name', $type['name'])->doesntExist()) {
+            // VERIFICAÇÃO DE SEGURANÇA: Se o nome já existir, ele ATUALIZA a descrição para o novo padrão
+            $existing = DB::table('type_requests')->where('name', $type['name'])->first();
+
+            if ($existing) {
+                DB::table('type_requests')->where('id', $existing->id)->update([
+                    'description' => $type['description'],
+                    'updated_at' => now(),
+                ]);
+            } else {
+                // Se não existir, ele cria o registro do zero
                 DB::table('type_requests')->insert([
                     'id' => (string) Str::uuid(),
                     'name' => $type['name'],

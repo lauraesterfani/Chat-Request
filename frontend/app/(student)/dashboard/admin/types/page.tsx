@@ -198,7 +198,7 @@ export default function TypeRequestsPage() {
                         <textarea 
                             value={formData.description}
                             onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            placeholder="Ex: Solicitação para justificar ausências..."
+                            placeholder="Ex: Pergunta ao aluno... ; Instruções do anexo (Se não houver anexo, não use o ';')"
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-24 resize-none"
                         />
                     </div>
