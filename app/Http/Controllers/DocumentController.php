@@ -10,16 +10,20 @@ class DocumentController extends Controller
 {
     public function upload(Request $request)
     {
-        // 1. Valida se o arquivo existe e é uma imagem ou PDF
+        // 1. Valida se o arquivo existe de acordo com a chave 'arquivo' enviada pelo FormData
         $request->validate([
             'arquivo' => 'required|file|mimes:pdf,jpg,png|max:10240',
         ]);
 
         try {
+            if (!$request->hasFile('arquivo') || !$request->file('arquivo')->isValid()) {
+                return response()->json(['error' => 'Arquivo inválido ou corrompido.'], 400);
+            }
+
             // 2. Salva o arquivo na pasta 'public/documents'
             $path = $request->file('arquivo')->store('documents', 'public');
 
-            // 3. Cria o registro no banco usando UUID
+            // 3. Cria o registro no banco de dados
             $document = Document::create([
                 'path' => $path,
                 'name' => $request->file('arquivo')->getClientOriginalName(),
@@ -27,12 +31,15 @@ class DocumentController extends Controller
             ]);
 
             return response()->json([
-                'id' => $document->id, // O frontend precisa desse UUID
+                'id' => (string) $document->id, // Força a conversão explícita para string (UUID)
                 'url' => Storage::url($path)
             ], 201);
 
         } catch (\Exception $e) {
-            return response()->json(['msg' => 'Erro no upload: ' . $e->getMessage()], 500);
+            // Retorna o erro real com status 500 para o front-end capturar e exibir no chat
+            return response()->json([
+                'error' => 'Erro no servidor: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

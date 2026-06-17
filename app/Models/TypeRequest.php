@@ -11,7 +11,15 @@ class TypeRequest extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['id', 'name', 'description', 'active'];
+    // ✨ ATUALIZADO: Incluindo os campos para a nova lógica de documentos
+    protected $fillable = [
+        'id', 
+        'name', 
+        'description', 
+        'active', 
+        'requires_document', 
+        'document_instructions'
+    ];
 
     /**
      * Relacionamento com as solicitações (requests).

@@ -100,12 +100,15 @@ export default function GuidedChatPage() {
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
           });
+
+          if (!uploadRes.ok) throw new Error("Falha ao realizar o upload dos arquivos.");
+
           const uploadData = await uploadRes.json();
           documentIds.push(uploadData.id);
         }
       }
 
-      await fetch(`${API_BASE}/requests`, {
+      const response = await fetch(`${API_BASE}/requests`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -115,6 +118,13 @@ export default function GuidedChatPage() {
           document_ids: documentIds,
         }),
       });
+
+      // 🔮 INTERCEPTAÇÃO REAL DE ERRO: Descobre por que o Laravel rejeitou o salvamento
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Erro do Laravel capturado:", errorData);
+        throw new Error(errorData.error || errorData.message || "Erro na validação ou gravação do banco.");
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -130,8 +140,13 @@ export default function GuidedChatPage() {
       setStep("idle");
       setFiles([]);
       setTempData({ typeId: "", typeName: "", description: "", minAttachments: 0, attachmentInstructions: "" });
-    } catch {
-      setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "Houve um erro no envio. Por favor, tente novamente." }]);
+    } catch (error: any) {
+      console.error("Erro no catch interno do fluxo:", error);
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), role: "bot", text: `❌ Erro no envio: ${error.message || 'Por favor, tente novamente.'}` },
+        { id: Date.now() + 1, role: "bot", text: "O que deseja fazer?", options: initialOptions },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -146,7 +161,6 @@ export default function GuidedChatPage() {
     setMessages((prev) => [...prev, { id: Date.now(), role: "user", text }]);
     setTempData((prev) => ({ ...prev, description: text }));
 
-    // Se o requerimento não precisa de anexos, finaliza direto
     if (tempData.minAttachments === 0) {
       setStep("idle");
       finalizeRequest(text);
@@ -180,28 +194,23 @@ export default function GuidedChatPage() {
             label: t.name,
             value: t.id,
             action: "select_type",
-            descriptionRaw: t.description // Passa a descrição vinda do banco
+            botQuestion: t.description,
+            requiresDoc: t.requires_document,
+            docInstructions: t.document_instructions
           })) : []
         },
       ]);
     } else if (opt.action === "select_type") {
-      const rawDescription = opt.descriptionRaw || "";
-      
-      // 🔮 LÓGICA DO PONTO E VÍRGULA: Divide a string no ';'
-      const parts = rawDescription.split(";");
-      
-      const botMessage = parts[0]?.trim(); // O que está ANTES do ';' é a pergunta
-      const documentsRequired = parts[1]?.trim(); // O que está DEPOIS do ';' é o anexo
-
-      // Se houver texto válido após o ';', ativa a necessidade de anexo
-      const hasAttachment = documentsRequired ? 1 : 0;
+      const botMessage = opt.botQuestion || "Por favor, descreva o motivo da sua solicitação:";
+      const hasAttachment = opt.requiresDoc ? 1 : 0;
+      const documentsRequired = opt.docInstructions || "";
 
       setTempData({
         typeId: opt.value,
         typeName: opt.label,
         description: "",
         minAttachments: hasAttachment,
-        attachmentInstructions: documentsRequired || "",
+        attachmentInstructions: documentsRequired,
       });
 
       setStep("description");
@@ -211,7 +220,7 @@ export default function GuidedChatPage() {
         {
           id: Date.now() + 1,
           role: "bot",
-          text: botMessage || "Por favor, descreva o motivo da sua solicitação:"
+          text: botMessage
         },
       ]);
     } else if (opt.action === "view_requests") {
@@ -220,8 +229,21 @@ export default function GuidedChatPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        const requests = data.data || data || [];
-        const statusMap: any = { pending: "Pendente", analyzing: "Em análise", completed: "Concluído", canceled: "Cancelado", denied: "Negado" };
+        
+        let requestsList: any[] = [];
+        if (Array.isArray(data)) {
+          requestsList = data;
+        } else if (data && Array.isArray(data.data)) {
+          requestsList = data.data;
+        }
+
+        const statusMap: any = { 
+          pending: "Pendente", 
+          analyzing: "Em análise", 
+          completed: "Concluído", 
+          canceled: "Cancelado", 
+          denied: "Negado" 
+        };
 
         setMessages((prev) => [
           ...prev,
@@ -229,15 +251,16 @@ export default function GuidedChatPage() {
           {
             id: Date.now() + 1,
             role: "bot",
-            text: "Aqui estão os seus pedidos recentes:",
-            items: requests.map((req: any) => ({
-              subject: req.subject,
-              status: statusMap[req.status?.toLowerCase()] || req.status,
+            text: requestsList.length > 0 ? "Aqui estão os seus pedidos recentes:" : "Você ainda não possui nenhum pedido recente.",
+            items: requestsList.map((req: any) => ({
+              subject: req.subject || "Requerimento Sem Nome",
+              status: statusMap[req.status?.toLowerCase()] || req.status || "Pendente",
             })),
             options: initialOptions,
           },
         ]);
-      } catch {
+      } catch (error) {
+        console.error("Erro ao carregar histórico", error);
         setMessages((prev) => [...prev, { id: Date.now(), role: "bot", text: "Não foi possível carregar seu histórico." }]);
       }
     }
@@ -245,8 +268,6 @@ export default function GuidedChatPage() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#f8fafc] font-sans text-slate-700 antialiased">
-      
-      {/* 🔹 ÁREA DE MENSAGENS */}
       <main className="flex-1 overflow-y-auto px-4 py-8 space-y-8 max-w-4xl mx-auto w-full scrollbar-hide">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} w-full animate-fade-in-up`}>
@@ -303,11 +324,8 @@ export default function GuidedChatPage() {
         <div ref={bottomRef} className="h-4" />
       </main>
 
-      {/* 🔹 FOOTER */}
       <footer className="p-6 bg-white border-t border-gray-100 relative">
         <div className="max-w-4xl mx-auto">
-          
-          {/* Lista de Anexos */}
           {files.length > 0 && (
             <div className="flex flex-col gap-2 mb-4 animate-fade-in">
               {files.map((file, i) => (
@@ -325,7 +343,6 @@ export default function GuidedChatPage() {
               <button type="button" onClick={cancelFlow} className="p-3 text-slate-300 hover:text-red-500"><XCircle size={24} /></button>
             )}
 
-            {/* O clipe de anexo só aparece se o passo atual for o de esperar arquivos */}
             {step === "waiting_file" && (
               <>
                 <input type="file" ref={fileInputRef} multiple onChange={handleFileSelect} className="hidden" />
@@ -368,7 +385,6 @@ export default function GuidedChatPage() {
         </div>
       </footer>
 
-      {/* 🔹 WHATSAPP FLUTUANTE */}
       <a
         href="https://wa.me/5581988224907?text=Olá,%20gostaria%20de%20falar%20com%20a%20CRADT."
         target="_blank"

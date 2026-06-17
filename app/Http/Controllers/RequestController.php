@@ -20,9 +20,9 @@ class RequestController extends Controller
         $query = RequestModel::with(['user.course', 'type'])
             ->orderBy('created_at', 'desc');
 
-        // Se for aluno, vê apenas os seus
+        // Se for aluno, vê apenas os seus (forçando string/UUID)
         if ($user->role === 'student') {
-            $query->where('user_id', $user->id);
+            $query->where('user_id', (string) $user->getJWTIdentifier());
         }
 
         // Se for coordenação, vê apenas os requerimentos do curso vinculado
@@ -72,8 +72,12 @@ class RequestController extends Controller
 
         try {
             return DB::transaction(function () use ($request) {
+                // Captura o objeto completo do usuário autenticado via JWT
+                $user = Auth::user();
+
+                // Cria o requerimento garantindo o UUID puro em formato string extraído do token
                 $newRequest = RequestModel::create([
-                    'user_id' => Auth::id(),
+                    'user_id' => (string) $user->getJWTIdentifier(), // 🔥 Blinda contra conversões numéricas (1, 3, etc)
                     'type_id' => $request->type_id,
                     'subject' => $request->subject,
                     'description' => $request->description,

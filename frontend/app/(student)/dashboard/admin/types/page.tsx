@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Trash2, Edit, Plus, X, Save, FileType, AlertCircle } from "lucide-react";
+import { Trash2, Edit, Plus, X, Save, FileType, FileCheck2 } from "lucide-react";
 
 const API_BASE = "/api";
 
@@ -15,11 +15,13 @@ export default function TypeRequestsPage() {
   // Estado para guardar o papel do usuário
   const [userRole, setUserRole] = useState<string>("");
 
-  // Campos do Formulário
+  // Campos do Formulário (🔮 Atualizado com os novos campos)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    icon: "" // Se quiser usar no futuro
+    icon: "",
+    requires_document: false,
+    document_instructions: ""
   });
 
   const fetchTypes = async () => {
@@ -28,7 +30,9 @@ export default function TypeRequestsPage() {
       const res = await axios.get(`${API_BASE}/type-requests`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setTypes(res.data);
+      // Tratamento caso a resposta venha envelopada em .data
+      const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setTypes(dados);
     } catch (error) {
       console.error("Erro ao buscar tipos", error);
     } finally {
@@ -57,9 +61,21 @@ export default function TypeRequestsPage() {
   const openModal = (type: any = null) => {
     setEditingType(type);
     if (type) {
-      setFormData({ name: type.name, description: type.description || "", icon: type.icon || "" });
+      setFormData({ 
+        name: type.name, 
+        description: type.description || "", 
+        icon: type.icon || "",
+        requires_document: Boolean(type.requires_document),
+        document_instructions: type.document_instructions || ""
+      });
     } else {
-      setFormData({ name: "", description: "", icon: "" });
+      setFormData({ 
+        name: "", 
+        description: "", 
+        icon: "",
+        requires_document: false,
+        document_instructions: ""
+      });
     }
     setModalOpen(true);
   };
@@ -70,10 +86,16 @@ export default function TypeRequestsPage() {
       const token = localStorage.getItem("jwt_token");
       const headers = { Authorization: `Bearer ${token}` };
 
+      // Limpa as instruções caso o admin tenha mudado para "Não precisa" antes de salvar
+      const dataToSave = {
+        ...formData,
+        document_instructions: formData.requires_document ? formData.document_instructions : ""
+      };
+
       if (editingType) {
-        await axios.put(`${API_BASE}/type-requests/${editingType.id}`, formData, { headers });
+        await axios.put(`${API_BASE}/type-requests/${editingType.id}`, dataToSave, { headers });
       } else {
-        await axios.post(`${API_BASE}/type-requests`, formData, { headers });
+        await axios.post(`${API_BASE}/type-requests`, dataToSave, { headers });
       }
 
       setModalOpen(false);
@@ -93,8 +115,6 @@ export default function TypeRequestsPage() {
       });
       fetchTypes();
     } catch (error: any) {
-      // CAPTURA A MENSAGEM DO LARAVEL:
-      // Se o Laravel mandou o erro 422, a mensagem estará em error.response.data.error
       const mensagemErro = error.response?.data?.error || "Erro ao excluir.";
       alert(mensagemErro);
     }
@@ -112,7 +132,6 @@ export default function TypeRequestsPage() {
             <p className="text-slate-500 text-sm">Gerencie as opções disponíveis para os alunos</p>
           </div>
           
-          {/* SÓ MOSTRA O BOTÃO SE NÃO FOR CRADT */}
           {userRole !== 'cradt' && (
             <button 
                 onClick={() => openModal()}
@@ -131,7 +150,8 @@ export default function TypeRequestsPage() {
                     <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs border-b border-gray-100">
                         <tr>
                             <th className="px-6 py-4">Nome</th>
-                            <th className="px-6 py-4">Descrição</th>
+                            <th className="px-6 py-4">Mensagem do Chat</th>
+                            <th className="px-6 py-4">Exige Anexo?</th>
                             <th className="px-6 py-4 text-right">Ações</th>
                         </tr>
                     </thead>
@@ -139,9 +159,13 @@ export default function TypeRequestsPage() {
                         {types.map((type) => (
                             <tr key={type.id} className="hover:bg-blue-50/30 transition-colors">
                                 <td className="px-6 py-4 font-bold text-gray-800">{type.name}</td>
-                                <td className="px-6 py-4 text-gray-500 text-sm">{type.description || "---"}</td>
+                                <td className="px-6 py-4 text-gray-500 text-sm max-w-xs truncate">{type.description || "---"}</td>
+                                <td className="px-6 py-4">
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${type.requires_document ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-slate-100 text-slate-500"}`}>
+                                    {type.requires_document ? "⚠️ Sim" : "Não"}
+                                  </span>
+                                </td>
                                 <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                    {/* SÓ MOSTRA AS AÇÕES SE NÃO FOR CRADT */}
                                     {userRole !== 'cradt' && (
                                         <>
                                             <button 
@@ -182,26 +206,62 @@ export default function TypeRequestsPage() {
 
                 <form onSubmit={handleSave} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Nome</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Nome do Requerimento</label>
                         <input 
                             type="text" 
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            placeholder="Ex: Abono de Faltas"
+                            placeholder="Ex: Justificativa de Falta"
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Descrição (Opcional)</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Mensagem Inicial (Pergunta do Robô)</label>
                         <textarea 
                             value={formData.description}
                             onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            placeholder="Ex: Pergunta ao aluno... ; Instruções do anexo (Se não houver anexo, não use o ';')"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-24 resize-none"
+                            placeholder="Ex: Descreva detalhadamente o motivo da sua solicitação:"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-20 resize-none"
+                            required
                         />
                     </div>
+
+                    {/* 🔮 SELETOR EM BOTÕES: PRECISA DE DOCUMENTO? */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Este requerimento exige documento?</label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setFormData({...formData, requires_document: false})}
+                                className={`py-3 rounded-xl font-bold text-sm border transition-all ${!formData.requires_document ? "bg-slate-100 border-slate-300 text-slate-700" : "bg-white border-gray-200 text-slate-400 hover:bg-gray-50"}`}
+                            >
+                                Não precisa
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData({...formData, requires_document: true})}
+                                className={`py-3 rounded-xl font-bold text-sm border flex items-center justify-center gap-2 transition-all ${formData.requires_document ? "bg-amber-50 border-amber-400 text-amber-700 shadow-sm" : "bg-white border-gray-200 text-slate-400 hover:bg-gray-50"}`}
+                            >
+                                <FileCheck2 size={16} /> Precisa de Anexo
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 🔮 CAMPO CONDICIONAL: APARECE SE FOR "SIM" */}
+                    {formData.requires_document && (
+                        <div className="animate-in slide-in-from-top-2 duration-200">
+                            <label className="block text-sm font-bold text-amber-800 mb-1">Quais documentos são necessários?</label>
+                            <textarea 
+                                value={formData.document_instructions}
+                                onChange={(e) => setFormData({...formData, document_instructions: e.target.value})}
+                                placeholder="Ex: Anexe o atestado médico digitalizado ou o laudo carimbado."
+                                className="w-full px-4 py-3 bg-amber-50/50 border border-amber-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-20 resize-none text-sm text-slate-700"
+                                required={formData.requires_document}
+                            />
+                        </div>
+                    )}
                     
                     <div className="flex gap-3 pt-4">
                         <button 
@@ -213,7 +273,7 @@ export default function TypeRequestsPage() {
                         </button>
                         <button 
                             type="submit" 
-                            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex justify-center items-center gap-2 transition-colors shadow-lg shadow-blue-200"
+                            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex justify-center items-center gap-2 transition-colors shadow-lg"
                         >
                             <Save size={18} /> Salvar
                         </button>

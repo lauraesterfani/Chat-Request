@@ -27,10 +27,13 @@ class TypeRequestController extends Controller
     public function store(Request $request)
     {
         try {
+            // ✨ ATUALIZADO: Adicionado validações para os novos campos
             $validated = $request->validate([
                 'name' => 'required|string|unique:type_requests,name|max:63',
                 'description' => 'nullable|string',
-                'icon' => 'nullable|string'
+                'icon' => 'nullable|string',
+                'requires_document' => 'nullable|boolean',
+                'document_instructions' => 'nullable|string'
             ]);
 
             $validated['id'] = (string) Str::uuid();
@@ -64,10 +67,13 @@ class TypeRequestController extends Controller
             $typeRequest = TypeRequest::find($id);
             if (!$typeRequest) return response()->json(['error' => 'Not found'], 404);
 
+            // ✨ ATUALIZADO: Adicionado validações para os novos campos no update também
             $validated = $request->validate([
                 'name' => 'required|string|max:63|unique:type_requests,name,' . $id,
                 'description' => 'nullable|string',
-                'icon' => 'nullable|string'
+                'icon' => 'nullable|string',
+                'requires_document' => 'nullable|boolean',
+                'document_instructions' => 'nullable|string'
             ]);
 
             $typeRequest->update($validated);
@@ -83,7 +89,6 @@ class TypeRequestController extends Controller
 
     /**
      * Remove o tipo de requerimento especificado.
-     * Sprint: Bloqueio de exclusão caso esteja em uso.
      */
     public function destroy($id)
     {
@@ -94,7 +99,6 @@ class TypeRequestController extends Controller
                 return response()->json(['error' => 'Não encontrado'], 404);
             }
 
-            // Verifica se existem requerimentos vinculados usando o relacionamento do Model
             if ($typeRequest->requests()->exists()) {
                 return response()->json([
                     'error' => 'Erro ao excluir porque está em uso'
@@ -105,8 +109,8 @@ class TypeRequestController extends Controller
             return response()->json(['message' => 'Excluído com sucesso.'], 200);
 
         } catch (\Exception $e) {
-        Log::error("Erro ao excluir TypeRequest: " . $e->getMessage());
-        return response()->json(['error' => 'Erro ao excluir o registro.'], 500);
+            Log::error("Erro ao excluir TypeRequest: " . $e->getMessage());
+            return response()->json(['error' => 'Erro ao excluir o registro.'], 500);
         }
     }
 
