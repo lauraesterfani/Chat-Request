@@ -26,8 +26,27 @@ export default function AdminDashboardPage() {
                 <p className="text-xs text-green-600 font-medium">Administração Acadêmica</p>
               </div>
            </div>
-           <button onClick={handleLogout} className="text-sm font-medium text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition">
-             Sair do Sistema
+           
+           {/* Botão de Logout Minimalista (Apenas a Seta como símbolo) */}
+           <button 
+             onClick={handleLogout} 
+             className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 active:scale-95 flex items-center justify-center"
+             title="Sair do Sistema"
+           >
+             <svg 
+               xmlns="http://www.w3.org/2000/svg" 
+               fill="none" 
+               viewBox="0 0 24 24" 
+               strokeWidth={2} 
+               stroke="currentColor" 
+               className="w-6 h-6"
+             >
+               <path 
+                 strokeLinecap="round" 
+                 strokeLinejoin="round" 
+                 d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" 
+               />
+             </svg>
            </button>
         </div>
       </header>
@@ -58,8 +77,8 @@ export default function AdminDashboardPage() {
             </div>
           </Link>
 
-          {/* Outros cards... (Pode manter os links se quiser) */}
-           <Link
+          {/* Card: Abrir Chamado */}
+          <Link
             href="/requests/new"
             className="group bg-white p-6 rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl hover:border-yellow-200 transition-all cursor-pointer relative overflow-hidden"
           >

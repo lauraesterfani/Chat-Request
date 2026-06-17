@@ -28,6 +28,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isAdminLayout =
     ["admin", "staff", "cradt"].includes(user?.role ?? "") || pathname.includes("/request");
 
+  const handleLogoutClick = () => {
+    logout();
+    if (["admin", "staff", "cradt"].includes(user?.role ?? "")) {
+      router.push("/cradt-login"); // 🔹 Admin/Staff → login administrativo
+    } else {
+      router.push("/login"); // 🔹 Aluno → login usuário
+    }
+  };
 
   return (
     <div className="bg-[#fcfcfc] min-h-screen antialiased font-sans text-slate-700">
@@ -78,22 +86,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </button>
 
               {open && (
-                <div className="absolute right-0 mt-4 w-72 bg-white border border-slate-100 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-7 z-50 animate-in fade-in zoom-in-95 duration-200">
- 
-
-                  {/* 🔹 Botão de sair */}
+                /* 🔹 Dropdown Ultra Compacto e Centralizado embaixo do Nome */
+                <div className="absolute left-1/2 -translate-x-1/2 mt-2 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-1.5 z-50 animate-in fade-in zoom-in-95 duration-200 flex items-center justify-center min-w-[50px]">
+                  
+                  {/* 🔹 Botão de Sair Menor e Vermelho */}
                   <button
-                    onClick={() => {
-                      logout();
-                      if (["admin", "staff", "cradt"].includes(user?.role ?? "")) {
-                        router.push("/cradt-login"); // 🔹 Admin/Staff → login administrativo
-                      } else {
-                        router.push("/login"); // 🔹 Aluno → login usuário
-                      }
-                    }}
-                    className="w-full py-4 bg-red-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-red-700 transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                    onClick={handleLogoutClick}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center"
+                    title="Sair do Sistema"
                   >
-                    <LogOut size={14} /> Sair do Sistema
+                    <LogOut size={18} />
                   </button>
 
                 </div>
