@@ -161,8 +161,13 @@ export default function TypeRequestsPage() {
                                 <td className="px-6 py-4 font-bold text-gray-800">{type.name}</td>
                                 <td className="px-6 py-4 text-gray-500 text-sm max-w-xs truncate">{type.description || "---"}</td>
                                 <td className="px-6 py-4">
-                                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${type.requires_document ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-slate-100 text-slate-500"}`}>
-                                    {type.requires_document ? "⚠️ Sim" : "Não"}
+                                  {/* 🔹 Badge Atualizada: Sem triângulo e com o verde oficial do site */}
+                                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                    type.requires_document 
+                                      ? "bg-green-50 text-[#108542] border border-green-100" 
+                                      : "bg-slate-100 text-slate-500"
+                                  }`}>
+                                    {type.requires_document ? "Sim" : "Não"}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 text-right flex justify-end gap-2">
