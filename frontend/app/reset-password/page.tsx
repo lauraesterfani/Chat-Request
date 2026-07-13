@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
       setSuccess('Senha redefinida com sucesso! Faça login novamente.');
       setTimeout(() => {
         localStorage.removeItem("jwt_token"); // remove token antigo
-        router.push('/login'); // volta para login
+        router.push('/cradt-login'); // volta para login
       }, 2000);
 
     } catch (err: any) {

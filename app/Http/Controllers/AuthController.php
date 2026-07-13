@@ -48,6 +48,9 @@ class AuthController extends Controller
      */
     public function loginStaff(Request $request)
     {
+        \Log::info('LOGIN STAFF CHEGOU', [
+        'email' => $request->email
+    ]);
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],

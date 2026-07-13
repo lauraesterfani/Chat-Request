@@ -26,11 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   // 🔹 Força layout administrativo se for admin/staff OU se estiver em qualquer rota que contenha /request
   const isAdminLayout =
-    ["admin", "staff", "cradt"].includes(user?.role ?? "") || pathname.includes("/request");
+    ["admin", "staff", "cradt", "coordenacao","aluno"].includes(user?.role ?? "") || pathname.includes("/request");
 
   const handleLogoutClick = () => {
     logout();
-    if (["admin", "staff", "cradt"].includes(user?.role ?? "")) {
+    if (["admin", "staff", "cradt", "coordenacao","aluno" ].includes(user?.role ?? "")) {
       router.push("/cradt-login"); // 🔹 Admin/Staff → login administrativo
     } else {
       router.push("/login"); // 🔹 Aluno → login usuário
@@ -44,13 +44,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <header
         className={`w-full px-6 sm:px-8 py-5 flex items-center justify-between border-b ${isAdminLayout
             ? "bg-[#004d40] text-white border-[#004d40]" // Admin/Staff → azul escuro
-            : "bg-white text-slate-700 border-slate-100" // Aluno → branco
+            : "bg-[#004d40] text-white border-[#004d40]" // Aluno → branco
           }`}
       >
         {/* Logo / Título */}
         <Link
           href={isAdminLayout ? "/dashboard/admin" : "/me"}
-          className={`tracking-tighter hover:opacity-80 transition-opacity ${isAdminLayout ? "text-2xl font-bold" : "text-3xl font-bold mb-4 text-[#108542]"
+          className={`tracking-tighter hover:opacity-80 transition-opacity ${isAdminLayout ? "text-2xl font-bold" : "text-3xl font-bold mb-4 text-white"
             }`}
         >
           {isAdminLayout ? "Painel Administrativo" : "Chat Request"}
@@ -62,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {!isAdminLayout && (
               <button
                 onClick={() => setIsHelpOpen(true)}
-                className="p-2 text-slate-400 hover:text-[#108542] transition-colors"
+                className="p-2 text-slate-400 hover:text-white transition-colors"
                 title="Como usar o sistema"
               >
                 <HelpCircle size={22} strokeWidth={1.5} />
@@ -76,7 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 className="flex items-center gap-2 font-bold text-lg group"
               >
                 {/* Nome do usuário: branco se admin/staff ou rota /request, verde se aluno */}
-                <span className={isAdminLayout ? "text-white" : "text-[#108542]"}>
+                <span className={isAdminLayout ? "text-white" : "text-white"}>
                   {user.name}
                 </span>
                 <ChevronDown
@@ -92,12 +92,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {/* 🔹 Botão de Sair Menor e Vermelho */}
                   <button
                     onClick={handleLogoutClick}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center"
+                    className="p-2 text-[#108542] hover:bg-green-50 rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center"
                     title="Sair do Sistema"
-                  >
-                    <LogOut size={18} />
+                   >
+                   <LogOut size={18} />
                   </button>
-
                 </div>
               )}
             </div>
@@ -118,8 +117,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             >
               <X size={24} strokeWidth={1.5} />
             </button>
-
-            <img src="/mascote_simples.png" className="h-20 mx-auto mb-8 opacity-90" alt="Stella" />
 
             <h3 className="text-xl font-bold tracking-tighter mb-4 text-slate-800">Como funciona?</h3>
 
