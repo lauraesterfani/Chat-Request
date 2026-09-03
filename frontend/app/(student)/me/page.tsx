@@ -4,15 +4,28 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Send, Paperclip, XCircle, Loader2, FilePlus2, ClipboardList, CheckCircle2 } from 'lucide-react';
 import { FaWhatsapp } from "react-icons/fa";
+import Link from "next/link";
 
 const API_BASE = "/api";
+
+async function readApiError(response: Response): Promise<string> {
+  const raw = await response.text();
+  let data: { message?: string; error?: string; errors?: Record<string, string[]> } = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { /* respostas HTML/plain text também são tratadas abaixo */ }
+  const validation = data.errors ? Object.values(data.errors).flat().join(" ") : "";
+  if (data.message || data.error || validation) return data.message || data.error || validation;
+  if (raw && !raw.trim().startsWith("<")) return raw.slice(0, 300);
+  if (response.status === 401) return "Sua sessão expirou. Faça login novamente.";
+  if (response.status >= 500) return "O servidor encontrou um erro. Verifique se as migrations foram executadas e tente novamente.";
+  return `Não foi possível concluir a operação (HTTP ${response.status}).`;
+}
 
 interface Message {
   id: string | number;
   role: "bot" | "user";
   text: React.ReactNode;
   options?: { label: string; action: string; icon?: React.ReactNode; value?: any }[];
-  items?: { subject: string; status: string }[];
+  items?: { id: string; subject: string; status: string }[];
 }
 
 export default function GuidedChatPage() {
@@ -41,18 +54,39 @@ export default function GuidedChatPage() {
   // Efeitos
   useEffect(() => {
     if (user) {
+      const saved = sessionStorage.getItem('guided_chat_messages');
+      if (saved) {
+        try {
+          const restored = JSON.parse(saved) as Message[];
+          if (restored.length > 0) {
+            if (!restored[0].text) {
+              restored[0].text = `Olá, ${user.name.split(' ')[0]}! Sou o assistente virtual. Como posso ajudar você hoje?`;
+            }
+            setMessages(restored);
+            return;
+          }
+        } catch {
+          sessionStorage.removeItem('guided_chat_messages');
+        }
+      }
       setMessages([{
         id: "init",
         role: "bot",
-        text: (
-          <span>
-            Olá, <span className="text-[#15803d] font-semibold">{user.name.split(" ")[0]}</span>! Sou o assistente virtual. Como posso ajudar você hoje?
-          </span>
-        ),
+        text: `Olá, ${user.name.split(' ')[0]}! Sou o assistente virtual. Como posso ajudar você hoje?`,
         options: initialOptions,
       }]);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!messages.length) return;
+    const serializable = messages.map((message) => ({
+      ...message,
+      text: typeof message.text === 'string' ? message.text : '',
+      options: message.options?.map(({ label, action, value }) => ({ label, action, value })),
+    }));
+    sessionStorage.setItem('guided_chat_messages', JSON.stringify(serializable));
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,11 +131,11 @@ export default function GuidedChatPage() {
           formData.append("arquivo", file);
           const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
             body: formData,
           });
 
-          if (!uploadRes.ok) throw new Error("Falha ao realizar o upload dos arquivos.");
+          if (!uploadRes.ok) throw new Error(await readApiError(uploadRes));
 
           const uploadData = await uploadRes.json();
           documentIds.push(uploadData.id);
@@ -110,7 +144,7 @@ export default function GuidedChatPage() {
 
       const response = await fetch(`${API_BASE}/requests`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({
           type_id: tempData.typeId,
           subject: tempData.typeName,
@@ -121,9 +155,9 @@ export default function GuidedChatPage() {
 
       // 🔮 INTERCEPTAÇÃO REAL DE ERRO: Descobre por que o Laravel rejeitou o salvamento
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Erro do Laravel capturado:", errorData);
-        throw new Error(errorData.error || errorData.message || "Erro na validação ou gravação do banco.");
+        const message = await readApiError(response);
+        console.error("Erro do Laravel capturado:", { status: response.status, message });
+        throw new Error(message);
       }
 
       setMessages((prev) => [
@@ -253,6 +287,7 @@ export default function GuidedChatPage() {
             role: "bot",
             text: requestsList.length > 0 ? "Aqui estão os seus pedidos recentes:" : "Você ainda não possui nenhum pedido recente.",
             items: requestsList.map((req: any) => ({
+              id: String(req.id),
               subject: req.subject || "Requerimento Sem Nome",
               status: statusMap[req.status?.toLowerCase()] || req.status || "Pendente",
             })),
@@ -291,7 +326,7 @@ export default function GuidedChatPage() {
               {msg.items && (
                 <div className="mt-4 space-y-3">
                   {msg.items.map((req, i) => (
-                    <div key={i} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                    <Link href={`/requests/acesso/${req.id}`} key={req.id || i} className="flex justify-between items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50 transition-colors">
                       <span className="text-sm font-medium text-slate-600 italic">{req.subject}</span>
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full 
                         ${req.status === "Concluído" ? "bg-green-100 text-green-700" : 
@@ -299,7 +334,8 @@ export default function GuidedChatPage() {
                           "bg-slate-200 text-slate-500"}`}>
                         {req.status}
                       </span>
-                    </div>
+                      <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700">Abrir</span>
+                    </Link>
                   ))}
                 </div>
               )}

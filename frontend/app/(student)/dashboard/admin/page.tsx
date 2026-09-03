@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   Users, FileText, LayoutDashboard, 
   AlertTriangle, Clock, Loader2, 
-  FileType, ShieldCheck, X 
+  FileType, ShieldCheck, MessageSquareText, X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -28,7 +28,7 @@ export default function DashboardPage() {
 
   const fetchAdmins = async () => {
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       const res = await axios.get(`${API_BASE}/admins`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const init = async () => {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       if (!token) {
         router.push("/login");
         return;
@@ -58,6 +58,11 @@ export default function DashboardPage() {
         const role = meRes.data.role;
         setUserRole(role);
 
+        if (!['admin', 'staff', 'cradt'].includes(role)) {
+          router.replace('/me');
+          return;
+        }
+
         if (role === 'admin') {
           const statsRes = await axios.get(`${API_BASE}/dashboard/estatisticas`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -67,7 +72,7 @@ export default function DashboardPage() {
       } catch (error: any) {
         console.error("Erro ao carregar dashboard:", error);
         if (error.response?.status === 401) {
-          localStorage.removeItem("jwt_token");
+          sessionStorage.removeItem("jwt_token");
           router.push("/login");
         }
       } finally {
@@ -110,6 +115,10 @@ export default function DashboardPage() {
                 <FileText size={18} />
                 <span>Todos Pedidos</span>
               </Link>
+              <Link href="/dashboard/admin/queue" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <Clock size={18} />
+                <span>Fila de atendimentos</span>
+              </Link>
             </>
           )}
 
@@ -121,6 +130,10 @@ export default function DashboardPage() {
               <Link href="/dashboard/admin/types" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
                 <FileType size={18} />
                 <span>Tipos de Requerimento</span>
+              </Link>
+              <Link href="/dashboard/admin/response-templates" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <MessageSquareText size={18} />
+                <span>Respostas pré-configuradas</span>
               </Link>
               <Link href="/dashboard/admin/staff" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
                 <Users size={18} />
@@ -145,7 +158,7 @@ export default function DashboardPage() {
               <p className="text-gray-500 max-w-lg mx-auto mb-10">
                 Bem-vindo à área de configuração. Utilize os atalhos abaixo para gerenciar as definições do sistema e permissões de acesso.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
                 <Link href="/dashboard/admin/types" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
                   <div className="flex items-center justify-between mb-4">
                     <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -163,6 +176,15 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="text-lg font-bold text-gray-800">Gestão de Equipe</h3>
                   <p className="text-sm text-gray-400 mt-1">Adicionar admins e staff.</p>
+                </Link>
+                <Link href="/dashboard/admin/response-templates" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <MessageSquareText size={24} />
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Respostas pré-configuradas</h3>
+                  <p className="text-sm text-gray-400 mt-1">Padronizar textos usados no atendimento.</p>
                 </Link>
               </div>
             </div>

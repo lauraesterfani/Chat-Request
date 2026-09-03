@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { X, FileText, Check, Ban, Clock, ChevronLeft, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { X, FileText, Check, Ban, Clock, ChevronLeft, ExternalLink, MessageSquareText } from "lucide-react";
+import RequestChat from "@/components/RequestChat";
+import RequestTimeline from "@/components/RequestTimeline";
 
 const API_BASE = "/api";
 
@@ -47,6 +50,8 @@ export default function RequestDetailsPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [nextStatus, setNextStatus] = useState("");
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [responseTemplates, setResponseTemplates] = useState<{ id: string; title: string; content: string }[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   const statusColors: any = {
     pending: "bg-blue-100 text-blue-700 border-blue-200",
@@ -64,7 +69,7 @@ export default function RequestDetailsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       if (!token) return router.push("/login");
 
       try {
@@ -73,11 +78,27 @@ export default function RequestDetailsPage() {
           fetch(`${API_BASE}/requests/${id}`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
 
-        if (meRes.ok) setCurrentUser(await meRes.json());
+        const currentUserData = meRes.ok ? await meRes.json() : null;
+        if (currentUserData) setCurrentUser(currentUserData);
         if (reqRes.ok) {
           const data = await reqRes.json();
           setRequest(data);
           setObservation(data.observation || "");
+
+          // Falhas ao buscar templates não interrompem o atendimento já existente.
+          if (currentUserData && ["admin", "staff", "cradt"].includes(currentUserData.role) && data.type_id) {
+            try {
+              const templatesResponse = await fetch(
+                `${API_BASE}/response-templates/active?type_request_id=${data.type_id}`,
+                { headers: { Authorization: `Bearer ${token}` } },
+              );
+              if (templatesResponse.ok) {
+                setResponseTemplates(await templatesResponse.json());
+              }
+            } catch {
+              // O seletor permanece oculto e o formulário de atendimento segue utilizável.
+            }
+          }
         } else {
           router.back();
         }
@@ -105,7 +126,7 @@ export default function RequestDetailsPage() {
     setShowConfirm(false);
     setUpdating(true);
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       const res = await fetch(`${API_BASE}/requests/${id}`, {
         method: "PUT",
         headers: {
@@ -182,7 +203,7 @@ export default function RequestDetailsPage() {
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {request.documents.map((doc: any) => {
-                    const fileUrl = `http://localhost:8000/storage/${doc.path.replace("public/", "")}`;
+                    const fileUrl = `/storage/${doc.path.replace("public/", "")}`;
                     const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
                     return (
                       <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/30 transition-all bg-white shadow-sm">
@@ -210,6 +231,9 @@ export default function RequestDetailsPage() {
                 <p className="text-sm text-gray-400 italic ml-1">Nenhum anexo encontrado.</p>
               )}
             </section>
+
+            <RequestChat requestId={String(id)} status={request.status} templates={isAdmin ? responseTemplates : []} />
+            <RequestTimeline requestId={String(id)} />
           </div>
 
           {/* Sidebar Lateral */}
@@ -231,8 +255,39 @@ export default function RequestDetailsPage() {
                 <h3 className="text-[11px] font-black text-emerald-800 uppercase mb-4 tracking-widest text-center">
                   Área da Coordenação
                 </h3>
-                
+
+                <Link href="/dashboard/admin/response-templates" className="mb-4 block text-center text-[11px] font-bold text-emerald-700 hover:underline">
+                  Gerenciar respostas pré-configuradas
+                </Link>
+
+                {responseTemplates.length > 0 && (
+                  <label className="block mb-4">
+                    <span className="flex items-center gap-2 text-xs font-bold text-emerald-800 mb-2">
+                      <MessageSquareText size={15} /> Resposta pré-configurada
+                    </span>
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(event) => {
+                        const template = responseTemplates.find((item) => item.id === event.target.value);
+                        setSelectedTemplateId(event.target.value);
+                        if (template) setObservation(template.content);
+                      }}
+                      className="w-full p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-sm text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="">Selecionar texto-base...</option>
+                      {responseTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.title} — {template.content.slice(0, 72)}{template.content.length > 72 ? "…" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="block mt-1.5 text-[11px] text-slate-500">O conteúdo pode ser revisado livremente antes de salvar.</span>
+                  </label>
+                )}
+
+                <label className="block text-xs font-bold text-slate-600 mb-2" htmlFor="request-observation">Mensagem de atendimento</label>
                 <textarea
+                  id="request-observation"
                   className="w-full text-sm p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4 min-h-[120px] transition-all text-gray-700"
                   placeholder="Justifique a decisão..."
                   value={observation}

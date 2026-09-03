@@ -29,7 +29,7 @@ export default function StaffPage() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const token = localStorage.getItem("jwt_token");
+        const token = sessionStorage.getItem("jwt_token");
         const res = await axios.get(`${API_BASE}/courses`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -42,7 +42,7 @@ export default function StaffPage() {
   const fetchStaffs = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       const res = await axios.get(`${API_BASE}/staff-admins`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -61,7 +61,7 @@ export default function StaffPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       const response = await axios.post(`${API_BASE}/staff-admins`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -81,7 +81,7 @@ export default function StaffPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       await axios.delete(`${API_BASE}/staff-admins/${deleteId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });

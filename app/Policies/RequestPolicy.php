@@ -5,7 +5,6 @@ namespace App\Policies;
 use App\Models\Request as RequestModel;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
-use Illuminate\Support\Facades\Log;
 
 class RequestPolicy
 {
@@ -14,19 +13,7 @@ class RequestPolicy
      */
     public function viewAny(User $user): Response
     {
-        // --- DIAGNÓSTICO CRÍTICO: VERIFICA QUAL ROLE ESTÁ CHEGANDO NA POLICY ---
-        // Se este dd() for acionado, o acesso negado não é de rota, mas sim de papel.
-        dd('DIAGNÓSTICO DA POLICY (viewAny):', [
-            'ID do Usuário' => $user->id,
-            'Role Lida do Token' => $user->role,
-            'isStudent()' => $user->isStudent(),
-            'isAdmin()' => $user->isAdmin(),
-            'isStaff()' => $user->isStaff(),
-        ]);
-        // ---------------------------------------------------------------------
-
-        // Lógica de autorização (só será alcançada se o dd() for removido):
-        if ($user->isAdmin() || $user->isStaff() || $user->isStudent()) {
+        if ($user->isAdmin() || $user->isStudent()) {
             return Response::allow();
         }
 
@@ -39,7 +26,7 @@ class RequestPolicy
     public function view(User $user, RequestModel $requestModel): Response
     {
         // Admin e Staff podem ver qualquer requerimento
-        if ($user->isAdmin() || $user->isStaff()) {
+        if ($user->isAdmin()) {
             return Response::allow();
         }
 
@@ -47,7 +34,7 @@ class RequestPolicy
         if ($user->isStudent() && $user->id === $requestModel->user_id) {
             return Response::allow();
         }
-        
+
         return Response::deny('Você não tem permissão para visualizar este requerimento.');
     }
 
@@ -57,7 +44,7 @@ class RequestPolicy
     public function create(User $user): Response
     {
         // Apenas Students podem criar novos requerimentos.
-        return $user->isStudent  || $user->isStaff()
+        return $user->isStudent()
             ? Response::allow()
             : Response::deny('Apenas alunos podem criar requerimentos.');
     }
@@ -68,7 +55,7 @@ class RequestPolicy
     public function update(User $user, RequestModel $requestModel): Response
     {
         // Apenas Admin e Staff podem atualizar o status de um requerimento.
-        return ($user->isAdmin() || $user->isStaff())
+        return $user->isAdmin()
             ? Response::allow()
             : Response::deny('Apenas Admin e Staff podem alterar requerimentos.');
     }

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { HelpCircle, X, MessageSquare, FileText, CheckCircle, LogOut, ChevronDown } from "lucide-react";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -24,13 +24,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🔹 Força layout administrativo se for admin/staff OU se estiver em qualquer rota que contenha /request
-  const isAdminLayout =
-    ["admin", "staff", "cradt", "coordenacao","aluno"].includes(user?.role ?? "") || pathname.includes("/request");
+  const administrativeRoles = ["admin", "staff", "cradt"];
+  const isAdministrativeRole = administrativeRoles.includes(user?.role ?? "");
+  const isAdminOnlyPath =
+    pathname === "/dashboard/admin" ||
+    pathname.startsWith("/dashboard/admin/");
+  const isAdminLayout = isAdministrativeRole;
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !user) return;
+
+    if (isAdminOnlyPath && !isAdministrativeRole) {
+      router.replace("/me");
+    }
+  }, [isAdminOnlyPath, isAdministrativeRole, isAuthenticated, isLoading, router, user]);
 
   const handleLogoutClick = () => {
     logout();
-    if (["admin", "staff", "cradt", "coordenacao","aluno" ].includes(user?.role ?? "")) {
+    if (isAdministrativeRole) {
       router.push("/cradt-login"); // 🔹 Admin/Staff → login administrativo
     } else {
       router.push("/login"); // 🔹 Aluno → login usuário

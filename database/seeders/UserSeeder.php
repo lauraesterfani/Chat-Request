@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Course;
-use Illuminate\Support\Str;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -14,25 +14,24 @@ class UserSeeder extends Seeder
     {
         // Curso padrão
         $course = Course::first();
-        if (!$course) {
+        if (! $course) {
             $course = Course::create([
-                'id'   => Str::uuid(),
+                'id' => Str::uuid(),
                 'code' => 'ADM',
                 'name' => 'Curso Administrativo',
             ]);
         }
 
         // Aqui você pode criar apenas ALUNOS
-        User::create([
+        User::updateOrCreate(['email' => 'student@example.test'], [
             'name' => 'Aluno Teste',
-            'email' => 'aluno@discente.edu.br',
-            'cpf' => '22222222222',
-            'phone' => '81977777777',
+            'cpf' => '90000000001',
+            'phone' => '81900000001',
             'matricula' => 'ALN001',
             'course_id' => $course->id,
             'birthday' => '2000-01-01',
             'password' => Hash::make('aluno123'),
-            'role' => 'student',
+            'role' => User::ROLE_STUDENT,
         ]);
     }
 }

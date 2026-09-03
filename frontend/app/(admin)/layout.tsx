@@ -7,7 +7,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
+    sessionStorage.removeItem("jwt_token");
     router.push("/login");
   };
 

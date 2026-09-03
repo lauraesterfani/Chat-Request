@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Request as RequestModel;
 use App\Models\User;
-use Illuminate\Support\Facades\DB; // Necessário para os gráficos
-use Carbon\Carbon;
+use Carbon\Carbon; // Necessário para os gráficos
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -16,20 +15,18 @@ class DashboardController extends Controller
     public function index()
     {
         // Define o prazo de alerta (5 dias atrás)
-        $prazoLimite = Carbon::now()->subDays(
-            
-        );
+        $prazoLimite = Carbon::now()->subDays(config('app.request_overdue_days', 5));
 
         $stats = [
             'total_requerimentos' => RequestModel::count(),
-            'total_usuarios'      => User::where('role', 'student')->count(),
-            'pendentes'           => RequestModel::where('status', 'pending')->count(),
-            'em_analise'          => RequestModel::where('status', 'analyzing')->count(),
-            
+            'total_usuarios' => User::where('role', 'student')->count(),
+            'pendentes' => RequestModel::where('status', 'pending')->count(),
+            'em_analise' => RequestModel::where('status', 'analyzing')->count(),
+
             // Contagem de Atrasados (Não finalizados e antigos)
-            'atrasados'           => RequestModel::whereNotIn('status', ['completed', 'canceled'])
-                                     ->where('created_at', '<', $prazoLimite)
-                                     ->count()
+            'atrasados' => RequestModel::whereNotIn('status', ['completed', 'canceled'])
+                ->where('created_at', '<', $prazoLimite)
+                ->count(),
         ];
 
         return response()->json($stats);
@@ -41,8 +38,8 @@ class DashboardController extends Controller
     public function requerimentosPorStatus()
     {
         $statusCounts = RequestModel::select('status', DB::raw('count(*) as total'))
-                                    ->groupBy('status')
-                                    ->get();
+            ->groupBy('status')
+            ->get();
 
         return response()->json($statusCounts);
     }
@@ -54,10 +51,10 @@ class DashboardController extends Controller
     {
         // Agrupa pedidos pelo curso do aluno
         $courseCounts = RequestModel::join('users', 'requests.user_id', '=', 'users.id')
-                                    ->join('courses', 'users.course_id', '=', 'courses.id') // Join com tabela de cursos
-                                    ->select('courses.name as course_name', DB::raw('count(*) as total'))
-                                    ->groupBy('courses.name')
-                                    ->get();
+            ->join('courses', 'users.course_id', '=', 'courses.id') // Join com tabela de cursos
+            ->select('courses.name as course_name', DB::raw('count(*) as total'))
+            ->groupBy('courses.name')
+            ->get();
 
         return response()->json($courseCounts);
     }

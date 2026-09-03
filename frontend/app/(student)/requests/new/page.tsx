@@ -6,17 +6,6 @@ import { X, AlertCircle, Paperclip } from "lucide-react";
 
 const API_BASE = "/api";
 
-// MAPA DE DOCUMENTOS (Baseado na sua lista de itens a-j)
-const DOCUMENTOS_NECESSARIOS: Record<string, string> = {
-  "justificativa": "Atestado Médico (a), Declaração da Empresa (d) ou Ementas (i).",
-  "transferência": "Declaração de Transferência (c), Históricos (f, g ou h) e Ementas (i).",
-  "isenção": "Histórico Escolar (f, g ou h) e Ementas das disciplinas (i).",
-  "educação física": "Atestado Médico (a) ou Declaração de Unidade Militar (j).",
-  "colação": "Atestado Médico (a) ou Cópia da CTPS (b) e Declaração da Empresa (d).",
-  "transferência de turno": "Atestado Médico (a) ou Declaração de Unidade Militar (j).",
-  "análise curricular": "Declaração de Transferência (c), Históricos e Ementas (i)."
-};
-
 export default function NewRequestPage() {
   const router = useRouter();
 
@@ -34,14 +23,9 @@ export default function NewRequestPage() {
     const selectedType = requestTypes.find(t => String(t.id) === String(typeId));
     if (!selectedType) return { requires: false, doc: "" };
 
-    const name = selectedType.name.toLowerCase();
-    
-    // Procura no mapa se o nome do requerimento exige documentos
-    const chaveEncontrada = Object.keys(DOCUMENTOS_NECESSARIOS).find(key => name.includes(key));
-    
     return {
-      requires: !!chaveEncontrada || name.includes("anexo"),
-      doc: chaveEncontrada ? DOCUMENTOS_NECESSARIOS[chaveEncontrada] : "documento comprobatório"
+      requires: Boolean(selectedType.requires_document),
+      doc: selectedType.document_instructions || "documento comprobatório",
     };
   }, [typeId, requestTypes]);
 
@@ -50,7 +34,7 @@ export default function NewRequestPage() {
   // 2. Carrega tipos de requerimento
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       try {
         const res = await fetch(`${API_BASE}/type-requests`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -59,10 +43,10 @@ export default function NewRequestPage() {
           const data = await res.json();
           setRequestTypes(data);
 
-          const savedId = localStorage.getItem('selected_type_id');
+          const savedId = sessionStorage.getItem('selected_type_id');
           if (savedId) {
             setTypeId(savedId);
-            localStorage.removeItem('selected_type_id'); 
+            sessionStorage.removeItem('selected_type_id');
           }
         }
       } catch (error) {
@@ -88,17 +72,32 @@ export default function NewRequestPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("jwt_token");
-      const formData = new FormData();
-      formData.append("type_request_id", typeId);
-      formData.append("subject", subject);
-      formData.append("description", description);
-      if (file) formData.append("file", file);
+      const token = sessionStorage.getItem("jwt_token");
+      const documentIds: string[] = [];
+      if (file) {
+        const uploadData = new FormData();
+        uploadData.append("arquivo", file);
+        const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: uploadData,
+        });
+        const uploaded = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok) {
+          throw new Error(uploaded.message || "Não foi possível enviar o documento.");
+        }
+        documentIds.push(uploaded.id);
+      }
 
       const res = await fetch(`${API_BASE}/requests`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type_id: typeId,
+          subject,
+          description,
+          document_ids: documentIds,
+        }),
       });
 
       if (res.ok) {

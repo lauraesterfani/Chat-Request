@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../../context/AuthContext';
 import { FileText, ExternalLink, Loader2, ChevronLeft } from 'lucide-react';
+import RequestChat from '../../../../../components/RequestChat';
+import RequestTimeline from '../../../../../components/RequestTimeline';
 
 export default function RequestViewPage() {
   const { token } = useAuth();
@@ -29,7 +31,7 @@ export default function RequestViewPage() {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requests/${params.id}`, {
+        const response = await fetch(`/api/requests/${params.id}`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         const data = await response.json();
@@ -107,7 +109,7 @@ export default function RequestViewPage() {
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {request.documents.map((doc: any) => {
-                    const fileUrl = `http://127.0.0.1:8000/storage/${doc.path.replace("public/", "")}`;
+                    const fileUrl = `/storage/${doc.path.replace("public/", "")}`;
                     const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
                     return (
                       <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/30 transition-all bg-white shadow-sm">
@@ -135,6 +137,9 @@ export default function RequestViewPage() {
                 <p className="text-sm text-gray-400 italic ml-1">Nenhum anexo encontrado.</p>
               )}
             </section>
+
+            <RequestChat requestId={String(params.id)} status={request.status} />
+            <RequestTimeline requestId={String(params.id)} />
           </div>
 
           {/* Sidebar Lateral */}

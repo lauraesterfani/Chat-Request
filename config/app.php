@@ -98,6 +98,7 @@ return [
     'cipher' => 'AES-256-CBC',
 
     'key' => env('APP_KEY'),
+    'request_overdue_days' => (int) env('REQUEST_OVERDUE_DAYS', 5),
 
     'previous_keys' => [
         ...array_filter(

@@ -26,7 +26,7 @@ export default function TypeRequestsPage() {
 
   const fetchTypes = async () => {
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       const res = await axios.get(`${API_BASE}/type-requests`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -46,7 +46,7 @@ export default function TypeRequestsPage() {
     // Busca os dados do usuário atual para saber o Role
     const fetchMe = async () => {
         try {
-            const token = localStorage.getItem("jwt_token");
+            const token = sessionStorage.getItem("jwt_token");
             const res = await axios.get(`${API_BASE}/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -83,7 +83,7 @@ export default function TypeRequestsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       const headers = { Authorization: `Bearer ${token}` };
 
       // Limpa as instruções caso o admin tenha mudado para "Não precisa" antes de salvar
@@ -109,7 +109,7 @@ export default function TypeRequestsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este tipo?")) return;
     try {
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       await axios.delete(`${API_BASE}/type-requests/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });

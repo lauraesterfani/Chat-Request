@@ -5,11 +5,13 @@ import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // Importado para funcionalidade de voltar
 import { Eye, Loader2, FileText, Search, FilterX, ArrowLeft } from "lucide-react"; // ArrowLeft adicionado
+import { useAuth } from "../../context/AuthContext";
 
 const API_BASE = "/api";
 
 export default function RequestsPage() {
   const router = useRouter(); // Hook para navegação
+  const { user } = useAuth();
   const [allRequests, setAllRequests] = useState<any[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -34,8 +36,9 @@ export default function RequestsPage() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("jwt_token");
-      const res = await axios.get(`${API_BASE}/requests`, {
+      const token = sessionStorage.getItem("jwt_token");
+      const administrative = ["admin", "cradt"].includes(user?.role ?? "");
+      const res = await axios.get(`${API_BASE}/${administrative ? "admin/requests" : "requests"}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -61,7 +64,7 @@ export default function RequestsPage() {
   useEffect(() => {
     fetchCourses();
     fetchRequests();
-  }, []);
+  }, [user]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

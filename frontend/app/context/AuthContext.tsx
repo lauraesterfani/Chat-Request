@@ -73,15 +73,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setToken = useCallback((newToken: string | null) => {
         setTokenState(newToken);
         if (newToken) {
-            localStorage.setItem(JWT_STORAGE_KEY, newToken);
+            sessionStorage.setItem(JWT_STORAGE_KEY, newToken);
         } else {
-            localStorage.removeItem(JWT_STORAGE_KEY);
+            sessionStorage.removeItem(JWT_STORAGE_KEY);
         }
     }, []);
 
     const logout = useCallback(() => {
         setToken(null);
         setUser(null);
+        sessionStorage.removeItem('guided_chat_messages');
         console.log("[AUTH] Sessão encerrada. Token removido.");
     }, [setToken]);
 
@@ -154,11 +155,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setToken]);
 
     // -----------------------------------------------------------------
-    // Carrega token do localStorage uma vez
+    // Carrega token do sessionStorage uma vez
     // -----------------------------------------------------------------
 
     useEffect(() => {
-        const savedToken = localStorage.getItem(JWT_STORAGE_KEY);
+        const savedToken = sessionStorage.getItem(JWT_STORAGE_KEY);
 
         if (savedToken) {
             setTokenState(savedToken);
@@ -171,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // -----------------------------------------------------------------
 
     useEffect(() => {
-        const current = localStorage.getItem(JWT_STORAGE_KEY);
+        const current = sessionStorage.getItem(JWT_STORAGE_KEY);
         if (!current) return;
 
         let cancel = false;

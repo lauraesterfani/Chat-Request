@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TypeRequest extends Model
 {
@@ -13,13 +13,20 @@ class TypeRequest extends Model
 
     // ✨ ATUALIZADO: Incluindo os campos para a nova lógica de documentos
     protected $fillable = [
-        'id', 
-        'name', 
-        'description', 
-        'active', 
-        'requires_document', 
-        'document_instructions'
+        'id',
+        'name',
+        'description',
+        'active',
+        'requires_document',
+        'document_instructions',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'requires_document' => 'boolean',
+        ];
+    }
 
     /**
      * Relacionamento com as solicitações (requests).
@@ -37,5 +44,13 @@ class TypeRequest extends Model
     public function typeDocuments(): BelongsToMany
     {
         return $this->belongsToMany(TypeDocument::class, 'type_request_documents');
+    }
+
+    /**
+     * Templates disponíveis para respostas deste tipo de requerimento.
+     */
+    public function responseTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(ResponseTemplate::class, 'response_template_type_request');
     }
 }

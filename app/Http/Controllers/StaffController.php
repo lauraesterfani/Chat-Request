@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\StaffAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use App\Models\StaffAdmin;
 
-class StaffAdminController extends Controller
+class StaffController extends Controller
 {
     /**
      * Cadastrar novo Admin/Staff
@@ -16,11 +16,11 @@ class StaffAdminController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'  => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:staff_admins',
             'phone' => 'required|string|max:20',
-            'cpf'   => 'required|string|unique:staff_admins',
-            'role'  => 'required|in:admin,staff',
+            'cpf' => 'required|string|unique:staff_admins',
+            'role' => 'required|in:admin,staff',
         ]);
 
         // Gerar senha aleatória
@@ -28,31 +28,33 @@ class StaffAdminController extends Controller
 
         // Criar usuário
         $user = StaffAdmin::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'phone'    => $request->phone,
-            'cpf'      => $request->cpf,
-            'role'     => $request->role,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'cpf' => $request->cpf,
+            'role' => $request->role,
             'password' => Hash::make($password),
         ]);
 
         // Enviar senha por e-mail (texto puro)
         Mail::raw("Olá {$user->name}, sua conta foi criada com sucesso.\n\nSua senha de acesso é: {$password}\n\nPor favor, altere sua senha após o primeiro login.", function ($message) use ($user) {
             $message->to($user->email)
-                    ->subject('Sua senha de acesso');
+                ->subject('Sua senha de acesso');
         });
 
         return response()->json([
-            'message' => 'Cadastro realizado com sucesso! A senha foi enviada por e-mail.'
+            'message' => 'Cadastro realizado com sucesso! A senha foi enviada por e-mail.',
         ]);
     }
-public function destroy($id)
-{
-    $staff = StaffAdmin::findOrFail($id);
-    $staff->delete();
 
-    return response()->json(['message' => 'Removido com sucesso']);
-}
+    public function destroy($id)
+    {
+        $staff = StaffAdmin::findOrFail($id);
+        $staff->delete();
+
+        return response()->json(['message' => 'Removido com sucesso']);
+    }
+
     /**
      * Alterar senha
      */
@@ -60,12 +62,12 @@ public function destroy($id)
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:8|confirmed',
+            'new_password' => 'required|min:8|confirmed',
         ]);
 
         $user = auth()->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json(['message' => 'Senha atual incorreta'], 400);
         }
 
@@ -76,8 +78,7 @@ public function destroy($id)
     }
 
     public function index()
-{
-    return StaffAdmin::all();
-}
-
+    {
+        return StaffAdmin::all();
+    }
 }

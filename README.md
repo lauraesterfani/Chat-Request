@@ -1,38 +1,46 @@
-# 📚 Chat Request
+# Chat Request
 
-Este sistema tem como objetivo facilitar o processo de solicitação de requerimentos acadêmicos por meio de um *chatbot interativo*, oferecendo aos alunos uma experiência prática, intuitiva e centralizada.
+Aplicação acadêmica para abertura e acompanhamento de requerimentos do IFPE.
 
----
+## Tecnologias
 
-## 🧠 Funcionalidades
+- Back-end: Laravel 12, PHP 8.2+, JWT e Eloquent.
+- Front-end: Next.js 16, React 19, TypeScript e Tailwind CSS.
+- Banco: SQLite para desenvolvimento e MySQL para ambientes compartilhados.
 
-- Chatbot interativo com respostas automáticas e direcionamento de opções.
-- Identificação do aluno por Nome completo, Matrícula e CPF.
-- Listagem e seleção de serviços disponíveis (ex: abono de faltas, cancelamento de matrícula, atualização de dados, solicitação de ementas, entre outros).
-- Upload de documentos comprobatórios, quando exigido pelo tipo de requerimento.
-- Encaminhamento automático dos dados para o setor responsável.
-- Mensagens de feedback ao usuário sobre o status da solicitação.
+## Instalação
 
----
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan jwt:secret
+php artisan migrate --seed
+php artisan serve
+```
 
-## 🛠 Tecnologias Utilizadas
+Em outro terminal: `cd frontend && npm install && npm run dev`. Para SQLite, crie `database/database.sqlite` e use `DB_CONNECTION=sqlite`; configure `DB_*` para MySQL. Nunca use `migrate:fresh` em banco desconhecido.
 
-*Front*: Next + tailwind.css + ts
+## Testes e qualidade
 
-*Back*: Laravel + Sanctum
+`php artisan test`, `vendor/bin/pint --test`, `cd frontend && npm run lint`, `npx tsc --noEmit` e `npm run build`.
 
-*Banco*: MySQL
+## Perfis e estrutura
 
----
+`student` acessa seus requerimentos; `coordenacao` acessa o curso autorizado; `cradt` e `admin` atendem os requerimentos permitidos. `staff` é técnico e não recebe acesso acadêmico automaticamente. Seeders usam dados fictícios em domínio `.test`.
 
-🤝 Colaboradores
+Código principal: `app/Models`, `app/Http/Controllers`, `app/Policies`, `database`, `routes` e `frontend/app`. O proxy `/api` e `/storage` está em `frontend/next.config.mjs`.
 
-- [Dylan Borges](mailto:dylanborges06@gmail.com)
-- [Keila Isabelle](mailto:keiila_isabelle@outlook.com)
-- [Laura Esterfani](mailto:lauraestefa4@gmail.com)
-  
+## Chat e histórico
 
-# ...
+Cada requerimento possui histórico textual paginado em `GET /api/requests/{id}/messages`, envio em `POST /api/requests/{id}/messages` e marcação individual em `POST /api/requests/{id}/messages/read`. O limite é 2.000 caracteres; o remetente vem exclusivamente do JWT. O frontend atualiza por polling de 5 segundos enquanto a aba está visível. Requerimentos concluídos ou cancelados ficam somente para leitura. WebSockets, anexos no chat e notificações externas permanecem fora desta fase.
 
-📄 Licença
-Projeto de uso acadêmico e institucional.
+Regras institucionais ainda precisam de validação formal do IFPE. Consulte [ROADMAP_LANCAMENTO.md](ROADMAP_LANCAMENTO.md).
+
+## Fluxo e linha do tempo
+
+Requerimentos agora possuem setor responsável, resultado opcional e eventos persistentes. `GET /api/requests/{id}/events` exibe a linha do tempo; `POST /api/requests/{id}/forward` encaminha para setor autorizado com justificativa; `POST /api/requests/{id}/decision` registra decisão final, justificativa e resumo. Esta trilha registra o atendimento e não substitui auditoria institucional.
+
+## Fase 5 — Prazos e filas (núcleo)
+
+Políticas de SLA começam como rascunho e só podem ser ativadas por administração autorizada. Requerimentos novos preservam a versão da política ativa (quando houver), com metas em minutos corridos e indicadores server-side. A fila administrativa está disponível em `GET /api/admin/queue`; atribuição manual em `POST /api/requests/{id}/assign`; políticas em `GET/POST /api/sla-policies` e ativação em `POST /api/sla-policies/{id}/activate`. O prazo de 90 dias do formulário institucional não é usado como SLA. Calendários de expediente, pausas configuráveis, distribuição automática e notificações permanecem pendentes de homologação.

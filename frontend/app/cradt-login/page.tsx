@@ -47,7 +47,7 @@ export default function CradtLoginPage() {
     if (data.redirect) {
       // salva token antes de redirecionar
       setToken(data.token);
-      localStorage.setItem("jwt_token", data.token);
+      sessionStorage.setItem("jwt_token", data.token);
       router.push(data.redirect);
       return;
     }
@@ -61,7 +61,7 @@ export default function CradtLoginPage() {
 
     // Salva token
     setToken(data.token);
-    localStorage.setItem("jwt_token", data.token);
+    sessionStorage.setItem("jwt_token", data.token);
 
     // Redireciona conforme perfil
     if (data.user.role === 'admin' || data.user.role === 'staff') {

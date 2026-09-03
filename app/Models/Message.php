@@ -2,45 +2,29 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
-    
-    protected $fillable = [
-        'sender_id',
-        'receiver_id',
-        'content',
-        'document_id',
-        'type',
-        'read_at',
-    ];
+    protected $fillable = ['request_id', 'sender_id', 'sender_type', 'content'];
 
     /**
      * Relacionamento com o usuário remetente.
      */
-    public function sender()
+    public function request()
     {
-        return $this->belongsTo(User::class, 'sender_id');
+        return $this->belongsTo(Request::class);
     }
 
     /**
      * Relacionamento com o usuário destinatário.
      */
-    public function receiver()
+    public function reads()
     {
-        return $this->belongsTo(User::class, 'receiver_id');
-    }
-
-    /**
-     * Relacionamento com o documento anexado (necessário para o MessageController).
-     */
-    public function document()
-    {
-        // Certifique-se de que o modelo Document está importado ou existe no mesmo namespace se você o moveu.
-        return $this->belongsTo(Document::class, 'document_id');
+        return $this->hasMany(MessageRead::class);
     }
 }

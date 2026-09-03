@@ -19,6 +19,7 @@ public function run(): void
         CourseSeeder::class,      // <--- ADICIONE ISTO (Cursos)
         TypeRequestSeeder::class, // <--- Este já estava (Tipos de Requerimento)
         StaffAdminSeeder::class,
+        ResponseTemplateSeeder::class,
 
     ]);
 }

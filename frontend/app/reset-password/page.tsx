@@ -24,7 +24,7 @@ export default function ResetPasswordPage() {
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("jwt_token");
+      const token = sessionStorage.getItem("jwt_token");
       if (!token) {
         setError("Token não encontrado. Faça login novamente.");
         setLoading(false);
@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
 
       setSuccess('Senha redefinida com sucesso! Faça login novamente.');
       setTimeout(() => {
-        localStorage.removeItem("jwt_token"); // remove token antigo
+        sessionStorage.removeItem("jwt_token"); // remove token antigo
         router.push('/cradt-login'); // volta para login
       }, 2000);
 
