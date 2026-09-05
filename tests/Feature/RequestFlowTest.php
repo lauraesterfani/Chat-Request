@@ -61,6 +61,20 @@ class RequestFlowTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_coordination_is_limited_to_its_course_and_technical_staff_is_denied(): void
+    {
+        $owner = $this->student();
+        $other = $this->student();
+        $request = $this->requestFor($owner);
+        $coordination = StaffAdmin::create(['name' => 'Coordenação', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'coordenacao', 'course_id' => $other->course_id, 'password' => 'secret', 'must_change_password' => false]);
+        $technical = StaffAdmin::create(['name' => 'TI', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'staff', 'password' => 'secret', 'must_change_password' => false]);
+
+        $this->actingAs($coordination, 'staff_admins')->getJson("/api/requests/{$request->id}")->assertForbidden();
+        $this->actingAs($coordination, 'staff_admins')->getJson("/api/requests/{$request->id}/events")->assertForbidden();
+        $this->actingAs($technical, 'staff_admins')->getJson("/api/requests/{$request->id}")->assertForbidden();
+        $this->actingAs($technical, 'staff_admins')->getJson("/api/requests/{$request->id}/messages")->assertForbidden();
+    }
+
     public function test_invalid_status_and_student_status_updates_are_rejected(): void
     {
         $student = $this->student();

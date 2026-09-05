@@ -23,11 +23,11 @@ class UserSeeder extends Seeder
         }
 
         // Aqui você pode criar apenas ALUNOS
-        User::updateOrCreate(['email' => 'student@example.test'], [
-            'name' => 'Aluno Teste',
-            'cpf' => '90000000001',
-            'phone' => '81900000001',
-            'matricula' => 'ALN001',
+        User::updateOrCreate(['email' => 'qa.student@example.test'], [
+            'name' => 'Aluno QA Fictício',
+            'cpf' => '90000009991',
+            'phone' => '81900009991',
+            'matricula' => 'QA-ALUNO-001',
             'course_id' => $course->id,
             'birthday' => '2000-01-01',
             'password' => Hash::make('aluno123'),

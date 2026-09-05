@@ -8,10 +8,12 @@ use App\Models\MessageRead;
 use App\Models\Request as RequestModel;
 use App\Models\StaffAdmin;
 use App\Models\User;
+use App\Services\NotificationService;
+use App\Services\RequestAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 class MessageController extends Controller
 {
@@ -50,11 +52,14 @@ class MessageController extends Controller
         if (! in_array($target->status->value, [RequestStatus::PENDING->value, RequestStatus::ANALYZING->value, RequestStatus::WAITING->value, RequestStatus::SOLVING->value], true)) {
             return response()->json(['message' => 'Este requerimento está encerrado para novas mensagens.'], 409);
         }
+        $actor = $this->actor($request);
+        if (! $actor || ! app(RequestAccessService::class)->canReply($actor, $target)) {
+            return response()->json(['message' => 'Acesso não autorizado.'], 403);
+        }
 
         $validated = $request->validate([
             'content' => ['required', 'string', 'max:'.self::MAX_LENGTH, 'not_regex:/^\s*$/u'],
         ]);
-        $actor = $this->actor($request);
         $key = 'message:'.$this->actorType($actor).':'.$actor->getKey();
         if (RateLimiter::tooManyAttempts($key, 30)) {
             return response()->json(['message' => 'Muitas mensagens em pouco tempo. Aguarde e tente novamente.'], 429);
@@ -63,11 +68,19 @@ class MessageController extends Controller
 
         $message = DB::transaction(function () use ($target, $actor, $validated) {
             $message = Message::create(['request_id' => $target->id, 'sender_id' => $actor->getKey(), 'sender_type' => $this->actorType($actor), 'content' => trim($validated['content'])]);
-            if ($actor instanceof StaffAdmin && !$target->first_response_at) {
+            if ($actor instanceof StaffAdmin && ! $target->first_response_at) {
                 $target->update(['first_response_at' => $message->created_at ?? now()]);
             }
+
             return $message;
         });
+
+        if ($actor instanceof StaffAdmin) {
+            $student = User::find($target->user_id);
+            if ($student) {
+                app(NotificationService::class)->forStudent($student, 'message', 'Nova mensagem no requerimento', 'A equipe enviou uma nova mensagem no seu requerimento.', $target, 'message:'.$message->id);
+            }
+        }
 
         return response()->json($this->present($message, $actor), 201);
     }
@@ -93,16 +106,8 @@ class MessageController extends Controller
         if (! $target) {
             return response()->json(['message' => 'Requerimento não encontrado.'], 404);
         }
-        if ($actor instanceof User && $actor->role === User::ROLE_STUDENT && $target->user_id !== $actor->getKey()) {
+        if (! app(RequestAccessService::class)->canView($actor, $target)) {
             return response()->json(['message' => 'Acesso não autorizado.'], 403);
-        }
-        if ($actor instanceof StaffAdmin) {
-            if ($actor->role === 'staff') {
-                return response()->json(['message' => 'Acesso não autorizado.'], 403);
-            }
-            if ($actor->role === 'coordenacao' && $target->user?->course_id !== $actor->course_id) {
-                return response()->json(['message' => 'Acesso não autorizado.'], 403);
-            }
         }
 
         return $target;

@@ -14,11 +14,14 @@ class Request extends Model
     protected $fillable = [
         'user_id',
         'type_id',
+        'form_schema_version_id',
         'subject',
         'description',
+        'form_responses',
         'status',
         'observation',
         'protocol', // <--- OBRIGATÓRIO: Sem isso, o salvamento falha!
+        'submission_idempotency_key', 'submission_payload_hash',
         'responsible_sector',
         'result',
         'conclusion_summary',
@@ -27,7 +30,7 @@ class Request extends Model
 
     protected function casts(): array
     {
-        return ['status' => RequestStatus::class, 'first_response_at' => 'datetime', 'resolved_at' => 'datetime', 'sla_first_response_due_at' => 'datetime', 'sla_resolution_due_at' => 'datetime'];
+        return ['status' => RequestStatus::class, 'form_responses' => 'array', 'first_response_at' => 'datetime', 'resolved_at' => 'datetime', 'sla_first_response_due_at' => 'datetime', 'sla_resolution_due_at' => 'datetime'];
     }
 
     public function documents()
@@ -46,6 +49,11 @@ class Request extends Model
         return $this->belongsTo(TypeRequest::class, 'type_id');
     }
 
+    public function formSchemaVersion()
+    {
+        return $this->belongsTo(FormSchemaVersion::class);
+    }
+
     public function messages()
     {
         return $this->hasMany(Message::class);
@@ -56,6 +64,13 @@ class Request extends Model
         return $this->hasMany(RequestEvent::class)->orderBy('created_at');
     }
 
-    public function assignedStaff() { return $this->belongsTo(StaffAdmin::class, 'assigned_staff_id'); }
-    public function slaPolicy() { return $this->belongsTo(SlaPolicy::class, 'sla_policy_id'); }
+    public function assignedStaff()
+    {
+        return $this->belongsTo(StaffAdmin::class, 'assigned_staff_id');
+    }
+
+    public function slaPolicy()
+    {
+        return $this->belongsTo(SlaPolicy::class, 'sla_policy_id');
+    }
 }

@@ -5,13 +5,16 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\FormSchemaController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ResponseTemplateController;
+use App\Http\Controllers\SlaPolicyController;
+use App\Http\Controllers\StaffAccessScopeController;
 use App\Http\Controllers\StaffAdminController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TypeRequestController;
-use App\Http\Controllers\SlaPolicyController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +32,7 @@ Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/type-requests', [TypeRequestController::class, 'index']);
+Route::get('/type-requests/{typeId}/form', [FormSchemaController::class, 'published']);
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +50,10 @@ Route::middleware('auth:api,staff_admins')->group(function () {
     Route::post('/documents/upload', [DocumentController::class, 'upload']);
 
     Route::post('/requests', [RequestController::class, 'store']);
+    Route::get('/drafts', [FormSchemaController::class, 'drafts']);
+    Route::post('/drafts', [FormSchemaController::class, 'saveDraft']);
+    Route::put('/drafts/{draft}', [FormSchemaController::class, 'saveDraft']);
+    Route::delete('/drafts/{draft}', [FormSchemaController::class, 'discard']);
     Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
 
     Route::get('/staffs', [StaffController::class, 'index']);
@@ -65,6 +73,11 @@ Route::middleware(['auth:api,staff_admins', 'role:admin,staff,cradt'])->group(fu
 });
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::get('/staff-access-scopes', [StaffAccessScopeController::class, 'index']);
+    Route::post('/staff-access-scopes', [StaffAccessScopeController::class, 'store']);
+    Route::delete('/staff-access-scopes/{scope}', [StaffAccessScopeController::class, 'destroy']);
+    Route::post('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'store']);
+    Route::post('/form-versions/{schemaVersion}/publish', [FormSchemaController::class, 'publish']);
     Route::get('/admin/queue', [RequestController::class, 'queue']);
     Route::post('/requests/{id}/assign', [RequestController::class, 'assign']);
     Route::get('/sla-policies', [SlaPolicyController::class, 'index']);
@@ -107,6 +120,15 @@ Route::middleware(['auth:api,staff_admins', 'role:admin,staff,cradt'])->group(fu
 */
 Route::middleware('auth:api,staff_admins')->get('/requests/{id}', [RequestController::class, 'show']);
 Route::middleware('auth:api,staff_admins')->get('/requests/{id}/events', [RequestController::class, 'events']);
+
+Route::middleware('auth:api,staff_admins')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/count', [NotificationController::class, 'count']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'read']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::get('/notification-preferences', [NotificationController::class, 'preferences']);
+    Route::put('/notification-preferences', [NotificationController::class, 'preferences']);
+});
 
 Route::middleware('auth:api,staff_admins')->prefix('requests/{requestId}/messages')->group(function () {
     Route::get('/', [MessageController::class, 'index']);

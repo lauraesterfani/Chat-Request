@@ -8,6 +8,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 class StaffAdmin extends Authenticatable implements JWTSubject
 {
     protected $table = 'staff_admins';
+
     protected $fillable = [
         'name',
         'email',
@@ -22,6 +23,11 @@ class StaffAdmin extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
     ];
+
+    public function accessScopes()
+    {
+        return $this->hasMany(StaffAccessScope::class);
+    }
 
     // Métodos exigidos pelo JWTSubject
     public function getJWTIdentifier()

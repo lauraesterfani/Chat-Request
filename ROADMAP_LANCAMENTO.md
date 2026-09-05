@@ -29,3 +29,7 @@ As regras devem ser confirmadas com o IFPE antes da produção. Nenhuma fase fut
 ## Fase 5 — Prazos, filas e distribuição (núcleo incremental)
 
 Políticas de prazo em rascunho/ativa, snapshot de metas no requerimento, indicadores de prazo corrido, fila server-side e atribuição manual foram adicionados. Calendários de expediente, pausas, ajustes excepcionais, distribuição automática e homologação institucional ainda não estão ativos.
+
+## Fase 6 — Notificações internas e por e-mail (núcleo incremental)
+
+Central interna, contador individual, leitura, preferências por categoria, idempotência e job de e-mail foram adicionados para mensagens públicas e mudanças de status. O canal externo permanece desativado até configuração e homologação de SMTP; não há WhatsApp, SMS, push ou campanhas.

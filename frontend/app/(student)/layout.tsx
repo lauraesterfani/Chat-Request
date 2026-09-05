@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HelpCircle, X, MessageSquare, FileText, CheckCircle, LogOut, ChevronDown } from "lucide-react";
+import NotificationBell from "../../components/NotificationBell";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {isAuthenticated && user && (
           <div className="flex items-center gap-4">
+            <NotificationBell />
             {/* ❓ BOTÃO DE AJUDA (somente aluno) */}
             {!isAdminLayout && (
               <button

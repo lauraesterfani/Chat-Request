@@ -44,3 +44,7 @@ Requerimentos agora possuem setor responsável, resultado opcional e eventos per
 ## Fase 5 — Prazos e filas (núcleo)
 
 Políticas de SLA começam como rascunho e só podem ser ativadas por administração autorizada. Requerimentos novos preservam a versão da política ativa (quando houver), com metas em minutos corridos e indicadores server-side. A fila administrativa está disponível em `GET /api/admin/queue`; atribuição manual em `POST /api/requests/{id}/assign`; políticas em `GET/POST /api/sla-policies` e ativação em `POST /api/sla-policies/{id}/activate`. O prazo de 90 dias do formulário institucional não é usado como SLA. Calendários de expediente, pausas configuráveis, distribuição automática e notificações permanecem pendentes de homologação.
+
+## Fase 6 — Notificações (núcleo implementado)
+
+Notificações internas idempotentes são criadas para mensagens públicas da equipe e mudanças de status. A central usa `GET /api/notifications`, contador em `GET /api/notifications/count`, leitura individual em `POST /api/notifications/{id}/read`, leitura em lote em `POST /api/notifications/read-all` e preferências em `GET/PUT /api/notification-preferences`. O componente de sino faz polling leve e respeita o destinatário autenticado. E-mail é enfileirado apenas quando o usuário habilita a categoria; o transporte local/teste deve ser usado até haver SMTP homologado. WhatsApp, SMS, push e campanhas estão fora do escopo.

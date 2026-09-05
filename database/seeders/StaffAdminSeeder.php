@@ -16,11 +16,11 @@ class StaffAdminSeeder extends Seeder
     {
         // Usuário inicial STAFF
         StaffAdmin::firstOrCreate(
-            ['email' => 'staff@example.test'],
+            ['email' => 'qa.staff@example.test'],
             [
                 'name' => 'Suporte Acadêmico',
-                'cpf' => '90000000002',
-                'phone' => '81900000002',
+                'cpf' => '90000009992',
+                'phone' => '81900009992',
                 'role' => 'staff',
                 'password' => Hash::make('staff123'),
                 'must_change_password' => false,
@@ -29,11 +29,11 @@ class StaffAdminSeeder extends Seeder
 
         // Usuário inicial COORDENAÇÃO
         StaffAdmin::firstOrCreate(
-            ['email' => 'coordenacao@example.test'],
+            ['email' => 'qa.coordenacao@example.test'],
             [
                 'name' => 'Coordenação TSI',
-                'cpf' => '90000000003',
-                'phone' => '81900000003',
+                'cpf' => '90000009993',
+                'phone' => '81900009993',
                 'role' => 'coordenacao',
                 'course_id' => DB::table('courses')->where('code', 'TSI-2025')->value('id'),
                 'password' => Hash::make('coord123'),
@@ -43,11 +43,11 @@ class StaffAdminSeeder extends Seeder
 
         // Usuário inicial ADMIN
         StaffAdmin::firstOrCreate(
-            ['email' => 'admin@example.test'],
+            ['email' => 'qa.admin@example.test'],
             [
                 'name' => 'Administrador CRADT',
-                'cpf' => '90000000004',
-                'phone' => '81900000004',
+                'cpf' => '90000009994',
+                'phone' => '81900009994',
                 'role' => 'admin',
                 'password' => Hash::make('admin123'),
                 'must_change_password' => false,

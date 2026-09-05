@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "qa:frontend": "playwright test",
+    "qa:frontend:headed": "playwright test --headed",
+    "qa:frontend:ui": "playwright test --ui",
+    "qa:frontend:report": "playwright show-report"
   },
   "dependencies": {
     "axios": "^1.13.4",
@@ -23,6 +27,7 @@
     "@types/nookies": "^1.1.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@playwright/test": "^1.55.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "tailwindcss": "^4",
