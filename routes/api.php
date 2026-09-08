@@ -8,9 +8,11 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\FormSchemaController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ResponseTemplateController;
+use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SlaPolicyController;
 use App\Http\Controllers\StaffAccessScopeController;
 use App\Http\Controllers\StaffAdminController;
@@ -33,6 +35,7 @@ Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/type-requests', [TypeRequestController::class, 'index']);
+Route::get('/service-catalog', [ServiceCatalogController::class, 'index']);
 Route::get('/type-requests/{typeId}/form', [FormSchemaController::class, 'published']);
 
 /*
@@ -139,6 +142,7 @@ Route::middleware('auth:api,staff_admins')->prefix('requests/{requestId}/message
 });
 
 Route::middleware(['auth:api,staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::get('/metrics', [MetricsController::class, 'index']);
     Route::put('/requests/{id}', [RequestController::class, 'update']);
     Route::post('/requests/{id}/forward', [RequestController::class, 'forward']);
     Route::post('/requests/{id}/return', [RequestController::class, 'returnToPrevious']);
