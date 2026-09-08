@@ -28,7 +28,9 @@ class StaffAccessScopeTest extends TestCase
         $created = $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-access-scopes', ['staff_admin_id' => $agent->id, 'course_id' => $course->id, 'sector' => 'CRADT', 'abilities' => ['view_request'], 'reason' => 'Cobertura temporária'])->assertCreated()->json();
         $this->assertTrue(app(RequestAccessService::class)->canView($agent, $request));
         $this->assertFalse(app(RequestAccessService::class)->canOperate($agent, $request, 'forward_request'));
+        $this->assertDatabaseHas('audit_records', ['action' => 'scope_granted', 'resource_id' => (string) $created['id']]);
         $this->actingAs($admin, 'staff_admins')->deleteJson('/api/staff-access-scopes/'.$created['id'])->assertOk();
+        $this->assertDatabaseHas('audit_records', ['action' => 'scope_revoked', 'resource_id' => (string) $created['id']]);
         $this->assertDatabaseMissing('staff_access_scopes', ['id' => $created['id']]);
     }
 
@@ -37,6 +39,23 @@ class StaffAccessScopeTest extends TestCase
         $staff = $this->staff('cradt');
         StaffAccessScope::create(['staff_admin_id' => $staff->id, 'abilities' => ['view_request'], 'expires_at' => now()->subMinute(), 'reason' => 'Expirado']);
         $this->assertFalse($staff->accessScopes()->first()->active());
+    }
+
+    public function test_only_operational_administration_can_list_audit_records(): void
+    {
+        $admin = $this->staff('admin');
+        $technical = $this->staff('staff');
+        $this->actingAs($admin, 'staff_admins')->getJson('/api/audit-records')->assertOk();
+        $this->actingAs($technical, 'staff_admins')->getJson('/api/audit-records')->assertForbidden();
+    }
+
+    public function test_audit_metadata_excludes_sensitive_keys(): void
+    {
+        $admin = $this->staff('admin');
+        $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-access-scopes', ['staff_admin_id' => $this->staff('cradt')->id, 'abilities' => ['view_request'], 'reason' => 'Teste'])->assertCreated();
+        $metadata = \App\Models\AuditRecord::latest('created_at')->value('metadata');
+        $this->assertArrayNotHasKey('password', $metadata ?? []);
+        $this->assertArrayNotHasKey('token', $metadata ?? []);
     }
 
     private function staff(string $role): StaffAdmin

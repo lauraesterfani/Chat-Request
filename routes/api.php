@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditRecordController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
@@ -73,6 +74,7 @@ Route::middleware(['auth:api,staff_admins', 'role:admin,staff,cradt'])->group(fu
 });
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::get('/audit-records', [AuditRecordController::class, 'index']);
     Route::get('/staff-access-scopes', [StaffAccessScopeController::class, 'index']);
     Route::post('/staff-access-scopes', [StaffAccessScopeController::class, 'store']);
     Route::delete('/staff-access-scopes/{scope}', [StaffAccessScopeController::class, 'destroy']);

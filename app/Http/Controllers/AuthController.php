@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -22,7 +22,7 @@ class AuthController extends Controller
         $credentials = $request->only('cpf', 'password');
         $token = auth('api')->attempt($credentials);
 
-        if (!$token) {
+        if (! $token) {
             throw ValidationException::withMessages([
                 'cpf' => [__('Credenciais inválidas. Verifique o CPF e a senha.')],
             ]);
@@ -32,10 +32,10 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => [
-                'id'    => $user->id,
-                'name'  => $user->name,
+                'id' => $user->id,
+                'name' => $user->name,
                 'email' => $user->email,
-                'role'  => $user->role,
+                'role' => $user->role,
             ],
             'token' => $token,
             'message' => 'Login bem-sucedido.',
@@ -48,9 +48,6 @@ class AuthController extends Controller
      */
     public function loginStaff(Request $request)
     {
-        \Log::info('LOGIN STAFF CHEGOU', [
-        'email' => $request->email
-    ]);
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -59,7 +56,7 @@ class AuthController extends Controller
         $credentials = $request->only('email', 'password');
         $token = auth('staff_admins')->attempt($credentials);
 
-        if (!$token) {
+        if (! $token) {
             throw ValidationException::withMessages([
                 'email' => ['Credenciais inválidas.'],
             ]);
@@ -71,23 +68,23 @@ class AuthController extends Controller
         if ($user->must_change_password) {
             return response()->json([
                 'redirect' => '/reset-password',
-                'message'  => 'Você precisa redefinir sua senha antes de continuar.',
-                'token'    => $token,
-                'user'     => [
-                    'id'    => $user->id,
-                    'name'  => $user->name,
+                'message' => 'Você precisa redefinir sua senha antes de continuar.',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
                     'email' => $user->email,
-                    'role'  => $user->role,
+                    'role' => $user->role,
                 ],
             ], 200);
         }
 
         return response()->json([
             'user' => [
-                'id'    => $user->id,
-                'name'  => $user->name,
+                'id' => $user->id,
+                'name' => $user->name,
                 'email' => $user->email,
-                'role'  => $user->role,
+                'role' => $user->role,
             ],
             'token' => $token,
             'message' => 'Login administrativo realizado com sucesso.',
@@ -102,15 +99,15 @@ class AuthController extends Controller
     {
         $user = auth('staff_admins')->user() ?? auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Token inválido ou expirado.'], 401);
         }
 
         return response()->json([
-            'id'    => $user->id,
-            'name'  => $user->name,
+            'id' => $user->id,
+            'name' => $user->name,
             'email' => $user->email,
-            'role'  => $user->role,
+            'role' => $user->role,
         ]);
     }
 
@@ -154,12 +151,12 @@ class AuthController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'new_password' => 'required|min:8|confirmed'
+            'new_password' => 'required|min:8|confirmed',
         ]);
 
         $user = auth('staff_admins')->user() ?? auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Usuário não autenticado'], 401);
         }
 
