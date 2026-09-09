@@ -15,6 +15,7 @@ use App\Models\TypeRequest;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\RequestAccessService;
+use App\Services\ServiceAvailabilityService;
 use App\Services\SlaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -175,6 +176,10 @@ class RequestController extends Controller
         ]);
 
         $documentIds = $validated['document_ids'] ?? [];
+        $student = Auth::guard('api')->user();
+        if (! app(ServiceAvailabilityService::class)->isOpen($validated['type_id'], $student)) {
+            return response()->json(['message' => 'Este serviço não está disponível para envio neste período. Seu rascunho foi preservado.'], 422);
+        }
 
         try {
             return DB::transaction(function () use ($request, $validated, $documentIds) {
