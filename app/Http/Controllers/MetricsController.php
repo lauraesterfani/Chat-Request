@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Request as RequestModel;
+use App\Services\RequestAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class MetricsController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, RequestAccessService $access)
     {
         $data = $request->validate(['from' => ['nullable', 'date'], 'to' => ['nullable', 'date', 'after_or_equal:from'], 'course_id' => ['nullable', 'uuid', 'exists:courses,id']]);
-        $query = RequestModel::query();
+        $query = $access->constrainVisibleRequests(RequestModel::query(), auth('staff_admins')->user());
         if (! empty($data['from'])) {
             $query->where('created_at', '>=', $data['from']);
         }
