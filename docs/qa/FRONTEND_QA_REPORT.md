@@ -139,3 +139,8 @@ Nenhum defeito bloqueador reproduzido na rodada final. Os defeitos QA-001 (pop-o
 - **Passou (desktop):** `/signup` não contém formulário ou campos de cadastro e orienta o aluno a usar uma conta institucional; o único link vai para `/login`.
 - **Passou:** `/change-password` sem sessão redireciona para `/login`. Console sem erros inesperados; existe aviso legado do `next/image` sobre `sizes` da imagem do mascote.
 - **Bloqueado por infraestrutura de QA:** o fluxo autenticado login → troca obrigatória → `/me` não pôde ser repetido no navegador porque o navegador CUA deixou de estar disponível após a migration local. A API equivalente é coberta por `StudentAuthenticationTest`; o teste PHP passou. A medição mobile de `/signup` também ficou indisponível pela mesma limitação.
+
+## Reteste autenticado — 2026-09-09
+
+- **Passou (Playwright local + Chrome, desktop e 390×844):** a conta fictícia pendente entrou com matrícula minúscula, foi normalizada, redirecionada para `/change-password`, recebeu validação de confirmação divergente, alterou senha forte e chegou a `/me`. As chamadas de login, perfil e alteração retornaram HTTP 200; não houve overflow horizontal.
+- **Ressalvas:** após o fluxo, duas chamadas de notificações retornaram 403 e apareceram no console. Continua o aviso legado de `next/image` para `mascote.png` sem `sizes`. A conta fictícia foi restaurada ao estado pendente pelo seeder após a validação.

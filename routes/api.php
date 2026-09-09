@@ -81,6 +81,9 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
 });
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::get('/admin/service-catalog', [ServiceCatalogController::class, 'adminIndex']);
+    Route::post('/admin/service-catalog', [ServiceCatalogController::class, 'store']);
+    Route::put('/admin/service-catalog/{serviceCatalogEntry}', [ServiceCatalogController::class, 'update']);
     Route::get('/audit-records', [AuditRecordController::class, 'index']);
     Route::get('/staff-access-scopes', [StaffAccessScopeController::class, 'index']);
     Route::post('/staff-access-scopes', [StaffAccessScopeController::class, 'store']);
