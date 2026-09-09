@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell, CheckCheck, Settings2, X } from "lucide-react";
+import { useAuth } from "../app/context/AuthContext";
 
 type Notice = { id: string; title: string; body: string; link?: string | null; read_at?: string | null; created_at: string };
 type Preference = { category: string; internal_enabled: boolean; email_enabled: boolean };
@@ -16,15 +17,14 @@ const preferenceLabels: Record<string, string> = {
 };
 
 export default function NotificationBell() {
+  const { token } = useAuth();
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [items, setItems] = useState<Notice[]>([]);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [preferencesLoading, setPreferencesLoading] = useState(false);
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("jwt_token") : null;
-
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!token) return;
     const response = await fetch("/api/notifications?per_page=5", { headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) return;
@@ -32,13 +32,13 @@ export default function NotificationBell() {
     setItems(data.data ?? []);
     const unread = await fetch("/api/notifications/count", { headers: { Authorization: `Bearer ${token}` } });
     if (unread.ok) setCount((await unread.json()).unread ?? 0);
-  };
+  }, [token]);
 
   useEffect(() => {
     load();
     const timer = window.setInterval(load, 15000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [load]);
 
   const markRead = async (id: string) => {
     if (!token) return;

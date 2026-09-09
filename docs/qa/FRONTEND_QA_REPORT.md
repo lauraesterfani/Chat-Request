@@ -144,3 +144,8 @@ Nenhum defeito bloqueador reproduzido na rodada final. Os defeitos QA-001 (pop-o
 
 - **Passou (Playwright local + Chrome, desktop e 390×844):** a conta fictícia pendente entrou com matrícula minúscula, foi normalizada, redirecionada para `/change-password`, recebeu validação de confirmação divergente, alterou senha forte e chegou a `/me`. As chamadas de login, perfil e alteração retornaram HTTP 200; não houve overflow horizontal.
 - **Ressalvas:** após o fluxo, duas chamadas de notificações retornaram 403 e apareceram no console. Continua o aviso legado de `next/image` para `mascote.png` sem `sizes`. A conta fictícia foi restaurada ao estado pendente pelo seeder após a validação.
+
+## Correção do token do sino — 2026-09-09
+
+- **Passou (desktop e 390×844):** o sino passou a consumir o token reativo do contexto de autenticação, reiniciando o polling quando a senha é trocada e o JWT é renovado. O formulário de troca permaneceu íntegro, sem overflow e sem erros no console.
+- **Limitação explícita:** a automação de QA não pode submeter alteração de senha; portanto a confirmação HTTP do sino após o envio ficou coberta pelo teste de feature de troca de senha e pelo build, não por esse percurso visual. Permanece apenas o aviso legado de `next/image` para `mascote.png` sem `sizes`.
