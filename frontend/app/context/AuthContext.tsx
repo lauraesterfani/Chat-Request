@@ -23,6 +23,8 @@ interface User {
     phone: string;
     role: string;
     birthday: string;
+    matricula?: string;
+    must_change_password?: boolean;
     created_at?: string;
     updated_at?: string;
     [key: string]: any;
@@ -35,7 +37,7 @@ interface AuthContextType {
     isLoading: boolean;
     setToken: (newToken: string | null) => void;
     logout: () => void;
-    login: (credentials: { cpf: string, password: string }) => Promise<{ success: boolean, message?: string }>;
+    login: (credentials: { matricula: string, password: string }) => Promise<{ success: boolean, message?: string, mustChangePassword?: boolean }>;
     register: (data: any) => Promise<{ success: boolean, message?: string }>;
 }
 
@@ -126,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // LOGIN
     // -----------------------------------------------------------------
 
-    const login = useCallback(async (credentials: { cpf: string, password: string }): Promise<{ success: boolean, message?: string }> => {
+    const login = useCallback(async (credentials: { matricula: string, password: string }): Promise<{ success: boolean, message?: string, mustChangePassword?: boolean }> => {
         setIsLoading(true);
 
         try {
@@ -141,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (response.ok && data.token && data.user) {
                 setToken(data.token);
                 setUser(data.user);
-                return { success: true };
+                return { success: true, mustChangePassword: Boolean(data.must_change_password) };
             } else {
                 return { success: false, message: data.message || "Credenciais inválidas." };
             }

@@ -21,6 +21,12 @@ php artisan serve
 
 Em outro terminal: `cd frontend && npm install && npm run dev`. Para SQLite, crie `database/database.sqlite` e use `DB_CONNECTION=sqlite`; configure `DB_*` para MySQL. Nunca use `migrate:fresh` em banco desconhecido.
 
+## Acesso de alunos
+
+As contas de alunos são criadas ou importadas pela instituição; não há autocadastro público. O aluno entra em `POST /api/login` com `matricula` e `password`. A matrícula é normalizada para maiúsculas e sem espaços e segue o formato `AAAA` + período + curso + `IG` + número (por exemplo, `20241TSIIG0249`).
+
+Contas com `must_change_password=true` recebem um JWT limitado: podem consultar o próprio estado, trocar a senha em `POST /api/auth/change-initial-password` e encerrar sessão, mas não acessam requerimentos, documentos ou chat. A troca exige `current_password`, `new_password` e `new_password_confirmation`; a nova senha requer oito caracteres, maiúscula, minúscula, número e símbolo. Após a troca, a API devolve um token renovado. Execute `php artisan migrate` para adicionar este controle a um ambiente existente.
+
 ## Testes e qualidade
 
 `php artisan test`, `vendor/bin/pint --test`, `cd frontend && npm run lint`, `npx tsc --noEmit` e `npm run build`.

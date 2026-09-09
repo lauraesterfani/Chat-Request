@@ -27,8 +27,8 @@ export default function LandingPage() {
                     <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-[#15803d] transition-colors">
                         Entrar
                     </Link>
-                    <Link href="/signup" className="bg-[#15803d] text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-[#166534] transition-colors shadow-sm">
-                        Criar conta
+                    <Link href="/login" className="bg-[#15803d] text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-[#166534] transition-colors shadow-sm">
+                        Acessar conta
                     </Link>
                 </div>
             </nav>
@@ -56,8 +56,8 @@ export default function LandingPage() {
                     </p>
 
                     <div className="flex flex-row gap-4 pt-2">
-                        <Link href="/signup" className="bg-[#15803d] text-white text-base font-semibold px-8 py-3 rounded-full hover:bg-[#166534] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                            Começar agora
+                        <Link href="/login" className="bg-[#15803d] text-white text-base font-semibold px-8 py-3 rounded-full hover:bg-[#166534] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            Acessar conta
                         </Link>
                         <Link href="#como-funciona" className="border border-[#15803d] text-[#15803d] text-base font-semibold px-8 py-3 rounded-full hover:bg-[#f0fdf4] transition-colors">
                             Saiba mais
@@ -180,7 +180,7 @@ export default function LandingPage() {
                             <h4 className="font-bold text-lg mb-6 text-white">Plataforma</h4>
                             <ul className="space-y-3 text-white-400">
                                 <li><Link href="/login" className="hover:text-[#15803d] transition-colors">Login Aluno</Link></li>
-                                <li><Link href="/signup" className="hover:text-[#15803d] transition-colors">Cadastro</Link></li>
+                                <li><Link href="/login" className="hover:text-[#15803d] transition-colors">Login do aluno</Link></li>
                                 <li><Link href="#como-funciona" className="hover:text-[#15803d] transition-colors">Funcionalidades</Link></li>
                             </ul>
                         </div>

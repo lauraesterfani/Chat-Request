@@ -27,11 +27,12 @@ class UserSeeder extends Seeder
             'name' => 'Aluno QA Fictício',
             'cpf' => '90000009991',
             'phone' => '81900009991',
-            'matricula' => 'QA-ALUNO-001',
+            'matricula' => '20241ADMIG001',
             'course_id' => $course->id,
             'birthday' => '2000-01-01',
             'password' => Hash::make('aluno123'),
             'role' => User::ROLE_STUDENT,
+            'must_change_password' => true,
         ]);
     }
 }

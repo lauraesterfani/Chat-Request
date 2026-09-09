@@ -3,32 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     /**
-     * Login usando CPF e senha (para alunos).
+     * Login usando matrícula e senha (para alunos).
      */
     public function login(Request $request)
     {
         $request->validate([
-            'cpf' => ['required', 'string', 'max:11'],
+            'matricula' => ['required', 'string', 'max:32'],
             'password' => ['required', 'string'],
         ]);
 
-        $credentials = $request->only('cpf', 'password');
+        $matricula = strtoupper(preg_replace('/\s+/', '', $request->string('matricula')->toString()));
+        $credentials = ['matricula' => $matricula, 'password' => $request->string('password')->toString()];
         $token = auth('api')->attempt($credentials);
 
         if (! $token) {
+            app(AuditService::class)->record($request, 'student_login_failed', 'auth', null, ['identifier_hash' => hash('sha256', $matricula)]);
             throw ValidationException::withMessages([
-                'cpf' => [__('Credenciais inválidas. Verifique o CPF e a senha.')],
+                'matricula' => [__('Credenciais inválidas.')],
             ]);
         }
 
-        $user = auth('api')->user() ?? User::where('cpf', $request->cpf)->first();
+        $user = auth('api')->user() ?? User::where('matricula', $matricula)->first();
+        app(AuditService::class)->record($request, 'student_login_succeeded', 'auth', $user->id);
 
         return response()->json([
             'user' => [
@@ -39,6 +44,7 @@ class AuthController extends Controller
             ],
             'token' => $token,
             'message' => 'Login bem-sucedido.',
+            'must_change_password' => (bool) $user->must_change_password,
             'expires_in' => auth('api')->factory()->getTTL() * 60,
         ], 200);
     }
@@ -108,6 +114,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'must_change_password' => (bool) $user->must_change_password,
         ]);
     }
 
@@ -165,5 +172,42 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Senha redefinida com sucesso']);
+    }
+
+    public function changeInitialPassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ]);
+
+        $user = auth('api')->user();
+        if (! $user || ! $user->isStudent()) {
+            return response()->json(['message' => 'Acesso não autorizado.'], 403);
+        }
+
+        if (! $user->must_change_password) {
+            return response()->json(['message' => 'A troca obrigatória de senha não está pendente.'], 422);
+        }
+
+        if (! Hash::check($request->string('current_password')->toString(), $user->password)) {
+            return response()->json(['message' => 'Não foi possível alterar a senha.'], 422);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($request->string('new_password')->toString()),
+            'must_change_password' => false,
+        ])->save();
+        app(AuditService::class)->record($request, 'student_initial_password_changed', 'auth', $user->id);
+
+        auth('api')->logout();
+        $renewedToken = auth('api')->login($user);
+
+        return response()->json([
+            'message' => 'Senha alterada com sucesso.',
+            'must_change_password' => false,
+            'token' => $renewedToken,
+            'expires_in' => auth('api')->factory()->getTTL() * 60,
+        ]);
     }
 }

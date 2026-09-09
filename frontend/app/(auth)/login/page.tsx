@@ -22,7 +22,7 @@ export default function StudentLoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading } = useAuth();
 
-  const [cpf, setCpf] = useState('');
+  const [matricula, setMatricula] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,12 +41,12 @@ export default function StudentLoginPage() {
     setLoading(true);
 
     try {
-      const result = await login({ cpf, password });
+      const result = await login({ matricula, password });
 
       if (!result.success) {
         setError(result.message || 'Credenciais inválidas.');
       } else {
-        router.push('/me'); // ⭐ redirecionamento instantâneo
+        router.push(result.mustChangePassword ? '/change-password' : '/me');
       }
 
     } catch (err: any) {
@@ -139,7 +139,7 @@ export default function StudentLoginPage() {
             </Link>
 
             <h2 className="text-3xl font-bold text-[#0f172a] self-start">Login do Aluno</h2>
-            <p className="text-slate-500 mt-2 self-start">Entre com seu CPF e senha.</p>
+            <p className="text-slate-500 mt-2 self-start">Entre com sua matrícula e senha.</p>
           </div>
 
           {/* ERRO */}
@@ -156,17 +156,18 @@ export default function StudentLoginPage() {
 
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">CPF</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Matrícula</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
                   <User size={20} />
                 </span>
                 <input
                   type="text"
-                  value={cpf}
-                  onChange={(e) => setCpf(e.target.value)}
+                  value={matricula}
+                  onChange={(e) => setMatricula(e.target.value.toUpperCase())}
                   className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#15803d] focus:ring-4 focus:ring-green-100 outline-none transition-all"
-                  placeholder="000.000.000-00"
+                  placeholder="20241TSIIG0249"
+                  autoCapitalize="characters"
                   required
                 />
               </div>
@@ -224,12 +225,7 @@ export default function StudentLoginPage() {
 
           </form>
 
-          <p className="mt-8 text-center text-slate-600">
-            Ainda não tem acesso?{" "}
-            <Link href="/signup" className="text-[#15803d] font-bold hover:underline">
-              Criar conta agora
-            </Link>
-          </p>
+          <p className="mt-8 text-center text-sm text-slate-600">Sua conta é criada pela instituição. Em caso de dúvida, procure o atendimento acadêmico.</p>
 
         </div>
       </div>

@@ -35,6 +35,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (isLoading || !isAuthenticated || !user) return;
 
+    if (user.must_change_password) {
+      router.replace('/change-password');
+      return;
+    }
+
     if (isAdminOnlyPath && !isAdministrativeRole) {
       router.replace("/me");
     }

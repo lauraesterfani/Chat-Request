@@ -4,24 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo; // <--- Importante para vincular ao Curso
-use Tymon\JWTAuth\Contracts\JWTSubject;
+// <--- Importante para vincular ao Curso
 use Illuminate\Support\Str;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, Notifiable, HasUuids;
+    use HasFactory, HasUuids, Notifiable;
 
     // --- Definição de Papéis (Roles) ---
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_STUDENT = 'student';
+
     public const ROLE_STAFF = 'staff';
+
     public const ROLE_CRADT = 'cradt'; // <--- Adicionado para suportar a Coordenação
 
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -36,6 +40,7 @@ class User extends Authenticatable implements JWTSubject
         'birthday',
         'enrollment_number',
         'course_id',
+        'must_change_password',
     ];
 
     protected $hidden = [
@@ -47,6 +52,7 @@ class User extends Authenticatable implements JWTSubject
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'birthday' => 'date',
+        'must_change_password' => 'boolean',
     ];
 
     /**
@@ -62,6 +68,13 @@ class User extends Authenticatable implements JWTSubject
         });
     }
 
+    public function setMatriculaAttribute(?string $value): void
+    {
+        $this->attributes['matricula'] = $value === null
+            ? null
+            : strtoupper(preg_replace('/\s+/', '', $value));
+    }
+
     // --- JWT Methods ---
 
     public function getJWTIdentifier()
@@ -75,7 +88,7 @@ class User extends Authenticatable implements JWTSubject
             'user_id' => $this->id,
             'role' => $this->role,
             'name' => $this->name, // Útil para exibir no frontend
-            'email' => $this->email
+            'email' => $this->email,
         ];
     }
 
@@ -103,10 +116,9 @@ class User extends Authenticatable implements JWTSubject
      * Relação: Usuário pertence a um Curso
      */
     public function course()
-        {
-    return $this->belongsTo(Course::class);
-        }
-
+    {
+        return $this->belongsTo(Course::class);
+    }
 
     /**
      * Relação: Usuário tem muitos Requerimentos

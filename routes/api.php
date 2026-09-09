@@ -18,7 +18,6 @@ use App\Http\Controllers\StaffAccessScopeController;
 use App\Http\Controllers\StaffAdminController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TypeRequestController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,8 +27,7 @@ use Illuminate\Support\Facades\Route;
 */
 Route::get('/', fn () => response()->json(['api' => 'Online', 'status' => 'OK']));
 
-Route::post('/register', [UserController::class, 'store']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/login/staff', [AuthController::class, 'loginStaff']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
@@ -47,6 +45,12 @@ Route::middleware('auth:api,staff_admins')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
+
+    Route::post('/auth/change-initial-password', [AuthController::class, 'changeInitialPassword'])
+        ->middleware('auth:api');
+});
+
+Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function () {
 
     Route::get('/requests', [RequestController::class, 'index']);
     Route::get('/my-requests', [RequestController::class, 'index']);
@@ -70,7 +74,7 @@ Route::middleware(['auth:staff_admins'])->get('/admins', [StaffAdminController::
 | Templates disponíveis no atendimento
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:api,staff_admins', 'role:admin,staff,cradt'])->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt'])->group(function () {
     Route::get('/response-templates/active', [ResponseTemplateController::class, 'active']);
     Route::get('/admin/requests', [RequestController::class, 'index'])
         ->middleware('role:admin,cradt');
@@ -95,7 +99,7 @@ Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () 
 | ROTAS EXCLUSIVAS DE T.I. (STAFF)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:api,staff_admins', 'role:staff'])->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:staff'])->group(function () {
     Route::get('/staff-admins', [StaffAdminController::class, 'index']);
     Route::post('/staff-admins', [StaffAdminController::class, 'store']);
 
@@ -110,7 +114,7 @@ Route::middleware(['auth:api,staff_admins', 'role:staff'])->group(function () {
 
 });
 
-Route::middleware(['auth:api,staff_admins', 'role:admin,staff,cradt'])->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt'])->group(function () {
     Route::get('/response-templates', [ResponseTemplateController::class, 'index']);
     Route::get('/response-templates/{responseTemplate}', [ResponseTemplateController::class, 'show']);
     Route::post('/response-templates', [ResponseTemplateController::class, 'store']);
@@ -123,10 +127,10 @@ Route::middleware(['auth:api,staff_admins', 'role:admin,staff,cradt'])->group(fu
 | ROTAS EXCLUSIVAS DA CRADT (ADMIN)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:api,staff_admins')->get('/requests/{id}', [RequestController::class, 'show']);
-Route::middleware('auth:api,staff_admins')->get('/requests/{id}/events', [RequestController::class, 'events']);
+Route::middleware(['auth:api,staff_admins', 'password.changed'])->get('/requests/{id}', [RequestController::class, 'show']);
+Route::middleware(['auth:api,staff_admins', 'password.changed'])->get('/requests/{id}/events', [RequestController::class, 'events']);
 
-Route::middleware('auth:api,staff_admins')->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/count', [NotificationController::class, 'count']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'read']);
@@ -135,13 +139,13 @@ Route::middleware('auth:api,staff_admins')->group(function () {
     Route::put('/notification-preferences', [NotificationController::class, 'preferences']);
 });
 
-Route::middleware('auth:api,staff_admins')->prefix('requests/{requestId}/messages')->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed'])->prefix('requests/{requestId}/messages')->group(function () {
     Route::get('/', [MessageController::class, 'index']);
     Route::post('/', [MessageController::class, 'store']);
     Route::post('/read', [MessageController::class, 'markRead']);
 });
 
-Route::middleware(['auth:api,staff_admins', 'role:admin,cradt'])->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,cradt'])->group(function () {
     Route::get('/metrics', [MetricsController::class, 'index']);
     Route::put('/requests/{id}', [RequestController::class, 'update']);
     Route::post('/requests/{id}/forward', [RequestController::class, 'forward']);
