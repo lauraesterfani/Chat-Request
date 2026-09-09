@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ResponseTemplateController;
 use App\Http\Controllers\ServiceCatalogController;
+use App\Http\Controllers\ServiceOpeningWindowController;
 use App\Http\Controllers\SlaPolicyController;
 use App\Http\Controllers\StaffAccessScopeController;
 use App\Http\Controllers\StaffAdminController;
@@ -81,6 +82,9 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
 });
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::get('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'index']);
+    Route::post('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'store']);
+    Route::put('/admin/service-opening-windows/{serviceOpeningWindow}', [ServiceOpeningWindowController::class, 'update']);
     Route::get('/admin/service-catalog', [ServiceCatalogController::class, 'adminIndex']);
     Route::post('/admin/service-catalog', [ServiceCatalogController::class, 'store']);
     Route::put('/admin/service-catalog/{serviceCatalogEntry}', [ServiceCatalogController::class, 'update']);
