@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\Request as RequestModel;
+use App\Models\SatisfactionResponse;
 use App\Models\StaffAccessScope;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
@@ -25,6 +26,20 @@ class MetricsTest extends TestCase
         }
         $admin = StaffAdmin::create(['name' => 'Admin', 'email' => 'metric-admin@example.test', 'cpf' => '90000003002', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
         $this->actingAs($admin, 'staff_admins')->getJson('/api/metrics?course_id='.$course->id)->assertOk()->assertJsonPath('total', 3)->assertJsonPath('open', 1)->assertJsonPath('completed', 1)->assertJsonPath('canceled', 1);
+    }
+
+    public function test_metrics_expose_only_aggregated_satisfaction(): void
+    {
+        $course = Course::create(['name' => 'Curso satisfação', 'code' => 'MSA']);
+        $student = User::create(['name' => 'Aluno', 'email' => 'satisfaction-metric@example.test', 'cpf' => '90000003003', 'phone' => '81900009991', 'matricula' => '20241MSAIG001', 'birthday' => '2000-01-01', 'password' => 'secret', 'role' => 'student', 'course_id' => $course->id]);
+        $type = TypeRequest::create(['name' => 'Métrica satisfação']);
+        $request = RequestModel::create(['user_id' => $student->id, 'type_id' => $type->id, 'subject' => 'S', 'description' => 'D', 'status' => 'completed', 'protocol' => '20260910-000001']);
+        SatisfactionResponse::create(['request_id' => $request->id, 'student_id' => $student->id, 'rating' => 4, 'comment' => 'Comentário privado']);
+        $admin = StaffAdmin::create(['name' => 'Admin', 'email' => 'satisfaction-admin@example.test', 'cpf' => '90000003004', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+
+        $this->actingAs($admin, 'staff_admins')->getJson('/api/metrics')->assertOk()
+            ->assertJsonPath('satisfaction.responses', 1)->assertJsonPath('satisfaction.average_rating', 4)->assertJsonPath('satisfaction.by_rating.4', 1)
+            ->assertJsonMissing(['comment' => 'Comentário privado']);
     }
 
     public function test_scoped_admin_cannot_derive_totals_from_requests_outside_its_scope(): void
