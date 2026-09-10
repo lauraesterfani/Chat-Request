@@ -9,6 +9,7 @@
 | Formulários e rascunhos | implementado localmente | testes de formulário dinâmico e QA |
 | Escopos e auditoria | implementado localmente | testes de escopo e auditoria |
 | Métricas e catálogo | inicial | endpoints e testes locais |
+| Operação local e homologação | documentada | `docs/RUNBOOK_OPERACAO_LOCAL.md` |
 | Produção institucional | não autorizado | depende de homologação do IFPE |
 
 ## Portões antes de produção
@@ -18,5 +19,6 @@
 - Validar matriz de permissões, regras de documentos, catálogo, calendário e retenção com o IFPE.
 - Executar testes de regressão, revisão de segurança e validação visual em ambiente equivalente ao de produção.
 - Revisar migrations e realizar backup antes de qualquer implantação.
+- Executar o runbook de recuperação em ambiente isolado e obter responsáveis/limites homologados.
 
 Este documento não autoriza deploy nem declara conformidade institucional.
