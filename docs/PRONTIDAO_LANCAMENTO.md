@@ -22,3 +22,5 @@
 - Executar o runbook de recuperação em ambiente isolado e obter responsáveis/limites homologados.
 
 Este documento não autoriza deploy nem declara conformidade institucional.
+
+Consulte também a [matriz GO/NO-GO](MATRIZ_GO_NO_GO.md) antes de qualquer decisão de lançamento.
