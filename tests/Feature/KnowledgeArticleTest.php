@@ -22,6 +22,7 @@ class KnowledgeArticleTest extends TestCase
     public function test_admin_can_create_draft_article(): void
     {
         $admin = StaffAdmin::create(['name' => 'Admin', 'email' => 'article@example.test', 'cpf' => '90000007771', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
-        $this->actingAs($admin, 'staff_admins')->postJson('/api/admin/knowledge-articles', ['title' => 'Rascunho', 'summary' => 'Resumo fictício', 'content' => 'Conteúdo fictício', 'audience' => 'public', 'status' => 'draft'])->assertCreated();
+        $created = $this->actingAs($admin, 'staff_admins')->postJson('/api/admin/knowledge-articles', ['title' => 'Rascunho', 'summary' => 'Resumo fictício', 'content' => 'Conteúdo fictício', 'audience' => 'public', 'status' => 'draft'])->assertCreated();
+        $this->actingAs($admin, 'staff_admins')->putJson('/api/admin/knowledge-articles/'.$created->json('id'), ['title' => 'Rascunho', 'summary' => 'Resumo fictício', 'content' => 'Conteúdo fictício', 'audience' => 'public', 'status' => 'published'])->assertOk()->assertJsonPath('status', 'published');
     }
 }

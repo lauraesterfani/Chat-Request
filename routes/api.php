@@ -86,6 +86,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
     Route::post('/admin/knowledge-articles', [KnowledgeArticleController::class, 'store']);
+    Route::put('/admin/knowledge-articles/{knowledgeArticle}', [KnowledgeArticleController::class, 'update']);
     Route::get('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'index']);
     Route::post('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'store']);
     Route::put('/admin/service-opening-windows/{serviceOpeningWindow}', [ServiceOpeningWindowController::class, 'update']);
