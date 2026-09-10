@@ -31,6 +31,8 @@ Contas com `must_change_password=true` recebem um JWT limitado: podem consultar 
 
 `php artisan test`, `vendor/bin/pint --test`, `cd frontend && npm run lint`, `npx tsc --noEmit` e `npm run build`.
 
+O workflow versionado em `.github/workflows/ci.yml` executa testes PHP isolados, Pint, TypeScript e build com Node 20 em pushes e pull requests. Pint e o lint completo estão registrados como baselines não bloqueantes até que os erros históricos sejam removidos; não devem ser interpretados como aprovação de formatação ou lint.
+
 ## Perfis e estrutura
 
 `student` acessa seus requerimentos; `coordenacao` acessa o curso autorizado; `cradt` e `admin` atendem os requerimentos permitidos. `staff` é técnico e não recebe acesso acadêmico automaticamente. Seeders usam dados fictícios em domínio `.test`.
