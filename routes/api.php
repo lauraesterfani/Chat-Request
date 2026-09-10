@@ -12,6 +12,7 @@ use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ResponseTemplateController;
+use App\Http\Controllers\SatisfactionResponseController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\ServiceOpeningWindowController;
 use App\Http\Controllers\SlaPolicyController;
@@ -150,6 +151,11 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->prefix('reques
     Route::get('/', [MessageController::class, 'index']);
     Route::post('/', [MessageController::class, 'store']);
     Route::post('/read', [MessageController::class, 'markRead']);
+});
+
+Route::middleware(['auth:api', 'password.changed'])->group(function () {
+    Route::get('/requests/{id}/satisfaction', [SatisfactionResponseController::class, 'show']);
+    Route::post('/requests/{id}/satisfaction', [SatisfactionResponseController::class, 'store']);
 });
 
 Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,cradt'])->group(function () {
