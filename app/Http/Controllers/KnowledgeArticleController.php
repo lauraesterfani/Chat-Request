@@ -24,7 +24,12 @@ class KnowledgeArticleController extends Controller
 
     public function store(Request $request)
     {
-        return response()->json(KnowledgeArticle::create($this->data($request) + ['updated_by' => auth('staff_admins')->id()]), 201);
+        $data = $this->data($request) + ['updated_by' => auth('staff_admins')->id()];
+        if ($data['status'] === 'published') {
+            $data['published_at'] = now();
+        }
+
+        return response()->json(KnowledgeArticle::create($data), 201);
     }
 
     public function update(Request $request, KnowledgeArticle $knowledgeArticle)

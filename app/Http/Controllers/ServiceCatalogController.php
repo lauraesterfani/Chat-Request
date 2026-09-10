@@ -28,7 +28,11 @@ class ServiceCatalogController extends Controller
 
     public function store(Request $request)
     {
-        $entry = ServiceCatalogEntry::create($this->validated($request) + ['updated_by' => auth('staff_admins')->id()]);
+        $data = $this->validated($request) + ['updated_by' => auth('staff_admins')->id()];
+        if ($data['status'] === 'published') {
+            $data['published_at'] = now();
+        }
+        $entry = ServiceCatalogEntry::create($data);
 
         return response()->json($entry->load('typeRequest:id,name'), 201);
     }

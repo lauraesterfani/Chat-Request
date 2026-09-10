@@ -25,4 +25,11 @@ class KnowledgeArticleTest extends TestCase
         $created = $this->actingAs($admin, 'staff_admins')->postJson('/api/admin/knowledge-articles', ['title' => 'Rascunho', 'summary' => 'Resumo fictício', 'content' => 'Conteúdo fictício', 'audience' => 'public', 'status' => 'draft'])->assertCreated();
         $this->actingAs($admin, 'staff_admins')->putJson('/api/admin/knowledge-articles/'.$created->json('id'), ['title' => 'Rascunho', 'summary' => 'Resumo fictício', 'content' => 'Conteúdo fictício', 'audience' => 'public', 'status' => 'published'])->assertOk()->assertJsonPath('status', 'published');
     }
+
+    public function test_publishing_an_article_records_publication_time(): void
+    {
+        $admin = StaffAdmin::create(['name' => 'Admin publicação', 'email' => 'article-published@example.test', 'cpf' => '90000007772', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        $response = $this->actingAs($admin, 'staff_admins')->postJson('/api/admin/knowledge-articles', ['title' => 'Publicação', 'summary' => 'Resumo público', 'content' => 'Conteúdo público', 'audience' => 'public', 'status' => 'published'])->assertCreated()->assertJsonPath('status', 'published');
+        $this->assertNotNull($response->json('published_at'));
+    }
 }
