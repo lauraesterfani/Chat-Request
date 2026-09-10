@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\FormSchemaController;
+use App\Http\Controllers\KnowledgeArticleController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\NotificationController;
@@ -36,6 +37,7 @@ Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/type-requests', [TypeRequestController::class, 'index']);
 Route::get('/service-catalog', [ServiceCatalogController::class, 'index']);
+Route::get('/knowledge-articles', [KnowledgeArticleController::class, 'index']);
 Route::get('/type-requests/{typeId}/form', [FormSchemaController::class, 'published']);
 
 /*
@@ -83,6 +85,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
 });
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::post('/admin/knowledge-articles', [KnowledgeArticleController::class, 'store']);
     Route::get('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'index']);
     Route::post('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'store']);
     Route::put('/admin/service-opening-windows/{serviceOpeningWindow}', [ServiceOpeningWindowController::class, 'update']);
