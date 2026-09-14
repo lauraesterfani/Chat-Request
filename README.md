@@ -56,3 +56,7 @@ Políticas de SLA começam como rascunho e só podem ser ativadas por administra
 ## Fase 6 — Notificações (núcleo implementado)
 
 Notificações internas idempotentes são criadas para mensagens públicas da equipe e mudanças de status. A central usa `GET /api/notifications`, contador em `GET /api/notifications/count`, leitura individual em `POST /api/notifications/{id}/read`, leitura em lote em `POST /api/notifications/read-all` e preferências em `GET/PUT /api/notification-preferences`. O componente de sino faz polling leve e respeita o destinatário autenticado. E-mail é enfileirado apenas quando o usuário habilita a categoria; o transporte local/teste deve ser usado até haver SMTP homologado. WhatsApp, SMS, push e campanhas estão fora do escopo.
+
+## Fase 11 — Catálogo e orientações públicas
+
+A página pública [`/servicos`](frontend/app/servicos/page.tsx) consulta `GET /api/service-catalog` e `GET /api/knowledge-articles`. Ela mostra somente conteúdos publicados pelo back-end, permite busca textual e filtro por categoria, diferencia atendimento digital de orientação para canal externo e preserva estados explícitos de carregamento, erro e lista vazia. As informações são conteúdo editorial sujeito à revisão/homologação institucional; a página não promete protocolo, prazo ou regra acadêmica que não tenham sido publicados e aprovados.

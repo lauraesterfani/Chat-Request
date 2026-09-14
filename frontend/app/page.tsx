@@ -19,6 +19,7 @@ export default function LandingPage() {
                 <div className="hidden md:flex items-center gap-10 text-sm font-medium text-gray-500">
                     <Link href="#" className="text-[#15803d] font-semibold">Início</Link>
                     <Link href="#como-funciona" className="hover:text-[#15803d] transition-colors">Como funciona</Link>
+                    <Link href="/servicos" className="hover:text-[#15803d] transition-colors">Serviços</Link>
                     <Link href="#cradt" className="hover:text-[#15803d] transition-colors">Acesso CRADT</Link>
                 </div>
 
@@ -59,8 +60,8 @@ export default function LandingPage() {
                         <Link href="/login" className="bg-[#15803d] text-white text-base font-semibold px-8 py-3 rounded-full hover:bg-[#166534] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                             Acessar conta
                         </Link>
-                        <Link href="#como-funciona" className="border border-[#15803d] text-[#15803d] text-base font-semibold px-8 py-3 rounded-full hover:bg-[#f0fdf4] transition-colors">
-                            Saiba mais
+                        <Link href="/servicos" className="border border-[#15803d] text-[#15803d] text-base font-semibold px-8 py-3 rounded-full hover:bg-[#f0fdf4] transition-colors">
+                            Ver serviços
                         </Link>
                     </div>
                 </div>
@@ -182,6 +183,7 @@ export default function LandingPage() {
                                 <li><Link href="/login" className="hover:text-[#15803d] transition-colors">Login Aluno</Link></li>
                                 <li><Link href="/login" className="hover:text-[#15803d] transition-colors">Login do aluno</Link></li>
                                 <li><Link href="#como-funciona" className="hover:text-[#15803d] transition-colors">Funcionalidades</Link></li>
+                                <li><Link href="/servicos" className="hover:text-[#15803d] transition-colors">Serviços e orientações</Link></li>
                             </ul>
                         </div>
 

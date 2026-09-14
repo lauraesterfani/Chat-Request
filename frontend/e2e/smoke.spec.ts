@@ -23,4 +23,27 @@ test.describe("smoke público do Chat Request", () => {
     await page.locator('button[type="submit"]').click();
     await expect(page.locator("body")).toContainText(/inválid|incorret|erro|credencial/i);
   });
+
+  test("catálogo público mostra serviços e orientações publicados", async ({ page }) => {
+    await page.route("**/api/service-catalog", async (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([{
+        id: "service-1", name: "Declaração de matrícula", description: "Solicite sua declaração.", category: "Documentos", audience: "Estudantes", channel: "digital", channel_instructions: null, responsible_sector: "CRADT", documentation: { required: false, instructions: null },
+      }]),
+    }));
+    await page.route("**/api/knowledge-articles", async (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([{
+        id: "article-1", title: "Como acompanhar", summary: "Consulte o andamento do pedido.", content: "Acompanhe pelo menu Meus pedidos.", category: "Acompanhamento", source_reference: null, published_at: "2026-09-12T12:00:00Z",
+      }]),
+    }));
+
+    await page.goto("/servicos");
+    await expect(page.getByRole("heading", { name: "Catálogo de serviços" })).toBeVisible();
+    await expect(page.getByText("Declaração de matrícula")).toBeVisible();
+    await expect(page.getByText("Como acompanhar")).toBeVisible();
+    await page.getByRole("textbox", { name: "Buscar serviços e orientações" }).fill("declaração");
+    await expect(page.getByText("Declaração de matrícula")).toBeVisible();
+    await expect(page.getByText("Como acompanhar")).not.toBeVisible();
+  });
 });
