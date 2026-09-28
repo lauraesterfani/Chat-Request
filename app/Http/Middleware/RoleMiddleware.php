@@ -14,25 +14,18 @@ class RoleMiddleware
         if (! $request->user()) {
             return response()->json([
                 'debug_error' => 'Usuario nao encontrado no request',
-                'message' => 'Não autenticado.'
+                'message' => 'Não autenticado.',
             ], 401);
         }
 
         // 2. Prepara papéis
         $requiredRoles = explode(',', $roles);
-        $userRole = $request->user()->role; 
+        $userRole = $request->user()->role;
 
         // 3. Verifica permissão
         if (! in_array($userRole, $requiredRoles)) {
-            // AQUI ESTÁ O SEGREDO: Vamos mostrar no erro quem você é!
             return response()->json([
                 'message' => 'Acesso negado.',
-                'debug_info' => [
-                    'seu_papel_no_banco' => $userRole,
-                    'papeis_exigidos_pela_rota' => $requiredRoles,
-                    'id_do_usuario' => $request->user()->id,
-                    'nome_do_usuario' => $request->user()->name
-                ]
             ], 403);
         }
 
