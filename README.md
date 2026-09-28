@@ -19,7 +19,7 @@ php artisan migrate --seed
 php artisan serve
 ```
 
-Em outro terminal: `cd frontend && npm install && npm run dev`. Para SQLite, crie `database/database.sqlite` e use `DB_CONNECTION=sqlite`; configure `DB_*` para MySQL. Nunca use `migrate:fresh` em banco desconhecido.
+Em outro terminal: `cd frontend && cp .env.example .env.local && npm install && npm run dev`. Para SQLite, crie `database/database.sqlite` e use `DB_CONNECTION=sqlite`; configure `DB_*` para MySQL. `LARAVEL_API_ORIGIN` em `frontend/.env.local` define a origem privada do proxy `/api` e `/storage`; em desenvolvimento ela pode permanecer em `http://127.0.0.1:8000`. Nunca use `migrate:fresh` em banco desconhecido.
 
 ## Acesso de alunos
 

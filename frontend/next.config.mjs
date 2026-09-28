@@ -1,14 +1,16 @@
+const laravelOrigin = (process.env.LARAVEL_API_ORIGIN || "http://127.0.0.1:8000").replace(/\/+$/, "");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*', // Redireciona para o Laravel dele
+        destination: `${laravelOrigin}/api/:path*`,
       },
       {
         source: '/storage/:path*',
-        destination: 'http://127.0.0.1:8000/storage/:path*', // Redireciona as imagens/PDFs
+        destination: `${laravelOrigin}/storage/:path*`,
       },
     ];
   },
