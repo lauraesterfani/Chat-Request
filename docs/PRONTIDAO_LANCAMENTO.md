@@ -21,6 +21,7 @@
 - Executar testes de regressão, revisão de segurança e validação visual em ambiente equivalente ao de produção.
 - Revisar migrations e realizar backup antes de qualquer implantação.
 - Executar o runbook de recuperação em ambiente isolado e obter responsáveis/limites homologados.
+- Para identidade institucional, usar o contrato desativado documentado em `docs/INTEGRACAO_IDENTIDADE_INSTITUCIONAL.md`; não habilitar a flag sem adaptador, escopos e aprovação formal.
 
 Este documento não autoriza deploy nem declara conformidade institucional.
 
