@@ -49,7 +49,7 @@ export default function StudentLoginPage() {
         router.push(result.mustChangePassword ? '/change-password' : '/me');
       }
 
-    } catch (err: any) {
+    } catch {
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setLoading(false);
@@ -156,12 +156,13 @@ export default function StudentLoginPage() {
 
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Matrícula</label>
+              <label htmlFor="matricula" className="block text-sm font-semibold text-slate-700 mb-2">Matrícula</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
                   <User size={20} />
                 </span>
                 <input
+                  id="matricula"
                   type="text"
                   value={matricula}
                   onChange={(e) => setMatricula(e.target.value.toUpperCase())}
@@ -180,7 +181,7 @@ export default function StudentLoginPage() {
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-semibold text-slate-700">Senha</label>
+                <label htmlFor="password" className="text-sm font-semibold text-slate-700">Senha</label>
                 <Link href="#" className="text-sm font-medium text-[#15803d] hover:underline">Esqueceu?</Link>
               </div>
               <div className="relative">
@@ -188,6 +189,7 @@ export default function StudentLoginPage() {
                   <Lock size={20} />
                 </span>
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -197,6 +199,8 @@ export default function StudentLoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600"
                 >

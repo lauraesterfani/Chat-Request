@@ -75,6 +75,7 @@ export default function LandingPage() {
                             src="/mascote.png"
                             alt="Estudante Chat Request"
                             fill
+                            sizes="(min-width: 768px) 450px, 100vw"
                             className="object-contain drop-shadow-2xl"
                             priority
                         />

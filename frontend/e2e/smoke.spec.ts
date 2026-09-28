@@ -29,8 +29,8 @@ test.describe("smoke público do Chat Request", () => {
       body: JSON.stringify({ message: "Credenciais inválidas." }),
     }));
     await page.goto("/login");
-    const email = page.locator('input').nth(0);
-    const password = page.locator('input[type="password"]').first();
+    const email = page.getByLabel("Matrícula");
+    const password = page.getByLabel("Senha", { exact: true });
     await expect(email).toBeVisible();
     await email.fill("qa.invalid@example.test");
     await password.fill("senha-invalida");
