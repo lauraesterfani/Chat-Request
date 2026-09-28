@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::get('/', fn () => response()->json(['api' => 'Online', 'status' => 'OK']));
+Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/login/staff', [AuthController::class, 'loginStaff']);

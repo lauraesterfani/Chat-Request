@@ -4,7 +4,7 @@ Este roteiro serve para desenvolvimento e homologação com dados fictícios. El
 
 ## Verificação de saúde
 
-1. Confirme que o back-end responde em `GET /api/` e que o front abre sem erro de build.
+1. Confirme que o back-end responde em `GET /api/health` e que o front abre sem erro de build. A resposta é somente `{"status":"ok"}` e não expõe configuração, credenciais ou dados acadêmicos.
 2. Execute `php artisan test` e registre a versão do commit validado.
 3. Confirme migrations pendentes com `php artisan migrate:status`. Em ambiente compartilhado, revise o alvo e faça backup aprovado antes de executar `php artisan migrate`.
 4. Confira os logs sem copiar tokens, CPF, documentos ou conteúdo de mensagens para relatórios.
