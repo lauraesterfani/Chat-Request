@@ -21,6 +21,7 @@ use App\Http\Controllers\StaffAccessScopeController;
 use App\Http\Controllers\StaffAdminController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TypeRequestController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,7 +30,29 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::get('/', fn () => response()->json(['api' => 'Online', 'status' => 'OK']));
-Route::get('/health', fn () => response()->json(['status' => 'ok']));
+Route::get('/health', function () {
+    if (request()->boolean('detailed')) {
+        $dbOk = true;
+        try { DB::connection()->getPdo(); } catch (\Throwable $e) { $dbOk = false; }
+        $pendingJobs = 0;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+                $pendingJobs = DB::table('jobs')->count();
+            }
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'status' => $dbOk ? 'ok' : 'degraded',
+            'checks' => [
+                'database' => $dbOk,
+                'queue_jobs' => ['pending' => $pendingJobs],
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ], $dbOk ? 200 : 503);
+    }
+
+    return response()->json(['status' => 'ok']);
+});
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/login/staff', [AuthController::class, 'loginStaff']);

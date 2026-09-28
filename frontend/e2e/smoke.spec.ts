@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 test.describe("smoke público do Chat Request", () => {
   test("página inicial renderiza sem erro de console ou rede", async ({ page }) => {
@@ -20,6 +21,16 @@ test.describe("smoke público do Chat Request", () => {
     await expect(skipLink).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.locator("#conteudo-principal")).toBeFocused();
+  });
+
+  test("páginas públicas não possuem violações críticas de acessibilidade", async ({ page }) => {
+    await page.goto("/");
+    const homeResults = await new AxeBuilder({ page }).analyze();
+    expect(homeResults.violations).toEqual([]);
+
+    await page.goto("/login");
+    const loginResults = await new AxeBuilder({ page }).analyze();
+    expect(loginResults.violations).toEqual([]);
   });
 
   test("login exibe validação para credenciais inválidas", async ({ page }) => {
