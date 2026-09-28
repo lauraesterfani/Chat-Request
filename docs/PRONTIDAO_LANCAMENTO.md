@@ -10,6 +10,7 @@
 | Escopos e auditoria | implementado localmente | testes de escopo e auditoria |
 | Métricas e catálogo | inicial | endpoints e testes locais |
 | Operação local e homologação | documentada | `docs/RUNBOOK_OPERACAO_LOCAL.md` |
+| Aceite integrado | documentado | `docs/ROTEIRO_HOMOLOGACAO_INTEGRADA.md` |
 | Produção institucional | não autorizado | depende de homologação do IFPE |
 
 ## Portões antes de produção
