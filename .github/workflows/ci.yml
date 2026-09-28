@@ -47,3 +47,7 @@ jobs:
         run: npm run lint
       - name: Production build
         run: npm run build
+      - name: Install Chromium for E2E
+        run: npx playwright install --with-deps chromium
+      - name: Run browser regression
+        run: npx playwright test

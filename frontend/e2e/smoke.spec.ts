@@ -23,6 +23,11 @@ test.describe("smoke público do Chat Request", () => {
   });
 
   test("login exibe validação para credenciais inválidas", async ({ page }) => {
+    await page.route("**/api/login", async (route) => route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "Credenciais inválidas." }),
+    }));
     await page.goto("/login");
     const email = page.locator('input').nth(0);
     const password = page.locator('input[type="password"]').first();
