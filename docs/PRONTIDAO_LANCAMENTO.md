@@ -11,6 +11,7 @@
 | Métricas e catálogo | inicial | endpoints e testes locais |
 | Operação local e homologação | documentada | `docs/RUNBOOK_OPERACAO_LOCAL.md` |
 | Aceite integrado | documentado | `docs/ROTEIRO_HOMOLOGACAO_INTEGRADA.md` |
+| Guias de piloto | documentados | `docs/GUIA_ALUNO.md`, `docs/GUIA_ATENDENTE.md`, `docs/GUIA_COORDENACAO_ADMIN.md` e `docs/GUIA_OPERACAO_TECNICA.md` |
 | Produção institucional | não autorizado | depende de homologação do IFPE |
 
 ## Portões antes de produção
