@@ -57,3 +57,39 @@ Catálogo público governado, janelas de abertura, base de conhecimento, acessib
 ## Fase 12 — Integrações, homologação e lançamento assistido (preparação técnica)
 
 Foram preparados adaptador de identidade institucional desativado por padrão, health check, CI de regressão, roteiro de homologação, runbook, guias de piloto e matriz GO/NO-GO. Não há integração institucional real, homologação do IFPE, provisionamento de produção ou autorização de lançamento nesta etapa.
+
+---
+
+## Balanço técnico das Fases 6–12 e pendências pré-produção
+
+### O que foi implementado tecnicamente
+
+| Área | Implementado |
+|------|-------------|
+| **Notificações (F6)** | Central interna, contador, leitura individual e em massa, preferências por categoria, job de e-mail com idempotência |
+| **Formulários dinâmicos (F7)** | Schemas versionados por serviço, validação server-side, rascunhos com lock otimista, prevenção de duplicidade |
+| **Permissões por escopo (F8)** | Escopos explícitos por campus/setor em requerimentos, documentos e auditoria; middleware `role` por perfil |
+| **Auditoria e dados (F9)** | Trilha de auditoria com metadados protegidos, controles de acesso granulares, documentação de proteção de dados |
+| **Indicadores e satisfação (F10)** | Métricas agregadas por escopo, coleta voluntária de satisfação, dicionário de métricas no endpoint `/metrics` |
+| **Catálogo e calendários (F11)** | Catálogo governado com janelas de abertura, base de conhecimento, pages responsivas, acessibilidade inicial |
+| **Infraestrutura e docs (F12)** | Health check com verificação de banco e fila (`GET /api/health`), `docs/API.md`, `docs/RUNBOOK.md`, adaptador de IdP desativado |
+
+### O que ainda falta antes de ir a produção
+
+As pendências abaixo **não são omissões técnicas** — são decisões institucionais ou contratuais que o IFPE precisa formalizar:
+
+| Pendência | Detalhes |
+|-----------|---------|
+| **Homologação institucional** | Nenhuma fase foi validada pelo IFPE em ambiente real. É necessário ciclo formal de UAT com usuários reais (alunos e servidores CRADT). |
+| **SMTP real** | O canal de e-mail permanece em modo `log`. Exige contratação de relay SMTP (ex.: Postfix institucional, SendGrid ou similar) e configuração das variáveis `MAIL_*`. |
+| **IdP institucional** | `INSTITUTIONAL_IDENTITY_ENABLED=false`. Requer contrato, documentação do emissor e testes de integração com o provedor de identidade do IFPE. |
+| **Integração SUAP** | Não implementada. Depende de API disponível, credenciais e aprovação da TI do IFPE. |
+| **Matriz de campi e cursos** | Os escopos de autorização foram implementados, mas a matriz real (quais setores, cursos e campi existem) precisa ser fornecida e cadastrada pela gestão. |
+| **Regras de transição de status** | O fluxo de encaminhamento e devolução está implementado, mas as regras institucionais específicas (quem aprova o quê, em qual ordem) precisam ser validadas com a CRADT. |
+| **Políticas de SLA** | O mecanismo existe, mas prazos reais (por tipo de requerimento) precisam ser definidos e ativados com a gestão. |
+| **Calendário acadêmico** | Janelas de abertura de serviço estão implementadas, mas os calendários oficiais por curso/período ainda não foram configurados. |
+| **Publicação do catálogo de serviços** | Os formulários dinâmicos e o catálogo existem, mas nenhum serviço real foi configurado e publicado ainda. |
+| **Servidor de produção** | Não há provisionamento de infraestrutura de produção (servidor, banco, proxy reverso, HTTPS, backups automáticos). |
+| **Política de retenção e LGPD** | Descrita em documentação, mas não há definição formal de prazos de retenção, responsável pelo DPO ou procedimento de exclusão de dados. |
+| **Revisão completa de acessibilidade** | Acessibilidade básica implementada, mas não há auditoria WCAG 2.1 AA completa nem testes com tecnologia assistiva. |
+| **Autorização de lançamento (GO/NO-GO)** | Nenhuma das fases acima foi homologada. A matriz GO/NO-GO não pode ser considerada aprovada sem a validação institucional formal. |
