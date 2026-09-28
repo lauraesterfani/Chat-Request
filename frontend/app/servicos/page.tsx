@@ -64,7 +64,7 @@ export default function ServicesPage() {
   }, [articles, query]);
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main id="conteudo-principal" tabIndex={-1} className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
           <Link href="/" className="text-xl font-bold tracking-tight text-emerald-800">Chat Request</Link>

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function LandingPage() {
     return (
-        <div className="min-h-screen bg-white font-sans selection:bg-green-100">
+        <main id="conteudo-principal" tabIndex={-1} className="min-h-screen bg-white font-sans selection:bg-green-100">
 
             {/* =========================================
           NAVBAR
@@ -46,7 +46,7 @@ export default function LandingPage() {
                         Simplifique sua vida acadêmica
                     </div>
 
-                    <h1 className="text-5xl md:text-[3.5rem] leading-[1.1] font-bold text-[#0f172a]">
+                    <h1 className="text-4xl sm:text-5xl md:text-[3.5rem] leading-[1.1] font-bold text-[#0f172a]">
                         Gerencie seus <br />
                         <span className="text-[#15803d]">Requerimentos</span> <br />
                         de forma fácil.
@@ -68,9 +68,9 @@ export default function LandingPage() {
 
                 {/* Imagem */}
                 <div className="w-full md:w-1/2 relative flex justify-center mt-16 md:mt-0">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#dcfce7] rounded-full blur-3xl -z-10 opacity-60"></div>
+                    <div className="absolute top-1/2 left-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#dcfce7] opacity-60 blur-3xl sm:h-[400px] sm:w-[400px] -z-10"></div>
 
-                    <div className="relative w-[450px] h-[450px]">
+                    <div className="relative h-[320px] w-full max-w-[450px] sm:h-[400px] md:h-[450px]">
                         <Image
                             src="/mascote.png"
                             alt="Estudante Chat Request"
@@ -215,6 +215,6 @@ export default function LandingPage() {
                 </div>
             </footer>
 
-        </div>
+        </main>
     );
 }

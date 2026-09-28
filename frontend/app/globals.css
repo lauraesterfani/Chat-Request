@@ -27,6 +27,42 @@ body {
   font-family: 'Poppins', sans-serif;
 }
 
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 200;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: #004d40;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font-weight: 700;
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 3px solid #047857;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .bg-dark-green {
   background-color: #004d40;
 }

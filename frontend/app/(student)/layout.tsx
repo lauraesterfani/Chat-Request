@@ -79,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* ❓ BOTÃO DE AJUDA (somente aluno) */}
             {!isAdminLayout && (
               <button
+                aria-label="Abrir orientações de uso"
                 onClick={() => setIsHelpOpen(true)}
                 className="p-2 text-slate-400 hover:text-white transition-colors"
                 title="Como usar o sistema"
@@ -90,6 +91,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Menu do Usuário */}
             <div className="relative" ref={dropdownRef}>
               <button
+                aria-label="Abrir menu da conta"
+                aria-expanded={open}
                 onClick={() => setOpen(!open)}
                 className="flex items-center gap-2 font-bold text-lg group"
               >
@@ -123,13 +126,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </header>
 
       {/* 🔹 CONTEÚDO */}
-      <main className="max-w-7xl mx-auto p-4 sm:p-6">{children}</main>
+      <main id="conteudo-principal" tabIndex={-1} className="max-w-7xl mx-auto p-4 sm:p-6">{children}</main>
 
       {/* 🔹 MODAL DE AJUDA (somente aluno) */}
       {!isAdminLayout && isHelpOpen && (
         <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="max-w-xs w-full text-center">
             <button
+              aria-label="Fechar orientações"
               onClick={() => setIsHelpOpen(false)}
               className="absolute top-10 right-10 text-slate-400 hover:text-black transition-colors"
             >

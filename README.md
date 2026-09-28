@@ -60,3 +60,5 @@ Notificações internas idempotentes são criadas para mensagens públicas da eq
 ## Fase 11 — Catálogo e orientações públicas
 
 A página pública [`/servicos`](frontend/app/servicos/page.tsx) consulta `GET /api/service-catalog` e `GET /api/knowledge-articles`. Ela mostra somente conteúdos publicados pelo back-end, permite busca textual e filtro por categoria, diferencia atendimento digital de orientação para canal externo e preserva estados explícitos de carregamento, erro e lista vazia. As informações são conteúdo editorial sujeito à revisão/homologação institucional; a página não promete protocolo, prazo ou regra acadêmica que não tenham sido publicados e aprovados.
+
+Os fluxos público, catálogo e área autenticada receberam atalho de teclado para conteúdo principal, foco visível, preferência por movimento reduzido e correção de reflow da página inicial em telas de 320 px. Essa cobertura é uma melhoria técnica localizada e não certifica conformidade WCAG institucional completa.

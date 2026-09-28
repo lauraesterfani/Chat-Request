@@ -18,11 +18,11 @@ export default function RootLayout({
   return (
     <html lang="pt-br">
       <body className={inter.className}>
-        {/* 2. Use o <Providers> para "envolver" a aplicação */}
         <Providers>
+          <a className="skip-link" href="#conteudo-principal">Pular para o conteúdo principal</a>
           {children}
         </Providers>
       </body>
     </html>
   );
-} 
+}

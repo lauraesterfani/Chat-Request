@@ -13,6 +13,15 @@ test.describe("smoke público do Chat Request", () => {
     expect(failedRequests, failedRequests.join("\n")).toEqual([]);
   });
 
+  test("atalho de teclado permite pular ao conteúdo principal", async ({ page }) => {
+    await page.goto("/");
+    await page.keyboard.press("Tab");
+    const skipLink = page.getByRole("link", { name: "Pular para o conteúdo principal" });
+    await expect(skipLink).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#conteudo-principal")).toBeFocused();
+  });
+
   test("login exibe validação para credenciais inválidas", async ({ page }) => {
     await page.goto("/login");
     const email = page.locator('input').nth(0);
