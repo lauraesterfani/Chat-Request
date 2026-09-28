@@ -3,9 +3,179 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../../context/AuthContext';
-import { FileText, ExternalLink, Loader2, ChevronLeft } from 'lucide-react';
+import { FileText, ExternalLink, Loader2, ChevronLeft, Star, Send, CheckCircle2 } from 'lucide-react';
 import RequestChat from '../../../../../components/RequestChat';
 import RequestTimeline from '../../../../../components/RequestTimeline';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tipos
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SatisfactionData {
+  id?: number | string;
+  rating: number;
+  comment?: string | null;
+  created_at?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Card de Pesquisa de Satisfação
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SatisfactionCard({ requestId, token }: { requestId: string; token: string | null }) {
+  // undefined = ainda carregando; null = não respondeu; SatisfactionData = já respondeu
+  const [existing, setExisting] = useState<SatisfactionData | null | undefined>(undefined);
+  const [hovered, setHovered] = useState(0);
+  const [selected, setSelected] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/requests/${requestId}/satisfaction`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: SatisfactionData | null) => {
+        setExisting(data ?? null);
+        if (data?.rating) {
+          setSelected(data.rating);
+          setComment(data.comment ?? '');
+          setSubmitted(true);
+        }
+      })
+      .catch(() => setExisting(null));
+  }, [requestId, token]);
+
+  const handleSubmit = async () => {
+    if (!selected || !token) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/requests/${requestId}/satisfaction`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: selected, comment: comment.trim() || undefined }),
+      });
+      if (!res.ok) throw new Error('Erro ao enviar avaliação.');
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.message ?? 'Erro ao enviar avaliação.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Aguarda confirmação do GET antes de renderizar
+  if (existing === undefined) return null;
+
+  const starLabels = ['', 'Péssimo', 'Ruim', 'Regular', 'Bom', 'Excelente'];
+  const active = hovered || selected;
+
+  return (
+    <section className="mt-8">
+      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">
+        Pesquisa de Satisfação
+      </h3>
+
+      <div className="bg-white border border-emerald-100 rounded-2xl p-6 shadow-sm">
+        {submitted ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <CheckCircle2 size={40} className="text-emerald-600" />
+            <p className="text-emerald-800 font-semibold text-sm">
+              Obrigado pelo seu feedback!
+            </p>
+            {selected > 0 && (
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star
+                    key={s}
+                    size={20}
+                    className={s <= selected ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 mb-4 text-center">
+              Como você avalia o atendimento deste requerimento?
+            </p>
+
+            {/* Estrelas clicáveis */}
+            <div
+              className="flex justify-center gap-2 mb-2"
+              onMouseLeave={() => setHovered(0)}
+            >
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  aria-label={`${s} estrela${s > 1 ? 's' : ''} – ${starLabels[s]}`}
+                  onClick={() => setSelected(s)}
+                  onMouseEnter={() => setHovered(s)}
+                  className="transition-transform hover:scale-110 focus:outline-none"
+                >
+                  <Star
+                    size={32}
+                    className={
+                      s <= active
+                        ? 'text-amber-400 fill-amber-400'
+                        : 'text-gray-300 fill-gray-100'
+                    }
+                  />
+                </button>
+              ))}
+            </div>
+
+            {active > 0 && (
+              <p className="text-center text-xs font-semibold text-amber-600 mb-4">
+                {starLabels[active]}
+              </p>
+            )}
+
+            {/* Comentário opcional */}
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value.slice(0, 1000))}
+              placeholder="Comentário opcional (máx. 1000 caracteres)"
+              rows={3}
+              className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+            />
+            <p className="text-right text-[10px] text-gray-400 mt-1 mb-3">
+              {comment.length}/1000
+            </p>
+
+            {error && (
+              <p className="text-sm text-red-500 text-center mb-3">{error}</p>
+            )}
+
+            <button
+              type="button"
+              disabled={!selected || submitting}
+              onClick={handleSubmit}
+              className="w-full flex items-center justify-center gap-2 bg-[#004d40] hover:bg-[#108542] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl py-2.5 text-sm font-bold transition"
+            >
+              {submitting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
+              {submitting ? 'Enviando...' : 'Enviar Avaliação'}
+            </button>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Página Principal
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function RequestViewPage() {
   const { token } = useAuth();
@@ -68,10 +238,12 @@ export default function RequestViewPage() {
     );
   }
 
+  const isFinished = request.status === 'completed' || request.status === 'canceled';
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] py-10 px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
-        
+
         {/* Header Verde Petróleo */}
         <div className="bg-[#004d40] p-6 text-white flex justify-between items-center">
           <button onClick={() => router.back()} className="p-2 hover:bg-white/10 rounded-full transition">
@@ -84,7 +256,7 @@ export default function RequestViewPage() {
         </div>
 
         <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-          
+
           {/* Conteúdo Principal */}
           <div className="md:col-span-2 space-y-8">
             <section>
@@ -140,6 +312,11 @@ export default function RequestViewPage() {
 
             <RequestChat requestId={String(params.id)} status={request.status} />
             <RequestTimeline requestId={String(params.id)} />
+
+            {/* Pesquisa de Satisfação – exibida apenas em requerimentos finalizados */}
+            {isFinished && (
+              <SatisfactionCard requestId={String(params.id)} token={token} />
+            )}
           </div>
 
           {/* Sidebar Lateral */}
