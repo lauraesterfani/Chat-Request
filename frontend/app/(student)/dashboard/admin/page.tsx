@@ -6,7 +6,8 @@ import Link from "next/link";
 import { 
   Users, FileText, LayoutDashboard, 
   AlertTriangle, Clock, Loader2, 
-  FileType, ShieldCheck, MessageSquareText, X
+  FileType, ShieldCheck, MessageSquareText, X,
+  BarChart3, BookOpen, ClipboardCheck
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -185,6 +186,33 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="text-lg font-bold text-gray-800">Respostas pré-configuradas</h3>
                   <p className="text-sm text-gray-400 mt-1">Padronizar textos usados no atendimento.</p>
+                </Link>
+                <Link href="/dashboard/admin/audit" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <ClipboardCheck size={24} />
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Auditoria</h3>
+                  <p className="text-sm text-gray-400 mt-1">Registros de ações do sistema.</p>
+                </Link>
+                <Link href="/dashboard/admin/metrics" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <BarChart3 size={24} />
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Métricas</h3>
+                  <p className="text-sm text-gray-400 mt-1">Visualizar estatísticas dos requerimentos.</p>
+                </Link>
+                <Link href="/dashboard/admin/catalog" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <BookOpen size={24} />
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Catálogo de Serviços</h3>
+                  <p className="text-sm text-gray-400 mt-1">Gerenciar serviços disponíveis para solicitação.</p>
                 </Link>
               </div>
             </div>
