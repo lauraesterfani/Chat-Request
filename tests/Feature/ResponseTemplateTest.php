@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\Request as RequestModel;
 use App\Models\ResponseTemplate;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
@@ -112,12 +113,14 @@ class ResponseTemplateTest extends TestCase
     public function test_inactive_templates_are_not_available_during_service(): void
     {
         $staff = $this->staff();
+        $staff->update(['role' => 'admin']);
         $type = $this->type('Segunda chamada');
         $active = $this->template($staff, $type, true, 'Disponível');
         $this->template($staff, $type, false, 'Indisponível');
 
+        $request = $this->requestFor($type);
         $this->actingAs($staff, 'staff_admins')
-            ->getJson("/api/response-templates/active?type_request_id={$type->id}")
+            ->getJson("/api/response-templates/active?request_id={$request->id}")
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.id', $active->id);
@@ -126,16 +129,52 @@ class ResponseTemplateTest extends TestCase
     public function test_active_templates_are_filtered_by_request_type(): void
     {
         $staff = $this->staff();
+        $staff->update(['role' => 'admin']);
         $firstType = $this->type('Mudança de turno');
         $secondType = $this->type('Reintegração');
         $matching = $this->template($staff, $firstType, true, 'Tipo correto');
         $this->template($staff, $secondType, true, 'Outro tipo');
 
+        $request = $this->requestFor($firstType);
         $this->actingAs($staff, 'staff_admins')
-            ->getJson("/api/response-templates/active?type_request_id={$firstType->id}")
+            ->getJson("/api/response-templates/active?request_id={$request->id}")
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.id', $matching->id);
+    }
+
+    public function test_active_templates_follow_the_current_sector_and_request_access(): void
+    {
+        $admin = $this->staff();
+        $admin->update(['role' => 'admin']);
+        $type = $this->type('Atendimento setorial');
+        $cradt = $this->template($admin, $type, true, 'Resposta CRADT');
+        $coordination = $this->template($admin, $type, true, 'Resposta coordenação');
+        $coordination->update(['sector' => 'COORDENACAO']);
+        $request = $this->requestFor($type);
+
+        $this->actingAs($admin, 'staff_admins')->getJson("/api/response-templates/active?request_id={$request->id}")
+            ->assertOk()->assertJsonCount(1)->assertJsonPath('0.id', $cradt->id);
+        $request->update(['responsible_sector' => 'COORDENACAO']);
+        $this->actingAs($admin, 'staff_admins')->getJson("/api/response-templates/active?request_id={$request->id}")
+            ->assertOk()->assertJsonCount(1)->assertJsonPath('0.id', $coordination->id);
+
+        $other = $this->staff();
+        $this->actingAs($other, 'staff_admins')->getJson("/api/response-templates/active?request_id={$request->id}")
+            ->assertForbidden();
+    }
+
+    public function test_coordination_cannot_create_or_read_cradt_templates(): void
+    {
+        $coordinator = $this->staff();
+        $coordinator->update(['role' => 'coordenacao']);
+        $type = $this->type('Serviço de teste');
+        $cradt = $this->template($coordinator, $type);
+
+        $this->actingAs($coordinator, 'staff_admins')->getJson("/api/response-templates/{$cradt->id}")->assertForbidden();
+        $this->actingAs($coordinator, 'staff_admins')->postJson('/api/response-templates', [
+            'title' => 'Outra área', 'content' => 'Texto de teste', 'sector' => 'CRADT', 'type_request_ids' => [$type->id],
+        ])->assertForbidden();
     }
 
     public function test_creation_fails_for_unknown_request_type(): void
@@ -212,5 +251,17 @@ class ResponseTemplateTest extends TestCase
         $template->typeRequests()->attach($type->id);
 
         return $template;
+    }
+
+    private function requestFor(TypeRequest $type): RequestModel
+    {
+        return RequestModel::create([
+            'user_id' => $this->student()->id,
+            'type_id' => $type->id,
+            'subject' => 'Assunto de teste',
+            'description' => 'Descrição de teste',
+            'protocol' => now()->format('Ymd').'-'.random_int(100000, 999999),
+            'responsible_sector' => 'CRADT',
+        ]);
     }
 }

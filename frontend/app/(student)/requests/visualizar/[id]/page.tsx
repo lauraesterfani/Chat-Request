@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../../context/AuthContext';
-import { FileText, ExternalLink, Loader2, ChevronLeft, Star, Send, CheckCircle2 } from 'lucide-react';
+import { Loader2, ChevronLeft, Star, Send, CheckCircle2 } from 'lucide-react';
 import RequestChat from '../../../../../components/RequestChat';
 import RequestTimeline from '../../../../../components/RequestTimeline';
+import RequestDocument from '../../../../../components/RequestDocument';
+import type { DocumentInfo } from '../../../../../components/RequestDocument';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos
@@ -280,30 +282,7 @@ export default function RequestViewPage() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ml-1">Documentos Anexados</h3>
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {request.documents.map((doc: any) => {
-                    const fileUrl = `/storage/${doc.path.replace("public/", "")}`;
-                    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
-                    return (
-                      <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/30 transition-all bg-white shadow-sm">
-                        {isImage ? (
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block cursor-zoom-in overflow-hidden rounded-xl bg-gray-50 border border-gray-100">
-                            <img src={fileUrl} alt={doc.name} className="w-full h-48 object-contain hover:scale-105 transition-transform duration-500" />
-                          </a>
-                        ) : (
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition cursor-pointer">
-                            <FileText size={32} className="text-emerald-600" />
-                            <span className="text-sm font-bold text-gray-500 uppercase tracking-tighter">Visualizar Documento PDF</span>
-                          </a>
-                        )}
-                        <div className="flex justify-between items-center px-1">
-                          <p className="text-sm font-bold text-gray-700 truncate max-w-[250px]" title={doc.name}>{doc.name}</p>
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline">
-                            ABRIR <ExternalLink size={14} />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {request.documents.map((doc: DocumentInfo) => <RequestDocument key={doc.id} requestId={String(params.id)} document={doc} />)}
                 </div>
               ) : (
                 <p className="text-sm text-gray-400 italic ml-1">Nenhum anexo encontrado.</p>

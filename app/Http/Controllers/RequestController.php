@@ -13,6 +13,7 @@ use App\Models\SlaPolicy;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
+use App\Services\FormSchemaValidator;
 use App\Services\NotificationService;
 use App\Services\RequestAccessService;
 use App\Services\ServiceAvailabilityService;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class RequestController extends Controller
@@ -162,6 +164,9 @@ class RequestController extends Controller
         if (! $request->filled('type_id') && $request->filled('type_request_id')) {
             $request->merge(['type_id' => $request->input('type_request_id')]);
         }
+        if (! $request->filled('idempotency_key') && $request->header('Idempotency-Key')) {
+            $request->merge(['idempotency_key' => $request->header('Idempotency-Key')]);
+        }
 
         $validated = $request->validate([
             'type_id' => ['required', 'uuid', 'exists:type_requests,id'],
@@ -176,13 +181,15 @@ class RequestController extends Controller
         ]);
 
         $documentIds = $validated['document_ids'] ?? [];
+        $idempotencyKey = $validated['idempotency_key'] ?? null;
+        $payloadHash = hash('sha256', json_encode([$validated['type_id'], $validated['subject'], $validated['description'], $validated['form_responses'] ?? [], $documentIds]));
         $student = Auth::guard('api')->user();
         if (! app(ServiceAvailabilityService::class)->isOpen($validated['type_id'], $student)) {
             return response()->json(['message' => 'Este serviço não está disponível para envio neste período. Seu rascunho foi preservado.'], 422);
         }
 
         try {
-            return DB::transaction(function () use ($request, $validated, $documentIds) {
+            return DB::transaction(function () use ($request, $validated, $documentIds, $idempotencyKey, $payloadHash) {
                 // Requerimentos são criados por alunos da tabela users. Um JWT
                 // antigo pode continuar no navegador depois de trocar/resetar o
                 // banco; não deixe esse ID inválido chegar à FK.
@@ -199,8 +206,6 @@ class RequestController extends Controller
                     ], 403);
                 }
 
-                $idempotencyKey = $validated['idempotency_key'] ?? $request->header('Idempotency-Key');
-                $payloadHash = hash('sha256', json_encode([$validated['type_id'], $validated['subject'], $validated['description'], $validated['form_responses'] ?? [], $documentIds]));
                 if ($idempotencyKey) {
                     $previous = RequestModel::where('submission_idempotency_key', $idempotencyKey)->first();
                     if ($previous) {
@@ -213,8 +218,30 @@ class RequestController extends Controller
                 }
 
                 $type = TypeRequest::findOrFail($validated['type_id']);
-                $schema = ! empty($validated['form_schema_version_id']) ? FormSchemaVersion::where('id', $validated['form_schema_version_id'])->where('type_request_id', $type->id)->where('status', 'published')->firstOrFail() : null;
+                $schema = FormSchemaVersion::where('type_request_id', $type->id)->where('status', 'published')->latest('version')->first();
+                if ($schema && ($validated['form_schema_version_id'] ?? null) !== $schema->id) {
+                    return response()->json([
+                        'message' => 'O formulário deste serviço mudou. Revise os dados antes de enviar.',
+                        'form_schema_version_id' => $schema->id,
+                    ], 409);
+                }
+                if (! $schema && ! empty($validated['form_schema_version_id'])) {
+                    return response()->json(['message' => 'Não existe formulário publicado para este serviço.'], 422);
+                }
                 $this->validateFormResponses($schema?->schema, $validated['form_responses'] ?? []);
+                $submissionDraft = null;
+                if (! empty($validated['draft_id'])) {
+                    $submissionDraft = RequestDraft::whereKey($validated['draft_id'])->lockForUpdate()->firstOrFail();
+                    if ($submissionDraft->user_id !== $user->id) {
+                        return response()->json(['message' => 'Este rascunho não pertence ao usuário autenticado.'], 403);
+                    }
+                    if ($submissionDraft->discarded_at || $submissionDraft->submitted_at) {
+                        return response()->json(['message' => 'Este rascunho não está mais disponível para envio.'], 409);
+                    }
+                    if ($submissionDraft->type_request_id !== $type->id || $submissionDraft->form_schema_version_id !== $schema?->id) {
+                        return response()->json(['message' => 'O serviço ou formulário do rascunho mudou. Revise antes de enviar.'], 409);
+                    }
+                }
                 $documents = Document::whereIn('id', $documentIds)
                     ->where('user_id', $user->getKey())
                     ->get();
@@ -266,15 +293,30 @@ class RequestController extends Controller
                     'created_at' => now(),
                 ]);
 
-                if (! empty($validated['draft_id'])) {
-                    RequestDraft::where('id', $validated['draft_id'])->where('user_id', $user->id)->whereNull('submitted_at')->update(['submitted_at' => now(), 'request_id' => $newRequest->id]);
+                if ($submissionDraft) {
+                    $submissionDraft->update(['submitted_at' => now(), 'request_id' => $newRequest->id]);
                 }
 
                 return response()->json(['message' => 'Sucesso', 'id' => $newRequest->id], 201);
             });
-        } catch (HttpExceptionInterface $e) {
+        } catch (HttpExceptionInterface|ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
+            if ($idempotencyKey) {
+                try {
+                    $previous = RequestModel::where('submission_idempotency_key', $idempotencyKey)->first();
+                    if ($previous) {
+                        $actor = Auth::guard('api')->user() ?? $request->user();
+                        if ($previous->user_id !== $actor?->getKey() || $previous->submission_payload_hash !== $payloadHash) {
+                            return response()->json(['message' => 'Chave de idempotência já utilizada com dados diferentes.'], 409);
+                        }
+
+                        return response()->json(['message' => 'Sucesso', 'id' => $previous->id, 'idempotent_replay' => true], 200);
+                    }
+                } catch (\Exception $lookupError) {
+                    report($lookupError);
+                }
+            }
             report($e);
 
             // Se a criação falhar, remove apenas uploads do usuário que ainda
@@ -285,7 +327,9 @@ class RequestController extends Controller
                     ->whereDoesntHave('requests')
                     ->get();
                 foreach ($orphanDocuments as $document) {
-                    Storage::disk('public')->delete($document->path);
+                    foreach (['local', 'public'] as $disk) {
+                        Storage::disk($disk)->delete($document->path);
+                    }
                     $document->delete();
                 }
             }
@@ -310,20 +354,7 @@ class RequestController extends Controller
         if (! $schema) {
             return;
         }
-        $fields = collect($schema['fields'] ?? []);
-        $allowed = $fields->pluck('key')->all();
-        abort_if(array_diff(array_keys($responses), $allowed), 422, 'O formulário contém campos desconhecidos.');
-        foreach ($fields as $field) {
-            $key = $field['key'];
-            $value = $responses[$key] ?? null;
-            abort_if(! empty($field['required']) && ($value === null || $value === '' || $value === []), 422, "Preencha {$field['label']}.");
-            if ($value === null) {
-                continue;
-            }
-            abort_if($field['type'] === 'number' && ! is_numeric($value), 422, "Valor inválido em {$field['label']}.");
-            abort_if($field['type'] === 'date' && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $value), 422, "Data inválida em {$field['label']}.");
-            abort_if(in_array($field['type'], ['single_select', 'multi_select'], true) && ! empty($field['options']) && count(array_diff((array) $value, (array) $field['options'])) > 0, 422, "Opção inválida em {$field['label']}.");
-        }
+        app(FormSchemaValidator::class)->validateResponses($schema, $responses);
     }
 
     /**

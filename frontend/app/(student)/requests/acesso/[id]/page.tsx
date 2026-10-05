@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, FileText, Check, Ban, Clock, ChevronLeft, ExternalLink, MessageSquareText } from "lucide-react";
+import { X, Check, Ban, Clock, ChevronLeft, MessageSquareText } from "lucide-react";
 import RequestChat from "@/components/RequestChat";
 import RequestTimeline from "@/components/RequestTimeline";
+import RequestDocument from "@/components/RequestDocument";
+import type { DocumentInfo } from "@/components/RequestDocument";
 
 const API_BASE = "/api";
 
@@ -86,10 +88,10 @@ export default function RequestDetailsPage() {
           setObservation(data.observation || "");
 
           // Falhas ao buscar templates não interrompem o atendimento já existente.
-          if (currentUserData && ["admin", "staff", "cradt"].includes(currentUserData.role) && data.type_id) {
+          if (currentUserData && ["admin", "staff", "cradt", "coordenacao"].includes(currentUserData.role) && data.type_id) {
             try {
               const templatesResponse = await fetch(
-                `${API_BASE}/response-templates/active?type_request_id=${data.type_id}`,
+                `${API_BASE}/response-templates/active?request_id=${id}`,
                 { headers: { Authorization: `Bearer ${token}` } },
               );
               if (templatesResponse.ok) {
@@ -158,7 +160,8 @@ export default function RequestDetailsPage() {
     );
   }
 
-  const isAdmin = ["admin", "staff", "cradt"].includes(currentUser?.role);
+  const isAdmin = ["admin", "staff", "cradt", "coordenacao"].includes(currentUser?.role);
+  const canChangeStatus = ["admin", "cradt"].includes(currentUser?.role);
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] py-10 px-4">
@@ -202,30 +205,7 @@ export default function RequestDetailsPage() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ml-1">Documentos Anexados</h3>
               {request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {request.documents.map((doc: any) => {
-                    const fileUrl = `/storage/${doc.path.replace("public/", "")}`;
-                    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.path);
-                    return (
-                      <div key={doc.id} className="group flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/30 transition-all bg-white shadow-sm">
-                        {isImage ? (
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block cursor-zoom-in overflow-hidden rounded-xl bg-gray-50 border border-gray-100">
-                            <img src={fileUrl} alt={doc.name} className="w-full h-48 object-contain hover:scale-105 transition-transform duration-500" />
-                          </a>
-                        ) : (
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition cursor-pointer">
-                            <FileText size={32} className="text-emerald-600" />
-                            <span className="text-sm font-bold text-gray-500 uppercase tracking-tighter">Visualizar Documento PDF</span>
-                          </a>
-                        )}
-                        <div className="flex justify-between items-center px-1">
-                          <p className="text-sm font-bold text-gray-700 truncate max-w-[250px]" title={doc.name}>{doc.name}</p>
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline">
-                            ABRIR <ExternalLink size={14} />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {request.documents.map((doc: DocumentInfo) => <RequestDocument key={doc.id} requestId={String(id)} document={doc} />)}
                 </div>
               ) : (
                 <p className="text-sm text-gray-400 italic ml-1">Nenhum anexo encontrado.</p>
@@ -294,7 +274,7 @@ export default function RequestDetailsPage() {
                   onChange={(e) => setObservation(e.target.value)}
                 />
 
-                <div className="space-y-2">
+                {canChangeStatus && <div className="space-y-2">
                   <button onClick={() => handleStatusClick("analyzing")} disabled={updating}
                     className="w-full flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-700 text-[10px] font-black rounded-xl hover:bg-amber-100 transition disabled:opacity-50 tracking-widest border border-amber-100"
                   >
@@ -314,7 +294,7 @@ export default function RequestDetailsPage() {
                       <Check size={16} /> DEFERIR
                     </button>
                   </div>
-                </div>
+                </div>}
               </div>
             )}
           </div>

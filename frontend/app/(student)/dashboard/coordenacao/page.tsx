@@ -1,43 +1,50 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { Search, Loader2, Eye, FileText, ArrowLeft } from 'lucide-react';
+import { Search, Loader2, Eye, FileText, MessageSquareText } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+
+type CoordinationRequest = {
+  id: string;
+  protocol: string | null;
+  subject: string;
+  status: string;
+  type?: { name: string } | null;
+  user?: { name: string; course?: { name: string } | null } | null;
+};
 
 export default function CoordenacaoDashboard() {
   const { user, token } = useAuth();
-  const router = useRouter();
   const [filters, setFilters] = useState({ name: '' });
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState<CoordinationRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async (name = '') => {
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requests?name=${filters.name}`, {
+      const response = await fetch(`/api/requests?name=${encodeURIComponent(name)}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      const data = await response.json();
-      // Filtra apenas deferidos
-      setRequests(data.filter((req: any) => req.status === 'completed'));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data: unknown = await response.json();
+      setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erro ao carregar requerimentos', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (user?.role === 'coordenacao') {
-      fetchRequests();
+      void fetchRequests();
     }
-  }, [user]);
+  }, [user?.role, fetchRequests]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchRequests();
+    void fetchRequests(filters.name);
   };
 
   return (
@@ -45,12 +52,13 @@ export default function CoordenacaoDashboard() {
       <div className="max-w-6xl mx-auto">
         
         {/* Header com Botão de Voltar */}
-        <div className="mb-8 flex items-center gap-4">
-            
-          
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold text-[#000000] flex items-center gap-2">
-            <FileText className="text-emerald-600" /> Requerimentos Deferidos
+            <FileText className="text-emerald-600" /> Requerimentos da Coordenação
           </h1>
+          <Link href="/dashboard/admin/response-templates" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
+            <MessageSquareText size={18} /> Respostas pré-configuradas
+          </Link>
         </div>
 
         {/* Filtro por Nome - Versão Compacta */}
@@ -102,10 +110,10 @@ export default function CoordenacaoDashboard() {
                 </tr>
               ) : requests.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">Nenhum pedido deferido encontrado.</td>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">Nenhum requerimento encontrado.</td>
                 </tr>
               ) : (
-                requests.map((req: any) => (
+                requests.map((req) => (
                   <tr key={req.id} className="hover:bg-emerald-50/30 transition-colors">
                     <td className="px-6 py-4 font-mono text-xs text-gray-500">{req.protocol || `#${req.id}`}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{req.type?.name || req.subject}</td>
@@ -116,13 +124,14 @@ export default function CoordenacaoDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 border border-green-200">
-                        Deferido
+                      <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {req.status === 'completed' ? 'Concluído' : req.status === 'canceled' ? 'Cancelado' : req.status === 'analyzing' ? 'Em análise' : 'Pendente'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <Link 
                         href={`/requests/visualizar/${req.id}`} 
+                        prefetch={false}
                         className="inline-flex items-center justify-center p-2 text-emerald-600 bg-emerald-50 rounded-full hover:bg-[#004d40] hover:text-white transition-all shadow-sm"
                       >
                         <Eye size={18} />

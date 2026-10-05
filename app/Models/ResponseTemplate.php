@@ -16,6 +16,7 @@ class ResponseTemplate extends Model
         'content',
         'is_active',
         'created_by',
+        'sector',
     ];
 
     protected function casts(): array

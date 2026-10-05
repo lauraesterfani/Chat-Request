@@ -134,6 +134,7 @@ class RequestFlowTest extends TestCase
 
     public function test_document_upload_belongs_to_student_and_rejects_invalid_format(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $student = $this->student();
 
@@ -150,6 +151,29 @@ class RequestFlowTest extends TestCase
             'id' => $valid->json('id'),
             'user_id' => $student->id,
         ]);
+        Storage::disk('local')->assertExists(\App\Models\Document::findOrFail($valid->json('id'))->path);
+    }
+
+    public function test_coordination_can_open_own_course_document_but_other_users_cannot(): void
+    {
+        Storage::fake('local');
+        $student = $this->student();
+        $target = $this->requestFor($student);
+        $upload = $this->actingAs($student, 'api')->post('/api/documents/upload', [
+            'arquivo' => UploadedFile::fake()->create('atestado.png', 20, 'image/png'),
+        ])->assertCreated();
+        $target->documents()->attach($upload->json('id'));
+        $url = "/api/requests/{$target->id}/documents/{$upload->json('id')}";
+
+        $coordination = StaffAdmin::create([
+            'name' => 'Coordenação de teste', 'email' => uniqid().'@example.test',
+            'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT),
+            'role' => 'coordenacao', 'course_id' => $student->course_id,
+            'password' => 'secret', 'must_change_password' => false,
+        ]);
+        $this->actingAs($coordination, 'staff_admins')->get($url)->assertOk()->assertHeader('Content-Type', 'image/png');
+        $this->actingAs($this->student(), 'api')->get($url)->assertForbidden();
+        $this->get('/api/requests/'.$target->id.'/documents/'.\Illuminate\Support\Str::uuid())->assertNotFound();
     }
 
     public function test_dashboard_counts_only_non_final_requests_older_than_configured_days(): void
