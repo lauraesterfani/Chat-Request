@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Document;
 use App\Models\FormSchemaVersion;
 use App\Models\RequestDraft;
 use App\Models\TypeRequest;
 use App\Models\User;
+use App\Services\FormSchemaValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class FormSchemaController extends Controller
@@ -23,11 +26,14 @@ class FormSchemaController extends Controller
     public function store(Request $request, string $typeId)
     {
         $this->authorizeEditor($request);
-        TypeRequest::findOrFail($typeId);
         $data = $request->validate(['schema' => ['required', 'array'], 'change_summary' => ['nullable', 'string', 'max:1000']]);
-        $this->validateSchema($data['schema']);
-        $version = ((int) FormSchemaVersion::where('type_request_id', $typeId)->max('version')) + 1;
-        $schema = FormSchemaVersion::create(['type_request_id' => $typeId, 'version' => $version, 'status' => 'draft', 'schema' => $data['schema'], 'change_summary' => $data['change_summary'] ?? null, 'created_by' => $this->actor($request)->getKey()]);
+        app(FormSchemaValidator::class)->validateDefinition($data['schema']);
+        $schema = DB::transaction(function () use ($typeId, $data, $request) {
+            TypeRequest::whereKey($typeId)->lockForUpdate()->firstOrFail();
+            $version = ((int) FormSchemaVersion::where('type_request_id', $typeId)->max('version')) + 1;
+
+            return FormSchemaVersion::create(['type_request_id' => $typeId, 'version' => $version, 'status' => 'draft', 'schema' => $data['schema'], 'change_summary' => $data['change_summary'] ?? null, 'created_by' => $this->actor($request)->getKey()]);
+        });
 
         return response()->json($schema, 201);
     }
@@ -35,8 +41,8 @@ class FormSchemaController extends Controller
     public function publish(Request $request, FormSchemaVersion $schemaVersion)
     {
         $this->authorizeEditor($request);
-        if ($schemaVersion->status === 'published') {
-            return response()->json(['message' => 'Esta versão já está publicada.'], 409);
+        if ($schemaVersion->status !== 'draft') {
+            return response()->json(['message' => 'Somente uma versão em rascunho pode ser publicada.'], 409);
         }
         $schemaVersion->update(['status' => 'published', 'published_at' => now()]);
 
@@ -56,18 +62,47 @@ class FormSchemaController extends Controller
         if ($draft && $draft->user_id !== $user->id) {
             abort(403);
         }
-        if ($draft && ($draft->discarded_at || $draft->submitted_at)) {
-            return response()->json(['message' => 'Rascunho não pode ser alterado.'], 409);
-        }
-        $data = $request->validate(['type_request_id' => ['required', 'uuid', Rule::exists('type_requests', 'id')], 'form_schema_version_id' => ['nullable', 'uuid', Rule::exists('form_schema_versions', 'id')], 'responses' => ['nullable', 'array'], 'document_ids' => ['nullable', 'array'], 'revision' => ['nullable', 'integer', 'min:1']]);
-        if ($draft && array_key_exists('revision', $data) && $data['revision'] !== $draft->revision) {
-            return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $draft], 409);
-        }
-        $draft ??= new RequestDraft(['user_id' => $user->id]);
-        $draft->fill([...$data, 'revision' => $draft->exists ? $draft->revision + 1 : 1]);
-        $draft->save();
+        $data = $request->validate([
+            'type_request_id' => ['required', 'uuid', Rule::exists('type_requests', 'id')],
+            'form_schema_version_id' => ['nullable', 'uuid', Rule::exists('form_schema_versions', 'id')],
+            'responses' => ['nullable', 'array'],
+            'document_ids' => ['nullable', 'array'],
+            'document_ids.*' => ['uuid', 'distinct', Rule::exists('documents', 'id')],
+            'revision' => [$draft ? 'required' : 'nullable', 'integer', 'min:1'],
+        ]);
 
-        return response()->json($draft->fresh(['type', 'schemaVersion']), $draft->wasRecentlyCreated ? 201 : 200);
+        if (! empty($data['form_schema_version_id']) && ! FormSchemaVersion::whereKey($data['form_schema_version_id'])->where('type_request_id', $data['type_request_id'])->where('status', 'published')->exists()) {
+            return response()->json(['message' => 'A versão do formulário não está publicada para este serviço.'], 422);
+        }
+
+        $documentIds = $data['document_ids'] ?? [];
+        if (Document::whereIn('id', $documentIds)->where('user_id', $user->id)->count() !== count($documentIds)) {
+            return response()->json(['message' => 'Um ou mais documentos não pertencem ao usuário autenticado.'], 403);
+        }
+
+        return DB::transaction(function () use ($draft, $data, $user) {
+            if ($draft) {
+                $draft = RequestDraft::whereKey($draft->id)->lockForUpdate()->firstOrFail();
+                abort_unless($draft->user_id === $user->id, 403);
+                if ($draft->discarded_at || $draft->submitted_at) {
+                    return response()->json(['message' => 'Rascunho não pode ser alterado.'], 409);
+                }
+                if ($draft->type_request_id !== $data['type_request_id']) {
+                    return response()->json(['message' => 'Crie outro rascunho para mudar de serviço.'], 409);
+                }
+                if ((int) $data['revision'] !== (int) $draft->revision) {
+                    return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $draft], 409);
+                }
+            } else {
+                $draft = new RequestDraft(['user_id' => $user->id]);
+            }
+
+            $created = ! $draft->exists;
+            $draft->fill([...$data, 'revision' => $created ? 1 : $draft->revision + 1]);
+            $draft->save();
+
+            return response()->json($draft->fresh(['type', 'schemaVersion']), $created ? 201 : 200);
+        });
     }
 
     public function discard(Request $request, RequestDraft $draft)
@@ -77,20 +112,6 @@ class FormSchemaController extends Controller
         $draft->update(['discarded_at' => now()]);
 
         return response()->json(['message' => 'Rascunho descartado.']);
-    }
-
-    private function validateSchema(array $schema): void
-    {
-        $fields = $schema['fields'] ?? null;
-        abort_unless(is_array($fields) && count($fields) <= 50, 422, 'Schema deve conter até 50 campos.');
-        $keys = [];
-        foreach ($fields as $field) {
-            abort_unless(is_array($field) && isset($field['key'], $field['label'], $field['type']), 422, 'Campo inválido.');
-            abort_unless(preg_match('/^[a-z][a-z0-9_]{1,59}$/', (string) $field['key']) === 1, 422, 'Chave de campo inválida.');
-            abort_unless(! in_array($field['key'], $keys, true), 422, 'Chaves de campo devem ser únicas.');
-            abort_unless(in_array($field['type'], ['short_text', 'long_text', 'number', 'date', 'single_select', 'multi_select', 'boolean', 'subjects'], true), 422, 'Tipo de campo inválido.');
-            $keys[] = $field['key'];
-        }
     }
 
     private function legacySchema(): array
