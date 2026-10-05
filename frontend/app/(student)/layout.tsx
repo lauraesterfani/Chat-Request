@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const administrativeRoles = ["admin", "staff", "cradt"];
   const isAdministrativeRole = administrativeRoles.includes(user?.role ?? "");
+  const canManageSectorTemplates = pathname === "/dashboard/admin/response-templates" && user?.role === "coordenacao";
   const isAdminOnlyPath =
     pathname === "/dashboard/admin" ||
     pathname.startsWith("/dashboard/admin/");
@@ -40,10 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    if (isAdminOnlyPath && !isAdministrativeRole) {
+    if (isAdminOnlyPath && !isAdministrativeRole && !canManageSectorTemplates) {
       router.replace("/me");
     }
-  }, [isAdminOnlyPath, isAdministrativeRole, isAuthenticated, isLoading, router, user]);
+  }, [canManageSectorTemplates, isAdminOnlyPath, isAdministrativeRole, isAuthenticated, isLoading, router, user]);
 
   const handleLogoutClick = () => {
     logout();
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       {/* 🔹 NAVBAR CONDICIONAL */}
       <header
-        className={`w-full px-6 sm:px-8 py-5 flex items-center justify-between border-b ${isAdminLayout
+        className={`w-full px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-2 border-b ${isAdminLayout
             ? "bg-[#004d40] text-white border-[#004d40]" // Admin/Staff → azul escuro
             : "bg-[#004d40] text-white border-[#004d40]" // Aluno → branco
           }`}
@@ -67,14 +68,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Logo / Título */}
         <Link
           href={isAdminLayout ? "/dashboard/admin" : "/me"}
-          className={`tracking-tighter hover:opacity-80 transition-opacity ${isAdminLayout ? "text-2xl font-bold" : "text-3xl font-bold mb-4 text-white"
+          className={`shrink-0 tracking-tighter hover:opacity-80 transition-opacity ${isAdminLayout ? "text-lg sm:text-2xl font-bold" : "text-xl sm:text-3xl font-bold text-white"
             }`}
         >
           {isAdminLayout ? "Painel Administrativo" : "Chat Request"}
         </Link>
 
         {isAuthenticated && user && (
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-4">
             <NotificationBell />
             {/* ❓ BOTÃO DE AJUDA (somente aluno) */}
             {!isAdminLayout && (
@@ -94,12 +95,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 aria-label="Abrir menu da conta"
                 aria-expanded={open}
                 onClick={() => setOpen(!open)}
-                className="flex items-center gap-2 font-bold text-lg group"
+                className="flex min-h-11 min-w-0 items-center gap-1 font-bold text-sm sm:gap-2 sm:text-lg group"
               >
                 {/* Nome do usuário: branco se admin/staff ou rota /request, verde se aluno */}
-                <span className={isAdminLayout ? "text-white" : "text-white"}>
-                  {user.name}
-                </span>
+                <span className="max-w-16 truncate text-white sm:hidden" title={user.name}>{user.name.split(" ")[0]}</span>
+                <span className="hidden max-w-48 truncate text-white sm:inline" title={user.name}>{user.name}</span>
                 <ChevronDown
                   size={20}
                   className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}

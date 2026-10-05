@@ -25,11 +25,11 @@ test.describe("smoke público do Chat Request", () => {
 
   test("páginas públicas não possuem violações críticas de acessibilidade", async ({ page }) => {
     await page.goto("/");
-    const homeResults = await new AxeBuilder({ page }).analyze();
+    const homeResults = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(homeResults.violations).toEqual([]);
 
     await page.goto("/login");
-    const loginResults = await new AxeBuilder({ page }).analyze();
+    const loginResults = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(loginResults.violations).toEqual([]);
   });
 

@@ -33,13 +33,18 @@ Route::get('/', fn () => response()->json(['api' => 'Online', 'status' => 'OK'])
 Route::get('/health', function () {
     if (request()->boolean('detailed')) {
         $dbOk = true;
-        try { DB::connection()->getPdo(); } catch (\Throwable $e) { $dbOk = false; }
+        try {
+            DB::connection()->getPdo();
+        } catch (\Throwable $e) {
+            $dbOk = false;
+        }
         $pendingJobs = 0;
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
                 $pendingJobs = DB::table('jobs')->count();
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return response()->json([
             'status' => $dbOk ? 'ok' : 'degraded',
@@ -84,6 +89,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function
     Route::get('/my-requests', [RequestController::class, 'index']);
 
     Route::post('/documents/upload', [DocumentController::class, 'upload']);
+    Route::get('/requests/{requestModel}/documents/{document}', [DocumentController::class, 'show']);
 
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/drafts', [FormSchemaController::class, 'drafts']);
@@ -102,7 +108,7 @@ Route::middleware(['auth:staff_admins'])->get('/admins', [StaffAdminController::
 | Templates disponíveis no atendimento
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt'])->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt,coordenacao'])->group(function () {
     Route::get('/response-templates/active', [ResponseTemplateController::class, 'active']);
     Route::get('/admin/requests', [RequestController::class, 'index'])
         ->middleware('role:admin,cradt');
@@ -150,7 +156,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:staff'])->
 
 });
 
-Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt'])->group(function () {
+Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt,coordenacao'])->group(function () {
     Route::get('/response-templates', [ResponseTemplateController::class, 'index']);
     Route::get('/response-templates/{responseTemplate}', [ResponseTemplateController::class, 'show']);
     Route::post('/response-templates', [ResponseTemplateController::class, 'store']);

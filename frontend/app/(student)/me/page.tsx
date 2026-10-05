@@ -165,7 +165,7 @@ export default function GuidedChatPage() {
         { id: Date.now(), role: "bot", text: (
           <div className="flex items-center gap-2">
             <CheckCircle2 size={18} className="text-[#15803d]" />
-            <span>Seu requerimento de "{tempData.typeName}" foi enviado com sucesso!</span>
+            <span>Seu requerimento de &quot;{tempData.typeName}&quot; foi enviado com sucesso!</span>
           </div>
         )},
         { id: Date.now() + 1, role: "bot", text: "Deseja realizar mais alguma operação?", options: initialOptions },

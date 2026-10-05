@@ -60,7 +60,7 @@ export default function StudentLoginPage() {
   if (isLoading) return null;
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-sans overflow-hidden">
+    <main id="conteudo-principal" tabIndex={-1} className="min-h-screen w-full flex bg-white font-sans overflow-hidden">
 
       {/* =====================================================
           LADO ESQUERDO - Branding Verde
@@ -79,14 +79,15 @@ export default function StudentLoginPage() {
               src="/mascote.png"
               alt="Mascote Estudante"
               fill
+              sizes="(min-width: 1024px) 320px, 1px"
               className="object-contain drop-shadow-2xl"
               priority
             />
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-sm">Bem-vindo de volta!</h1>
+          <h2 className="text-4xl font-bold text-white mb-4 drop-shadow-sm">Bem-vindo de volta!</h2>
           <p className="text-green-50 text-lg leading-relaxed font-medium drop-shadow-sm">
-            Acompanhe seus requerimentos em tempo real e resolva suas pendências acadêmicas sem sair de casa.
+            Acompanhe seus requerimentos e resolva suas pendências acadêmicas sem sair de casa.
           </p>
         </div>
 
@@ -102,7 +103,7 @@ export default function StudentLoginPage() {
       <div className="w-full lg:w-[45%] flex flex-col justify-center items-center px-8 md:px-16 relative bg-white">
         <button
           onClick={() => router.push("/")}
-          className="absolute top-8 left-8 text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-2"
+          className="absolute top-8 left-8 text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -117,13 +118,13 @@ export default function StudentLoginPage() {
           Voltar para Início
         </button>
 
-        <Link href="/" className="absolute top-8 left-8 lg:hidden text-slate-400 hover:text-[#15803d] transition-colors flex items-center gap-2">
+        <Link href="/" className="absolute top-8 left-8 lg:hidden text-slate-600 hover:text-[#15803d] transition-colors flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="m15 18-6-6 6-6" /></svg>
           Voltar
         </Link>
 
         <div className="absolute top-8 right-8">
-          <Link href="/cradt-login" className="text-sm font-medium text-slate-400 hover:text-[#15803d] transition-colors">
+          <Link href="/cradt-login" className="text-sm font-medium text-slate-600 hover:text-[#15803d] transition-colors">
             Sou Servidor
           </Link>
         </div>
@@ -138,7 +139,7 @@ export default function StudentLoginPage() {
               <span className="text-2xl font-bold text-[#0f172a]">ChatRequest</span>
             </Link>
 
-            <h2 className="text-3xl font-bold text-[#0f172a] self-start">Login do Aluno</h2>
+            <h1 className="text-3xl font-bold text-[#0f172a] self-start">Login do Aluno</h1>
             <p className="text-slate-500 mt-2 self-start">Entre com sua matrícula e senha.</p>
           </div>
 
@@ -233,6 +234,6 @@ export default function StudentLoginPage() {
 
         </div>
       </div>
-    </div>
+    </main>
   );
 }

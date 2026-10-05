@@ -1,4 +1,5 @@
 import React, { CSSProperties } from 'react';
+import Link from 'next/link';
 
 // =================================================================
 // 1. ESTILOS BASE E HEADER
@@ -176,16 +177,15 @@ export default function Page() { // Renomeado de ComoFunciona para Page
       <header style={headerStyle}>
         <div style={logoStyle}>
           {/* Rota para a página inicial */}
-          <a href="/" style={{...logoStyle, textDecoration: 'none'}}>
+          <Link href="/" style={{...logoStyle, textDecoration: 'none'}}>
             <span role="img" aria-label="Turtle icon" style={{marginRight: '5px'}}>🐢</span>
             Chat Request
-          </a>
+          </Link>
         </div>
         <nav style={navStyle}>
-          {/* Rotas Sugeridas (Manter consistência) */}
-          <a href="/funcionalidades" style={navLinkStyle}>Funcionalidades</a>
-          <a href="/como-funciona" style={navLinkStyle}>Como Funciona</a>
-          <a href="/cradt" style={accessButtonStyle}>Acesso CRADT</a>
+          <Link href="/servicos" style={navLinkStyle}>Serviços</Link>
+          <Link href="/como-funciona" style={navLinkStyle}>Como Funciona</Link>
+          <Link href="/cradt-login" style={accessButtonStyle}>Acesso CRADT</Link>
         </nav>
       </header>
       
@@ -245,7 +245,7 @@ export default function Page() { // Renomeado de ComoFunciona para Page
           <div style={stepNumberStyle}>1</div>
           <h3 style={stepTitleStyle}>Acesse sua Conta</h3>
           <p style={stepDescriptionStyle}>
-            Entre com seu CPF e senha ou cadastre-se gratuitamente
+            Acesse com sua matrícula institucional e senha fornecida pelo campus
           </p>
         </div>
 
@@ -254,7 +254,7 @@ export default function Page() { // Renomeado de ComoFunciona para Page
           <div style={stepNumberStyle}>2</div>
           <h3 style={stepTitleStyle}>Inicie o Chat</h3>
           <p style={stepDescriptionStyle}>
-            Escolha "Solicitar Requerimento" e siga as instruções do nosso assistente
+            Escolha &quot;Novo Requerimento&quot; e siga as instruções do nosso assistente
           </p>
         </div>
 
