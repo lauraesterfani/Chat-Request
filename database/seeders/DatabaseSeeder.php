@@ -12,15 +12,12 @@ class DatabaseSeeder extends Seeder
      * O seeder principal não cria dados diretamente, mas sim chama outros seeders.
      * A ordem de chamada é crucial para satisfazer as restrições de chaves estrangeiras.
      */
-public function run(): void
-{
-    $this->call([
-        UserSeeder::class,        // Usuários (Admin e Staff)
-        CourseSeeder::class,      // <--- ADICIONE ISTO (Cursos)
-        TypeRequestSeeder::class, // <--- Este já estava (Tipos de Requerimento)
-        StaffAdminSeeder::class,
-        ResponseTemplateSeeder::class,
+    public function run(): void
+    {
+        $this->call([CourseSeeder::class, TypeRequestSeeder::class]);
 
-    ]);
-}
+        if (app()->environment(['local', 'testing'])) {
+            $this->call([UserSeeder::class, StaffAdminSeeder::class, ResponseTemplateSeeder::class]);
+        }
+    }
 }

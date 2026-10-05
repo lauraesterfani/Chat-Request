@@ -33,7 +33,7 @@ class ResponseTemplateSeeder extends Seeder
         foreach ($templates as $data) {
             $template = ResponseTemplate::firstOrCreate(
                 ['title' => $data['title']],
-                [...$data, 'is_active' => true, 'created_by' => null],
+                [...$data, 'is_active' => true, 'created_by' => null, 'sector' => 'CRADT'],
             );
 
             $template->typeRequests()->syncWithoutDetaching($types->modelKeys());

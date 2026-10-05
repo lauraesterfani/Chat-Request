@@ -21,6 +21,27 @@ php artisan serve
 
 Em outro terminal: `cd frontend && cp .env.example .env.local && npm install && npm run dev`. Para SQLite, crie `database/database.sqlite` e use `DB_CONNECTION=sqlite`; configure `DB_*` para MySQL. `LARAVEL_API_ORIGIN` em `frontend/.env.local` define a origem privada do proxy `/api` e `/storage`; em desenvolvimento ela pode permanecer em `http://127.0.0.1:8000`. Nunca use `migrate:fresh` em banco desconhecido.
 
+### Contas fixas para desenvolvimento
+
+Após `php artisan migrate --seed` em ambiente `local` ou `testing`, as contas fictícias abaixo ficam disponíveis. Rodar o seeder novamente preserva os IDs dos cursos e recria as senhas de teste. Essas contas **não são criadas em produção**. Use a mesma senha de desenvolvimento em todas: `ChatRequest-Teste2026!`.
+
+| Perfil | Login |
+| --- | --- |
+| Aluno TSI | matrícula `20241TSIIG001` em `/login` |
+| Aluno ADM | matrícula `20241ADMIG002` em `/login` |
+| Coordenação TSI | `qa.coordenacao@example.test` em `/cradt-login` |
+| CRADT | `qa.cradt@example.test` em `/cradt-login` |
+| Administração | `qa.admin@example.test` em `/cradt-login` |
+| Suporte técnico | `qa.staff@example.test` em `/cradt-login` |
+
+Essas contas servem somente para validar fluxos. O suporte técnico não recebe acesso acadêmico automaticamente.
+
+### Anexos e respostas prontas
+
+Novos anexos são armazenados no disco privado e abertos pela API autenticada `GET /api/requests/{request}/documents/{document}`. O aluno acessa seus próprios anexos; a coordenação acessa os requerimentos do curso autorizado. Arquivos legados no disco público continuam legíveis pelo endpoint autenticado e devem ser migrados para o disco privado antes da implantação institucional.
+
+Respostas pré-configuradas pertencem ao setor `CRADT` ou `COORDENACAO`. A lista de atendimento usa o setor atualmente responsável pelo requerimento; encaminhar um pedido altera as respostas disponíveis. O painel permite filtrar por setor e criar textos para o setor permitido ao perfil.
+
 ## Acesso de alunos
 
 As contas de alunos são criadas ou importadas pela instituição; não há autocadastro público. O aluno entra em `POST /api/login` com `matricula` e `password`. A matrícula é normalizada para maiúsculas e sem espaços e segue o formato `AAAA` + período + curso + `IG` + número (por exemplo, `20241TSIIG0249`).

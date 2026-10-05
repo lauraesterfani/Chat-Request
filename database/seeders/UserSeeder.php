@@ -6,33 +6,30 @@ use App\Models\Course;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Curso padrão
-        $course = Course::first();
-        if (! $course) {
-            $course = Course::create([
-                'id' => Str::uuid(),
-                'code' => 'ADM',
-                'name' => 'Curso Administrativo',
-            ]);
+        if (! app()->environment(['local', 'testing'])) {
+            return;
         }
 
-        // Aqui você pode criar apenas ALUNOS
-        User::updateOrCreate(['email' => 'qa.student@example.test'], [
-            'name' => 'Aluno QA Fictício',
-            'cpf' => '90000009991',
-            'phone' => '81900009991',
-            'matricula' => '20241ADMIG001',
-            'course_id' => $course->id,
-            'birthday' => '2000-01-01',
-            'password' => Hash::make('aluno123'),
-            'role' => User::ROLE_STUDENT,
-            'must_change_password' => true,
-        ]);
+        foreach ([
+            ['email' => 'qa.student.tsi@example.test', 'name' => 'Aluno TSI de Teste', 'cpf' => '90000009991', 'matricula' => '20241TSIIG001', 'course' => 'TSI-2025'],
+            ['email' => 'qa.student.adm@example.test', 'name' => 'Aluno ADM de Teste', 'cpf' => '90000009995', 'matricula' => '20241ADMIG002', 'course' => 'ADM'],
+        ] as $account) {
+            User::updateOrCreate(['email' => $account['email']], [
+                'name' => $account['name'],
+                'cpf' => $account['cpf'],
+                'phone' => '81900009991',
+                'matricula' => $account['matricula'],
+                'course_id' => Course::where('code', $account['course'])->value('id'),
+                'birthday' => '2000-01-01',
+                'password' => Hash::make('ChatRequest-Teste2026!'),
+                'role' => User::ROLE_STUDENT,
+                'must_change_password' => false,
+            ]);
+        }
     }
 }
