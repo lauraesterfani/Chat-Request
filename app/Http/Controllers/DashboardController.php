@@ -49,9 +49,9 @@ class DashboardController extends Controller
      */
     public function requerimentosPorCurso()
     {
-        // Agrupa pedidos pelo curso do aluno
+        // Pedidos novos usam o curso preservado no envio; legados mantêm o fallback.
         $courseCounts = RequestModel::join('users', 'requests.user_id', '=', 'users.id')
-            ->join('courses', 'users.course_id', '=', 'courses.id') // Join com tabela de cursos
+            ->join('courses', 'courses.id', '=', DB::raw('COALESCE(requests.course_id, users.course_id)'))
             ->select('courses.name as course_name', DB::raw('count(*) as total'))
             ->groupBy('courses.name')
             ->get();

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Trash2, Edit, Plus, X, Save, FileType, FileCheck2 } from "lucide-react";
+import Link from "next/link";
+import { Trash2, Edit, Plus, X, Save, FileType, FileCheck2, ListChecks } from "lucide-react";
 
 const API_BASE = "/api";
 
@@ -171,6 +172,11 @@ export default function TypeRequestsPage() {
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                    {(userRole === 'admin' || userRole === 'cradt') && (
+                                        <Link href={`/dashboard/admin/types/${type.id}/form`} aria-label={`Configurar formulário de ${type.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-emerald-800 hover:bg-emerald-100 focus-visible:outline-offset-2" title="Configurar formulário">
+                                            <ListChecks size={18} aria-hidden="true" />
+                                        </Link>
+                                    )}
                                     {userRole !== 'cradt' && (
                                         <>
                                             <button 

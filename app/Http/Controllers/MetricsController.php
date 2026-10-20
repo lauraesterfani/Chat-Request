@@ -21,7 +21,7 @@ class MetricsController extends Controller
             $query->where('created_at', '<=', $data['to']);
         }
         if (! empty($data['course_id'])) {
-            $query->whereHas('user', fn ($users) => $users->where('course_id', $data['course_id']));
+            $access->constrainCourse($query, $data['course_id']);
         }
         $byStatus = (clone $query)->select('status', DB::raw('count(*) as total'))->groupBy('status')->pluck('total', 'status');
         $total = (clone $query)->count();

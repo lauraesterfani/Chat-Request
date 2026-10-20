@@ -27,6 +27,57 @@ class DynamicFormTest extends TestCase
         $this->assertDatabaseHas('request_drafts', ['id' => $draft['id'], 'user_id' => $student->id]);
     }
 
+    public function test_student_lists_and_discards_only_own_open_drafts(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001017', 'phone' => '81900001017', 'matricula' => 'QA017', 'birthday' => '2000-01-01']);
+        $other = User::factory()->create(['role' => 'student', 'cpf' => '90000001018', 'phone' => '81900001018', 'matricula' => 'QA018', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Tipo QA 19']);
+        $own = RequestDraft::create(['user_id' => $student->id, 'type_request_id' => $type->id, 'responses' => ['subject' => 'Somente meu'], 'revision' => 1]);
+        $foreign = RequestDraft::create(['user_id' => $other->id, 'type_request_id' => $type->id, 'responses' => ['subject' => 'Outro aluno'], 'revision' => 1]);
+
+        $this->actingAs($student, 'api')->getJson('/api/drafts')->assertOk()->assertJsonCount(1)->assertJsonPath('0.id', $own->id);
+        $this->deleteJson('/api/drafts/'.$foreign->id)->assertForbidden();
+        $this->deleteJson('/api/drafts/'.$own->id)->assertOk();
+        $this->getJson('/api/drafts')->assertOk()->assertExactJson([]);
+        $this->assertNotNull($own->fresh()->discarded_at);
+        $this->assertNull($foreign->fresh()->discarded_at);
+    }
+
+    public function test_old_draft_migration_requires_review_and_preserves_only_compatible_answers(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001021', 'phone' => '81900001021', 'matricula' => 'QA021', 'birthday' => '2000-01-01']);
+        $other = User::factory()->create(['role' => 'student', 'cpf' => '90000001022', 'phone' => '81900001022', 'matricula' => 'QA022', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Migração QA']);
+        $old = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 1, 'status' => 'superseded', 'schema' => ['fields' => [
+            ['key' => 'reason', 'label' => 'Motivo', 'type' => 'short_text'],
+            ['key' => 'option', 'label' => 'Opção', 'type' => 'single_select', 'options' => ['A', 'B']],
+            ['key' => 'removed', 'label' => 'Antigo', 'type' => 'long_text'],
+        ]]]);
+        $current = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 2, 'status' => 'published', 'schema' => ['fields' => [
+            ['key' => 'reason', 'label' => 'Justificativa', 'type' => 'short_text', 'required' => true],
+            ['key' => 'option', 'label' => 'Opção nova', 'type' => 'single_select', 'options' => ['B', 'C']],
+            ['key' => 'new_field', 'label' => 'Campo novo', 'type' => 'long_text', 'required' => true],
+        ]]]);
+        $draft = RequestDraft::create(['user_id' => $student->id, 'type_request_id' => $type->id, 'form_schema_version_id' => $old->id, 'responses' => ['subject' => 'Assunto salvo', 'description' => 'Descrição salva', 'reason' => 'Compatível', 'option' => 'A', 'removed' => 'Texto antigo'], 'revision' => 3]);
+        $url = '/api/drafts/'.$draft->id.'/migration';
+
+        $this->actingAs($other, 'api')->getJson($url)->assertForbidden();
+        $this->postJson($url, ['revision' => 3])->assertForbidden();
+        $this->actingAs($student, 'api')->getJson($url)->assertOk()
+            ->assertJsonPath('needed', true)
+            ->assertJsonPath('to_version_id', $current->id)
+            ->assertJsonPath('responses.reason', 'Compatível')
+            ->assertJsonPath('required_keys.0', 'new_field');
+        $this->putJson('/api/drafts/'.$draft->id, ['type_request_id' => $type->id, 'form_schema_version_id' => $current->id, 'responses' => ['subject' => 'Forçado'], 'revision' => 3])->assertConflict();
+        $this->postJson($url, ['revision' => 2])->assertConflict()->assertJsonPath('draft.revision', 3);
+        $this->postJson($url, ['revision' => 3])->assertOk()
+            ->assertJsonPath('draft.form_schema_version_id', $current->id)
+            ->assertJsonPath('draft.revision', 4)
+            ->assertJsonPath('migration.reset_keys.0', 'option');
+        $this->assertSame(['subject' => 'Assunto salvo', 'description' => 'Descrição salva', 'reason' => 'Compatível'], $draft->fresh()->responses);
+        $this->getJson($url)->assertOk()->assertJsonPath('needed', false);
+    }
+
     public function test_published_schema_rejects_unknown_or_missing_required_fields(): void
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001003', 'phone' => '81900001003', 'matricula' => 'QA003', 'birthday' => '2000-01-01']);
@@ -152,6 +203,60 @@ class DynamicFormTest extends TestCase
         $this->postJson('/api/form-versions/'.$created['id'].'/publish')->assertOk()->assertJsonPath('status', 'published');
         $this->postJson('/api/form-versions/'.$created['id'].'/publish')->assertConflict();
         $this->getJson('/api/type-requests/'.$type->id.'/form')->assertOk()->assertJsonPath('version_id', $created['id']);
+    }
+
+    public function test_publishing_a_new_version_supersedes_the_old_one_without_changing_its_contents(): void
+    {
+        $admin = StaffAdmin::create(['name' => 'Admin QA', 'email' => 'form-versions@example.test', 'cpf' => '90000008883', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        $type = TypeRequest::create(['name' => 'Tipo QA 15']);
+        $endpoint = '/api/type-requests/'.$type->id.'/form-versions';
+        $firstSchema = ['fields' => [['key' => 'reason', 'label' => 'Motivo', 'type' => 'short_text', 'required' => true]]];
+
+        $first = $this->actingAs($admin, 'staff_admins')->postJson($endpoint, ['schema' => $firstSchema, 'change_summary' => 'Versão inicial'])->assertCreated()->json();
+        $this->postJson('/api/form-versions/'.$first['id'].'/publish')->assertOk();
+        $second = $this->postJson($endpoint, ['schema' => ['fields' => [['key' => 'reason', 'label' => 'Justificativa', 'type' => 'long_text', 'required' => true]]], 'change_summary' => 'Rótulo e tipo revisados'])->assertCreated()->json();
+        $this->postJson('/api/form-versions/'.$second['id'].'/publish')->assertOk();
+
+        $this->getJson($endpoint)->assertOk()->assertJsonCount(2)->assertJsonPath('0.id', $second['id'])->assertJsonPath('0.status', 'published')->assertJsonPath('1.status', 'superseded');
+        $this->getJson('/api/type-requests/'.$type->id.'/form')->assertJsonPath('version_id', $second['id']);
+        $this->assertSame($firstSchema, FormSchemaVersion::findOrFail($first['id'])->schema);
+    }
+
+    public function test_student_cannot_list_administrative_form_versions(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001016', 'phone' => '81900001016', 'matricula' => 'QA016', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Tipo QA 16']);
+
+        $this->actingAs($student, 'api')->getJson('/api/type-requests/'.$type->id.'/form-versions')->assertUnauthorized();
+    }
+
+    public function test_admin_can_edit_draft_but_cannot_mutate_published_version(): void
+    {
+        $admin = StaffAdmin::create(['name' => 'Admin QA', 'email' => 'form-draft@example.test', 'cpf' => '90000008884', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        $type = TypeRequest::create(['name' => 'Tipo QA 17']);
+        $original = ['fields' => [['key' => 'reason', 'label' => 'Motivo', 'type' => 'short_text']]];
+        $revised = ['fields' => [['key' => 'reason', 'label' => 'Justificativa', 'type' => 'long_text']]];
+        $created = $this->actingAs($admin, 'staff_admins')->postJson('/api/type-requests/'.$type->id.'/form-versions', ['schema' => $original])->assertCreated()->json();
+
+        $this->postJson('/api/form-versions/'.$created['id'].'/publish')->assertUnprocessable();
+        $this->putJson('/api/form-versions/'.$created['id'], ['schema' => $revised, 'change_summary' => 'Ajuste fictício'])->assertOk()->assertJsonPath('schema.fields.0.label', 'Justificativa');
+        $this->postJson('/api/form-versions/'.$created['id'].'/publish')->assertOk();
+        $this->putJson('/api/form-versions/'.$created['id'], ['schema' => $original])->assertConflict();
+        $this->assertSame($revised, FormSchemaVersion::findOrFail($created['id'])->schema);
+    }
+
+    public function test_older_draft_cannot_replace_a_newer_form_version(): void
+    {
+        $admin = StaffAdmin::create(['name' => 'Admin QA', 'email' => 'form-order@example.test', 'cpf' => '90000008885', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        $type = TypeRequest::create(['name' => 'Tipo QA 18']);
+        $endpoint = '/api/type-requests/'.$type->id.'/form-versions';
+        $payload = ['schema' => ['fields' => []], 'change_summary' => 'Versão fictícia'];
+        $old = $this->actingAs($admin, 'staff_admins')->postJson($endpoint, $payload)->assertCreated()->json();
+        $new = $this->postJson($endpoint, $payload)->assertCreated()->json();
+
+        $this->postJson('/api/form-versions/'.$old['id'].'/publish')->assertConflict();
+        $this->postJson('/api/form-versions/'.$new['id'].'/publish')->assertOk();
+        $this->getJson('/api/type-requests/'.$type->id.'/form')->assertJsonPath('version_id', $new['id']);
     }
 
     public function test_custom_schema_uses_fixed_subject_and_description_plus_dynamic_responses(): void

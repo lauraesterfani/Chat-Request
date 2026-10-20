@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
 use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\Request as RequestModel;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
@@ -31,6 +32,8 @@ class RequestFlowTest extends TestCase
         $response->assertCreated()->assertJsonStructure(['id', 'message']);
         $request = RequestModel::findOrFail($response->json('id'));
         $this->assertMatchesRegularExpression('/^\d{8}-\d{6}$/', $request->protocol);
+        $this->assertSame($student->course_id, $request->course_id);
+        $this->assertNull($request->enrollment_id);
 
         $second = $this->actingAs($student, 'api')->postJson('/api/requests', [
             'type_id' => $type->id,
@@ -59,6 +62,46 @@ class RequestFlowTest extends TestCase
         $this->actingAs($otherStudent, 'api')
             ->getJson("/api/requests/{$request->id}")
             ->assertForbidden();
+    }
+
+    public function test_request_preserves_draft_enrollment_and_course_for_coordination_access(): void
+    {
+        $student = $this->student();
+        $originalCourse = $student->course_id;
+        $enrollment = Enrollment::create([
+            'user_id' => $student->id,
+            'course_id' => $originalCourse,
+            'enrollment' => 'MATRICULA-FICTICIA-001',
+            'status' => 'active',
+        ]);
+        $type = $this->type();
+        $draft = $this->actingAs($student, 'api')->postJson('/api/drafts', [
+            'type_request_id' => $type->id,
+            'responses' => ['subject' => 'Pedido antes da troca de curso'],
+        ])->assertCreated()->json();
+        $this->assertDatabaseHas('request_drafts', [
+            'id' => $draft['id'], 'course_id' => $originalCourse, 'enrollment_id' => $enrollment->id,
+        ]);
+
+        $newCourse = Course::create(['name' => 'Outro curso fictício', 'code' => 'NOVO'.uniqid()]);
+        $student->update(['course_id' => $newCourse->id]);
+        $created = $this->postJson('/api/requests', [
+            'type_id' => $type->id,
+            'subject' => 'Pedido antes da troca de curso',
+            'description' => 'Descrição de teste',
+            'draft_id' => $draft['id'],
+        ])->assertCreated();
+        $request = RequestModel::findOrFail($created->json('id'));
+        $this->assertSame($originalCourse, $request->course_id);
+        $this->assertSame($enrollment->id, $request->enrollment_id);
+        auth('api')->forgetUser();
+
+        $originalCoordination = StaffAdmin::create(['name' => 'Coordenação original', 'email' => uniqid().'@example.test', 'cpf' => '90000002001', 'role' => 'coordenacao', 'course_id' => $originalCourse, 'password' => 'secret', 'must_change_password' => false]);
+        $newCoordination = StaffAdmin::create(['name' => 'Coordenação nova', 'email' => uniqid().'@example.test', 'cpf' => '90000002002', 'role' => 'coordenacao', 'course_id' => $newCourse->id, 'password' => 'secret', 'must_change_password' => false]);
+        $this->actingAs($originalCoordination, 'staff_admins')->getJson("/api/requests/{$request->id}")->assertOk();
+        $this->getJson('/api/requests')->assertOk()->assertJsonFragment(['id' => $request->id]);
+        $this->actingAs($newCoordination, 'staff_admins')->getJson("/api/requests/{$request->id}")->assertForbidden();
+        $this->getJson('/api/requests')->assertOk()->assertDontSee($request->id);
     }
 
     public function test_coordination_is_limited_to_its_course_and_technical_staff_is_denied(): void

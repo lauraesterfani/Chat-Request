@@ -93,6 +93,8 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function
 
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/drafts', [FormSchemaController::class, 'drafts']);
+    Route::get('/drafts/{draft}/migration', [FormSchemaController::class, 'migrationPreview']);
+    Route::post('/drafts/{draft}/migration', [FormSchemaController::class, 'migrateDraft']);
     Route::post('/drafts', [FormSchemaController::class, 'saveDraft']);
     Route::put('/drafts/{draft}', [FormSchemaController::class, 'saveDraft']);
     Route::delete('/drafts/{draft}', [FormSchemaController::class, 'discard']);
@@ -128,6 +130,8 @@ Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () 
     Route::post('/staff-access-scopes', [StaffAccessScopeController::class, 'store']);
     Route::delete('/staff-access-scopes/{scope}', [StaffAccessScopeController::class, 'destroy']);
     Route::post('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'store']);
+    Route::get('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'versions']);
+    Route::put('/form-versions/{schemaVersion}', [FormSchemaController::class, 'update']);
     Route::post('/form-versions/{schemaVersion}/publish', [FormSchemaController::class, 'publish']);
     Route::get('/admin/queue', [RequestController::class, 'queue']);
     Route::post('/requests/{id}/assign', [RequestController::class, 'assign']);

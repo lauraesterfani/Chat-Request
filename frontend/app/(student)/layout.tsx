@@ -71,7 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           className={`shrink-0 tracking-tighter hover:opacity-80 transition-opacity ${isAdminLayout ? "text-lg sm:text-2xl font-bold" : "text-xl sm:text-3xl font-bold text-white"
             }`}
         >
-          {isAdminLayout ? "Painel Administrativo" : "Chat Request"}
+          {isAdminLayout ? <><span className="sm:hidden">Painel Admin</span><span className="hidden sm:inline">Painel Administrativo</span></> : "Chat Request"}
         </Link>
 
         {isAuthenticated && user && (

@@ -7,6 +7,8 @@ use App\Models\FormSchemaVersion;
 use App\Models\RequestDraft;
 use App\Models\TypeRequest;
 use App\Models\User;
+use App\Services\DraftVersionMigrator;
+use App\Services\EnrollmentSnapshotService;
 use App\Services\FormSchemaValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +17,14 @@ use Illuminate\Validation\Rule;
 
 class FormSchemaController extends Controller
 {
+    public function versions(Request $request, string $typeId)
+    {
+        $this->authorizeEditor($request);
+        TypeRequest::findOrFail($typeId);
+
+        return response()->json(FormSchemaVersion::where('type_request_id', $typeId)->orderByDesc('version')->get());
+    }
+
     public function published(string $typeId)
     {
         $type = TypeRequest::findOrFail($typeId);
@@ -38,15 +48,48 @@ class FormSchemaController extends Controller
         return response()->json($schema, 201);
     }
 
+    public function update(Request $request, FormSchemaVersion $schemaVersion)
+    {
+        $this->authorizeEditor($request);
+        $data = $request->validate(['schema' => ['required', 'array'], 'change_summary' => ['nullable', 'string', 'max:1000']]);
+        app(FormSchemaValidator::class)->validateDefinition($data['schema']);
+
+        return DB::transaction(function () use ($schemaVersion, $data) {
+            $current = FormSchemaVersion::whereKey($schemaVersion->id)->lockForUpdate()->firstOrFail();
+            if ($current->status !== 'draft') {
+                return response()->json(['message' => 'Uma versão publicada ou substituída não pode ser editada. Crie uma nova versão.'], 409);
+            }
+
+            $current->update($data);
+
+            return response()->json($current->fresh());
+        });
+    }
+
     public function publish(Request $request, FormSchemaVersion $schemaVersion)
     {
         $this->authorizeEditor($request);
-        if ($schemaVersion->status !== 'draft') {
-            return response()->json(['message' => 'Somente uma versão em rascunho pode ser publicada.'], 409);
-        }
-        $schemaVersion->update(['status' => 'published', 'published_at' => now()]);
 
-        return response()->json($schemaVersion);
+        return DB::transaction(function () use ($schemaVersion) {
+            TypeRequest::whereKey($schemaVersion->type_request_id)->lockForUpdate()->firstOrFail();
+            $current = FormSchemaVersion::whereKey($schemaVersion->id)->lockForUpdate()->firstOrFail();
+            if ($current->status !== 'draft') {
+                return response()->json(['message' => 'Somente uma versão em rascunho pode ser publicada.'], 409);
+            }
+            if ($current->version !== FormSchemaVersion::where('type_request_id', $current->type_request_id)->max('version')) {
+                return response()->json(['message' => 'Existe uma versão mais recente. Revise-a antes de publicar.'], 409);
+            }
+            if (! is_string($current->change_summary) || trim($current->change_summary) === '') {
+                return response()->json(['message' => 'Descreva as mudanças antes de publicar a versão.'], 422);
+            }
+
+            app(FormSchemaValidator::class)->validateDefinition($current->schema);
+            FormSchemaVersion::where('type_request_id', $current->type_request_id)
+                ->where('status', 'published')->update(['status' => 'superseded']);
+            $current->update(['status' => 'published', 'published_at' => now()]);
+
+            return response()->json($current->fresh());
+        });
     }
 
     public function drafts(Request $request)
@@ -54,6 +97,52 @@ class FormSchemaController extends Controller
         $user = $this->student($request);
 
         return response()->json(RequestDraft::with(['type', 'schemaVersion'])->where('user_id', $user->id)->whereNull('discarded_at')->whereNull('submitted_at')->latest()->get());
+    }
+
+    public function migrationPreview(Request $request, RequestDraft $draft, DraftVersionMigrator $migrator)
+    {
+        $user = $this->student($request);
+        abort_unless($draft->user_id === $user->id, 403);
+        if ($draft->discarded_at || $draft->submitted_at) {
+            return response()->json(['message' => 'Este rascunho não está disponível.'], 409);
+        }
+        $target = FormSchemaVersion::where('type_request_id', $draft->type_request_id)->where('status', 'published')->latest('version')->first();
+        if (! $target || $draft->form_schema_version_id === $target->id) {
+            return response()->json(['needed' => false]);
+        }
+
+        return response()->json(['needed' => true, ...$migrator->preview($draft->load('schemaVersion'), $target)]);
+    }
+
+    public function migrateDraft(Request $request, RequestDraft $draft, DraftVersionMigrator $migrator)
+    {
+        $user = $this->student($request);
+        abort_unless($draft->user_id === $user->id, 403);
+        $data = $request->validate(['revision' => ['required', 'integer', 'min:1']]);
+
+        return DB::transaction(function () use ($draft, $user, $data, $migrator) {
+            TypeRequest::whereKey($draft->type_request_id)->lockForUpdate()->firstOrFail();
+            $current = RequestDraft::whereKey($draft->id)->lockForUpdate()->firstOrFail();
+            abort_unless($current->user_id === $user->id, 403);
+            if ($current->discarded_at || $current->submitted_at) {
+                return response()->json(['message' => 'Este rascunho não está disponível.'], 409);
+            }
+            if ($current->revision !== $data['revision']) {
+                return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $current], 409);
+            }
+            $target = FormSchemaVersion::where('type_request_id', $current->type_request_id)->where('status', 'published')->latest('version')->first();
+            if (! $target || $current->form_schema_version_id === $target->id) {
+                return response()->json(['message' => 'Não há nova versão publicada para este rascunho.'], 409);
+            }
+            $preview = $migrator->preview($current->load('schemaVersion'), $target);
+            $current->update([
+                'form_schema_version_id' => $target->id,
+                'responses' => $preview['responses'],
+                'revision' => $current->revision + 1,
+            ]);
+
+            return response()->json(['draft' => $current->fresh(['type', 'schemaVersion']), 'migration' => $preview]);
+        });
     }
 
     public function saveDraft(Request $request, ?RequestDraft $draft = null)
@@ -71,8 +160,14 @@ class FormSchemaController extends Controller
             'revision' => [$draft ? 'required' : 'nullable', 'integer', 'min:1'],
         ]);
 
-        if (! empty($data['form_schema_version_id']) && ! FormSchemaVersion::whereKey($data['form_schema_version_id'])->where('type_request_id', $data['type_request_id'])->where('status', 'published')->exists()) {
-            return response()->json(['message' => 'A versão do formulário não está publicada para este serviço.'], 422);
+        if ($draft && $draft->form_schema_version_id !== ($data['form_schema_version_id'] ?? null)) {
+            return response()->json(['message' => 'Revise a mudança de formulário antes de migrar o rascunho.'], 409);
+        }
+        if (! empty($data['form_schema_version_id'])) {
+            $version = FormSchemaVersion::whereKey($data['form_schema_version_id'])->where('type_request_id', $data['type_request_id'])->first();
+            if (! $version || ($version->status !== 'published' && ! ($draft && $draft->form_schema_version_id === $version->id && $version->status === 'superseded'))) {
+                return response()->json(['message' => 'A versão do formulário não está disponível para este serviço.'], 422);
+            }
         }
 
         $documentIds = $data['document_ids'] ?? [];
@@ -90,11 +185,14 @@ class FormSchemaController extends Controller
                 if ($draft->type_request_id !== $data['type_request_id']) {
                     return response()->json(['message' => 'Crie outro rascunho para mudar de serviço.'], 409);
                 }
+                if ($draft->form_schema_version_id !== ($data['form_schema_version_id'] ?? null)) {
+                    return response()->json(['message' => 'Revise a mudança de formulário antes de migrar o rascunho.'], 409);
+                }
                 if ((int) $data['revision'] !== (int) $draft->revision) {
                     return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $draft], 409);
                 }
             } else {
-                $draft = new RequestDraft(['user_id' => $user->id]);
+                $draft = new RequestDraft(['user_id' => $user->id, ...app(EnrollmentSnapshotService::class)->forStudent($user)]);
             }
 
             $created = ! $draft->exists;

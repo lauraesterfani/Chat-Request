@@ -35,7 +35,7 @@ class RequestAccessService
             foreach ($scopes as $scope) {
                 $requestQuery->orWhere(function (Builder $scopeQuery) use ($scope): void {
                     if ($scope->course_id) {
-                        $scopeQuery->whereHas('user', fn (Builder $userQuery) => $userQuery->where('course_id', $scope->course_id));
+                        $this->constrainCourse($scopeQuery, $scope->course_id);
                     }
                     if ($scope->sector) {
                         $scopeQuery->where('responsible_sector', $scope->sector);
@@ -57,12 +57,12 @@ class RequestAccessService
             return StaffAccessScope::where('staff_admin_id', $actor->id)
                 ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
                 ->whereJsonContains('abilities', 'view_request')
-                ->where(fn ($query) => $query->whereNull('course_id')->orWhere('course_id', $request->user?->course_id))
+                ->where(fn ($query) => $query->whereNull('course_id')->orWhere('course_id', $this->requestCourseId($request)))
                 ->where(fn ($query) => $query->whereNull('sector')->orWhere('sector', $request->responsible_sector))
                 ->exists();
         }
 
-        return $actor->role === 'coordenacao' && $request->user?->course_id === $actor->course_id;
+        return $actor->role === 'coordenacao' && $actor->course_id !== null && $this->requestCourseId($request) === $actor->course_id;
     }
 
     public function canOperate(User|StaffAdmin $actor, RequestModel $request, string $ability = 'forward_request'): bool
@@ -91,8 +91,23 @@ class RequestAccessService
         return StaffAccessScope::where('staff_admin_id', $actor->id)
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->whereJsonContains('abilities', $ability)
-            ->where(fn ($query) => $query->whereNull('course_id')->orWhere('course_id', $request->user?->course_id))
+            ->where(fn ($query) => $query->whereNull('course_id')->orWhere('course_id', $this->requestCourseId($request)))
             ->where(fn ($query) => $query->whereNull('sector')->orWhere('sector', $request->responsible_sector))
             ->exists();
+    }
+
+    public function constrainCourse(Builder $query, string $courseId): Builder
+    {
+        return $query->where(fn (Builder $requests) => $requests
+            ->where('course_id', $courseId)
+            ->orWhere(fn (Builder $legacy) => $legacy->whereNull('course_id')
+                ->whereHas('user', fn (Builder $users) => $users->where('course_id', $courseId))));
+    }
+
+    private function requestCourseId(RequestModel $request): ?string
+    {
+        // Pedidos antigos não tinham snapshot: o fallback mantém o acesso
+        // legado, sem inventar qual curso pertencia ao pedido histórico.
+        return $request->course_id ?? $request->user?->course_id;
     }
 }

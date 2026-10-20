@@ -13,6 +13,7 @@ class Request extends Model
 
     protected $fillable = [
         'user_id',
+        'course_id', 'enrollment_id',
         'type_id',
         'form_schema_version_id',
         'subject',

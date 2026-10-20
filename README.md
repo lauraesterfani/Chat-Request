@@ -78,6 +78,16 @@ Políticas de SLA começam como rascunho e só podem ser ativadas por administra
 
 Notificações internas idempotentes são criadas para mensagens públicas da equipe e mudanças de status. A central usa `GET /api/notifications`, contador em `GET /api/notifications/count`, leitura individual em `POST /api/notifications/{id}/read`, leitura em lote em `POST /api/notifications/read-all` e preferências em `GET/PUT /api/notification-preferences`. O componente de sino faz polling leve e respeita o destinatário autenticado. E-mail é enfileirado apenas quando o usuário habilita a categoria; o transporte local/teste deve ser usado até haver SMTP homologado. WhatsApp, SMS, push e campanhas estão fora do escopo.
 
+## Fase 7 — Editor de formulários
+
+Perfis `admin` e `cradt` podem abrir a configuração de formulário na lista de tipos de requerimento. A tela `/dashboard/admin/types/{typeId}/form` mostra versões, permite editar um rascunho, comparar mudanças com a versão publicada e testar uma prévia sem criar pedido real. Publique somente após preencher o resumo da mudança e conferir regras institucionais do serviço. A publicação substitui a versão ativa; versões anteriores e pedidos enviados permanecem preservados. Rascunhos de alunos em versão antiga exigem revisão antes de envio. A Fase 7 ainda não está inteiramente homologada; veja as pendências no roadmap.
+
+Ao criar um rascunho, a API registra o curso do perfil e, se houver uma única matrícula ativa correspondente, seu identificador. O pedido enviado conserva esse vínculo mesmo que o perfil do aluno mude depois. Matrículas ambíguas não são escolhidas automaticamente; pedidos anteriores a esta migração não possuem snapshot histórico confiável.
+
+Quando um formulário publicado muda, o aluno precisa revisar o rascunho antigo antes de continuar. A tela mostra quais respostas serão preservadas, quais não cabem na versão nova e quais campos obrigatórios precisam ser preenchidos. A atualização do rascunho é explícita e não envia o requerimento.
+
+O aluno pode abrir `/requests/drafts` para ver os próprios rascunhos, identificados pelo serviço e assunto, retomar um deles ou descartá-lo logicamente. `/requests/new?draft={id}` retoma apenas um rascunho pertencente ao aluno autenticado. O descarte não apaga automaticamente arquivos: limpeza e retenção aguardam política institucional.
+
 ## Fase 11 — Catálogo e orientações públicas
 
 A página pública [`/servicos`](frontend/app/servicos/page.tsx) consulta `GET /api/service-catalog` e `GET /api/knowledge-articles`. Ela mostra somente conteúdos publicados pelo back-end, permite busca textual e filtro por categoria, diferencia atendimento digital de orientação para canal externo e preserva estados explícitos de carregamento, erro e lista vazia. As informações são conteúdo editorial sujeito à revisão/homologação institucional; a página não promete protocolo, prazo ou regra acadêmica que não tenham sido publicados e aprovados.

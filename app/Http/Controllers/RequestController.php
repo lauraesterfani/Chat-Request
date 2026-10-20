@@ -13,6 +13,7 @@ use App\Models\SlaPolicy;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
+use App\Services\EnrollmentSnapshotService;
 use App\Services\FormSchemaValidator;
 use App\Services\NotificationService;
 use App\Services\RequestAccessService;
@@ -50,9 +51,7 @@ class RequestController extends Controller
 
         // Se for coordenação, vê apenas os requerimentos do curso vinculado
         if ($user->role === 'coordenacao') {
-            $query->whereHas('user', function ($q) use ($user) {
-                $q->where('course_id', $user->course_id);
-            });
+            $user->course_id ? app(RequestAccessService::class)->constrainCourse($query, $user->course_id) : $query->whereRaw('1 = 0');
         }
 
         // Filtros
@@ -73,9 +72,7 @@ class RequestController extends Controller
 
         if ($request->filled('course_id')) {
             $courseId = $request->input('course_id');
-            $query->whereHas('user', function ($q) use ($courseId) {
-                $q->where('course_id', $courseId);
-            });
+            app(RequestAccessService::class)->constrainCourse($query, $courseId);
         }
 
         $actorType = $user instanceof User ? 'student' : 'staff_admin';
@@ -97,7 +94,7 @@ class RequestController extends Controller
         }
         $query = RequestModel::with(['user.course', 'type', 'assignedStaff', 'slaPolicy'])->whereNotIn('status', ['completed', 'canceled']);
         if ($user->role === 'coordenacao') {
-            $query->whereHas('user', fn ($q) => $q->where('course_id', $user->course_id));
+            $user->course_id ? app(RequestAccessService::class)->constrainCourse($query, $user->course_id) : $query->whereRaw('1 = 0');
         }
         if ($request->filled('assigned')) {
             $request->input('assigned') === 'none' ? $query->whereNull('assigned_staff_id') : $query->where('assigned_staff_id', $request->input('assigned'));
@@ -262,8 +259,12 @@ class RequestController extends Controller
                     $q->where('type_request_id', $type->id)->orWhereNull('type_request_id');
                 })->orderByRaw('CASE WHEN type_request_id IS NULL THEN 1 ELSE 0 END')->latest('version')->first();
                 $createdAt = now();
+                $enrollment = $submissionDraft
+                    ? ['course_id' => $submissionDraft->course_id, 'enrollment_id' => $submissionDraft->enrollment_id]
+                    : app(EnrollmentSnapshotService::class)->forStudent($user);
                 $newRequest = RequestModel::create([
                     'user_id' => (string) $user->getJWTIdentifier(), // 🔥 Blinda contra conversões numéricas (1, 3, etc)
+                    ...$enrollment,
                     'type_id' => $validated['type_id'],
                     'form_schema_version_id' => $schema?->id,
                     'subject' => $validated['subject'],

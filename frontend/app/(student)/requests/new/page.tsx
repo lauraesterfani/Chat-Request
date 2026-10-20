@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle, Paperclip, Save, X } from "lucide-react";
 
 type RequestType = { id: string; name: string; requires_document: boolean; document_instructions?: string };
 type Condition = { field: string; operator: "equals" | "in" | "present"; value?: unknown };
 type Field = { key: string; label: string; type: string; required?: boolean; instruction?: string; options?: string[]; min?: number; max?: number; max_length?: number; max_items?: number; visible_if?: { all?: Condition[]; any?: Condition[] } };
-type Draft = { id: string; revision: number; type_request_id: string; form_schema_version_id?: string | null; responses?: Record<string, unknown> };
+type Draft = { id: string; revision: number; type_request_id: string; form_schema_version_id?: string | null; responses?: Record<string, unknown>; schema_version?: { schema: { fields: Field[] } } | null };
 type DraftSnapshot = { type_request_id: string; form_schema_version_id: string | null; responses: Record<string, unknown> };
+type MigrationPreview = { needed: boolean; to_version_id: string; to_version: number; schema: { fields: Field[] }; responses: Record<string, unknown>; retained_keys: string[]; reset_keys: string[]; required_keys: string[] };
 const baseFields: Field[] = [
   { key: "subject", label: "Assunto", type: "short_text", required: true, max_length: 255 },
   { key: "description", label: "Descrição", type: "long_text", required: true, max_length: 10000 },
@@ -51,6 +53,10 @@ export default function NewRequestPage() {
   const uploadedFile = useRef<{ file: File; id: string } | null>(null);
   const submissionAttempt = useRef<{ payload: string; file: File | null; draft: Draft; documentIds: string[] } | null>(null);
   const [conflictDraft, setConflictDraft] = useState<Draft | null>(null);
+  const [migration, setMigration] = useState<MigrationPreview | null>(null);
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const [migrationApplying, setMigrationApplying] = useState(false);
+  const [migrationUnavailable, setMigrationUnavailable] = useState(false);
   const [undoAnswers, setUndoAnswers] = useState<Record<string, unknown> | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [reviewing, setReviewing] = useState(false);
@@ -66,6 +72,7 @@ export default function NewRequestPage() {
   const description = String(answers.description ?? "");
   const displayFields = typeId ? [...baseFields.filter((base) => !fields.some((field) => field.key === base.key)), ...fields] : [];
   const visibleFields = displayFields.filter((field) => isVisible(field, answers));
+  const migrationLabel = (key: string) => key === "subject" ? "Assunto" : key === "description" ? "Descrição" : (migration?.schema.fields.find((field) => field.key === key) ?? draft?.schema_version?.schema.fields.find((field) => field.key === key))?.label ?? key;
 
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
 
@@ -74,11 +81,14 @@ export default function NewRequestPage() {
     fetch("/api/drafts", { headers: { Authorization: `Bearer ${token()}` } }).then(async (response) => {
       if (!response.ok) return;
       const drafts: Draft[] = await response.json();
-      if (drafts[0]) {
-        activeType.current = drafts[0].type_request_id;
-        draftRef.current = drafts[0];
-        savedSnapshot.current = JSON.stringify([drafts[0].type_request_id, drafts[0].form_schema_version_id ?? null, drafts[0].responses ?? {}]);
-        setDraft(drafts[0]); setTypeId(drafts[0].type_request_id); setVersionId(drafts[0].form_schema_version_id ?? null); setAnswers(drafts[0].responses ?? {});
+      const requestedId = new URLSearchParams(window.location.search).get("draft");
+      const selectedDraft = requestedId ? drafts.find((item) => item.id === requestedId) : drafts[0];
+      if (requestedId && !selectedDraft) setError("Este rascunho não está mais disponível. Escolha outro na sua lista.");
+      if (selectedDraft) {
+        activeType.current = selectedDraft.type_request_id;
+        draftRef.current = selectedDraft;
+        savedSnapshot.current = JSON.stringify([selectedDraft.type_request_id, selectedDraft.form_schema_version_id ?? null, selectedDraft.responses ?? {}]);
+        setDraft(selectedDraft); setTypeId(selectedDraft.type_request_id); setVersionId(selectedDraft.form_schema_version_id ?? null); setAnswers(selectedDraft.responses ?? {});
       }
     });
   }, []);
@@ -89,10 +99,61 @@ export default function NewRequestPage() {
     fetch(`/api/type-requests/${typeId}/form`, { headers: { Authorization: `Bearer ${token()}` }, signal: controller.signal }).then(async (response) => {
       if (!response.ok) { setError("Não foi possível carregar o formulário deste serviço."); return; }
       const data = await response.json();
-      if (!controller.signal.aborted && activeType.current === typeId) { setFields(data.schema?.fields ?? []); setVersionId(data.version_id ?? null); }
+      if (controller.signal.aborted || activeType.current !== typeId) return;
+      const currentDraft = draftRef.current;
+      if (currentDraft?.type_request_id === typeId && currentDraft.form_schema_version_id !== (data.version_id ?? null)) {
+        setMigrationLoading(true);
+        setMigrationUnavailable(false);
+        setFields(currentDraft.schema_version?.schema.fields ?? []);
+        setVersionId(currentDraft.form_schema_version_id ?? null);
+        try {
+          const previewResponse = await fetch(`/api/drafts/${currentDraft.id}/migration`, { headers: { Authorization: `Bearer ${token()}` }, signal: controller.signal });
+          if (!previewResponse.ok) throw new Error("Não foi possível conferir a nova versão do formulário.");
+          const preview: MigrationPreview = await previewResponse.json();
+          if (!controller.signal.aborted && draftRef.current?.id === currentDraft.id) setMigration(preview.needed ? preview : null);
+        } catch {
+          if (!controller.signal.aborted) { setMigrationUnavailable(true); setError("Não foi possível conferir a nova versão do formulário. Atualize a página e tente novamente."); }
+        } finally {
+          if (!controller.signal.aborted) setMigrationLoading(false);
+        }
+      } else {
+        setMigration(null);
+        setMigrationUnavailable(false);
+        setFields(data.schema?.fields ?? []);
+        setVersionId(data.version_id ?? null);
+      }
     }).catch(() => { if (!controller.signal.aborted) setError("Não foi possível carregar o formulário deste serviço."); });
     return () => controller.abort();
-  }, [typeId]);
+  }, [typeId, draft?.id]);
+
+  const applyMigration = async () => {
+    if (!draftRef.current || !migration) return;
+    setMigrationApplying(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/drafts/${draftRef.current.id}/migration`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ revision: draftRef.current.revision }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(response.status === 409 ? "O rascunho mudou em outra aba. Atualize a página antes de continuar." : data.message ?? "Não foi possível atualizar o rascunho.");
+      const nextDraft: Draft = data.draft;
+      draftRef.current = nextDraft;
+      savedSnapshot.current = JSON.stringify([nextDraft.type_request_id, nextDraft.form_schema_version_id ?? null, nextDraft.responses ?? {}]);
+      savedEditCount.current = editCount.current;
+      setDraft(nextDraft);
+      setFields(data.migration.schema.fields);
+      setVersionId(nextDraft.form_schema_version_id ?? null);
+      setAnswers(nextDraft.responses ?? {});
+      setMigration(null);
+      setSaveState("Rascunho atualizado. Confira os campos antes de enviar.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível atualizar o rascunho.");
+    } finally {
+      setMigrationApplying(false);
+    }
+  };
 
   const persistDraft = useCallback(async (snapshot: DraftSnapshot): Promise<Draft | null> => {
     if (submitted.current || activeType.current !== snapshot.type_request_id) return null;
@@ -176,6 +237,9 @@ export default function NewRequestPage() {
     setAnswers({ subject: "", description: "" });
     setFile(null);
     setConflictDraft(null);
+    setMigration(null);
+    setMigrationUnavailable(false);
+    setMigrationLoading(false);
     setUndoAnswers(null);
     setFieldErrors({});
     setReviewing(false);
@@ -186,7 +250,9 @@ export default function NewRequestPage() {
     event.preventDefault();
     setError("");
     if (selected?.requires_document && !file) { setError(`Anexe: ${selected.document_instructions ?? "documento comprobatório"}.`); return; }
+    if (migration || migrationLoading || migrationUnavailable) { setError("Revise a nova versão do formulário antes de enviar."); return; }
     if (conflictDraft) { setError("Resolva o conflito do rascunho antes de enviar."); return; }
+    if (migration || migrationLoading || migrationUnavailable) { setError("Revise a nova versão do formulário antes de enviar."); return; }
     setReviewing(true);
   };
   const submit = async (event: React.FormEvent) => {
@@ -240,9 +306,22 @@ export default function NewRequestPage() {
           <p className="text-sm font-medium text-emerald-100">Solicitações acadêmicas</p>
           <h1 className="mt-1 text-2xl font-bold">Novo requerimento</h1>
           <p className="mt-2 text-sm text-emerald-50">{reviewing ? "Confira os dados antes de confirmar o envio." : "Preencha com calma; suas respostas ficam salvas como rascunho."}</p>
+          {!reviewing && <Link href="/requests/drafts" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-emerald-200 px-4 text-sm font-semibold text-white hover:bg-white/10">Ver meus rascunhos</Link>}
         </header>
         <form onSubmit={reviewing ? submit : reviewRequest} className="space-y-6 p-5 sm:p-8">
           {error && <div ref={errorRef} tabIndex={-1} role="alert" className="flex gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle aria-hidden="true" size={18} className="shrink-0" /><span>{error}</span></div>}
+          {migrationLoading && <p role="status" className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">Conferindo a nova versão do formulário…</p>}
+          {migrationUnavailable && <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">O formulário não pode ser revisado agora. Seu rascunho permanece salvo; atualize a página para tentar novamente.</p>}
+          {migration && <section aria-labelledby="migration-title" className="space-y-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:p-5">
+            <div><h2 id="migration-title" className="text-lg font-bold">Este formulário foi atualizado</h2><p className="mt-1 text-sm leading-relaxed">Seu rascunho ainda está na versão anterior. Confira o que será preservado antes de continuar na versão {migration.to_version}.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg bg-white p-3"><h3 className="font-semibold">Respostas preservadas</h3><p className="mt-1 text-sm">{migration.retained_keys.length ? migration.retained_keys.map(migrationLabel).join(", ") : "Nenhuma resposta compatível."}</p></div>
+              <div className="rounded-lg bg-white p-3"><h3 className="font-semibold">Respostas que precisam de revisão</h3><p className="mt-1 text-sm">{migration.reset_keys.length ? migration.reset_keys.map(migrationLabel).join(", ") : "Nenhuma resposta será removida."}</p></div>
+            </div>
+            {migration.required_keys.length > 0 && <p className="text-sm font-semibold">Novos campos obrigatórios: {migration.required_keys.map(migrationLabel).join(", ")}.</p>}
+            <p className="text-sm">A atualização não envia o requerimento. Você poderá conferir e completar os campos depois.</p>
+            <div className="flex flex-wrap gap-3"><button type="button" onClick={() => void applyMigration()} disabled={migrationApplying} className="min-h-11 rounded-lg bg-dark-green px-4 font-semibold text-white disabled:opacity-50">{migrationApplying ? "Atualizando…" : "Atualizar e revisar rascunho"}</button><Link href="/requests/drafts" className="inline-flex min-h-11 items-center rounded-lg border border-amber-700 px-4 font-semibold">Voltar aos rascunhos</Link></div>
+          </section>}
           {conflictDraft && !reviewing && (
             <div role="alert" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
               <p className="font-semibold">Este rascunho também foi alterado em outra aba. O texto desta aba não foi apagado.</p>
@@ -254,7 +333,7 @@ export default function NewRequestPage() {
           )}
           {undoAnswers && !reviewing && <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-100 p-3 text-sm"><span>Uma resposta ficou oculta e foi removida ao mudar a opção.</span><button type="button" onClick={() => { editCount.current += 1; setAnswers(undoAnswers); setUndoAnswers(null); }} className="min-h-11 font-semibold text-dark-green underline">Desfazer</button></div>}
 
-          {reviewing ? (
+          {migration || migrationLoading || migrationUnavailable ? null : reviewing ? (
             <section aria-labelledby="review-title" className="space-y-4">
               <h2 id="review-title" className="text-lg font-bold text-dark-green">Revise seu requerimento</h2>
               <p className="text-sm text-slate-600">O protocolo será gerado somente depois da confirmação.</p>

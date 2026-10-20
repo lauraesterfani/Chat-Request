@@ -94,6 +94,8 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | POST | `/staff-access-scopes` | ✓ | admin,cradt | Cria escopo de acesso |
 | DELETE | `/staff-access-scopes/{id}` | ✓ | admin,cradt | Remove escopo de acesso |
 | POST | `/type-requests/{typeId}/form-versions` | ✓ | admin,cradt | Cria nova versão de formulário |
+| GET | `/type-requests/{typeId}/form-versions` | ✓ | admin,cradt | Lista versões para comparação e edição administrativa |
+| PUT | `/form-versions/{id}` | ✓ | admin,cradt | Edita somente versão em rascunho |
 | POST | `/form-versions/{id}/publish` | ✓ | admin,cradt | Publica versão de formulário |
 | GET | `/admin/service-catalog` | ✓ | admin,cradt | Catálogo administrativo |
 | POST | `/admin/service-catalog` | ✓ | admin,cradt | Cria entrada no catálogo |
@@ -279,3 +281,10 @@ Authorization: Bearer <jwt_token_staff>
   "timestamp": "2026-09-28T22:14:28-03:00"
 }
 ```
+# Vínculo acadêmico no requerimento
+
+O servidor registra `course_id` e, quando há uma única matrícula ativa compatível, `enrollment_id` ao criar um rascunho. Esses valores não são aceitos do cliente e passam ao requerimento no envio. O curso registrado, não o curso atual do perfil, define o escopo da coordenação para pedidos novos. Em pedidos legados com `course_id` nulo, o acesso continua usando o curso atual do aluno até revisão histórica; esse dado antigo não deve ser tratado como prova do curso no momento do envio.
+
+## Revisão de rascunho após publicação de formulário
+
+`GET /api/drafts/{id}/migration` mostra a versão publicada atual, respostas que podem ser preservadas, respostas incompatíveis que serão removidas e campos obrigatórios ainda vazios. Só o dono do rascunho pode consultar a prévia. `POST /api/drafts/{id}/migration` com `{ "revision": 3 }` confirma a mudança, recalcula a proposta no servidor e incrementa a revisão em uma transação. Revisão desatualizada recebe `409`; rascunhos descartados ou enviados não podem ser migrados. A API não troca a versão implicitamente em `PUT /api/drafts/{id}`. Após a migração, o aluno completa os novos campos e revisa o requerimento antes de enviá-lo.

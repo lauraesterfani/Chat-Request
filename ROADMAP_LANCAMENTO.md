@@ -36,7 +36,7 @@ Central interna, contador individual, leitura, preferências por categoria, idem
 
 ## Fase 7 — Formulários dinâmicos, rascunhos e duplicidade (núcleo incremental)
 
-Formulários versionados por serviço, validação no servidor, rascunhos com proteção contra conflito e prevenção de submissões duplicadas foram adicionados. A configuração de regras acadêmicas e de todos os serviços continua dependente de homologação institucional.
+Formulários versionados por serviço, validação no servidor, rascunhos com proteção contra conflito e prevenção de submissões duplicadas foram adicionados. O editor administrativo permite criar e editar rascunhos de schema, comparar com a versão publicada, usar prévia fictícia e publicar uma nova versão sem mutar a anterior. O aluno pode listar, distinguir pelo assunto, retomar e descartar logicamente seus rascunhos. Ao retomar um rascunho cuja versão foi substituída, a API mostra respostas compatíveis, removidas e novos campos obrigatórios; a mudança requer confirmação e mantém revisão protegida contra conflito. Curso e matrícula ativa inequívoca são preservados no rascunho e no pedido; o escopo da coordenação usa o curso registrado no pedido. Pedidos legados sem esse registro conservam temporariamente o vínculo pelo perfil atual, que não permite reconstruir com certeza o curso histórico. A Fase 7 ainda depende da escolha explícita em casos de múltiplas matrículas, prevenção configurável de duplicidade de negócio, cenários completos de anexos e testes E2E integrados antes de ser considerada concluída. A configuração de regras acadêmicas e de todos os serviços continua dependente de homologação institucional.
 
 ## Fase 8 — Permissões por campus, curso e setor (núcleo incremental)
 
