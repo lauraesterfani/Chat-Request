@@ -94,6 +94,7 @@ class RequestFlowTest extends TestCase
         $request = RequestModel::findOrFail($created->json('id'));
         $this->assertSame($originalCourse, $request->course_id);
         $this->assertSame($enrollment->id, $request->enrollment_id);
+        $request->update(['responsible_sector' => 'COORDENACAO']);
         auth('api')->forgetUser();
 
         $originalCoordination = StaffAdmin::create(['name' => 'Coordenação original', 'email' => uniqid().'@example.test', 'cpf' => '90000002001', 'role' => 'coordenacao', 'course_id' => $originalCourse, 'password' => 'secret', 'must_change_password' => false]);

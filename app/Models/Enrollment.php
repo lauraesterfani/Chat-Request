@@ -28,6 +28,11 @@ class Enrollment extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function courseRecord()
+    {
+        return $this->belongsTo(Course::class, 'course_id');
+    }
     
     // Acessor que simula o relacionamento 'course' (usado pelo DashboardController)
     public function getCourseAttribute()

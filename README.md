@@ -90,6 +90,12 @@ Anexos selecionados para serviços que exigem documento são enviados para armaz
 
 O aluno pode abrir `/requests/drafts` para ver os próprios rascunhos, identificados pelo serviço e assunto, retomar um deles ou descartá-lo logicamente. `/requests/new?draft={id}` retoma apenas um rascunho pertencente ao aluno autenticado. O descarte não apaga automaticamente arquivos: limpeza e retenção aguardam política institucional.
 
+## Fase 8 — Permissões por campus, curso e setor
+
+Somente administração institucional irrestrita pode cadastrar campi, associar cursos e conceder escopos. Use `GET/POST /api/admin/campuses`, `PATCH /api/admin/campuses/{id}` e `PUT /api/admin/courses/{course}/campus`. A tela `/dashboard/admin/access-scopes` concede capacidades limitadas por campus, curso ou setor, com início, validade, justificativa e revogação preservada. A API aplica os limites às listas, filas, detalhes, anexos, chat, templates e indicadores. Uma coordenação sem concessões explícitas só vê pedidos com snapshot do curso vinculado à conta e atualmente sob o setor `COORDENACAO`; registros sem contexto histórico suficiente não são atribuídos pelo curso atual do aluno.
+
+Como os campi reais ainda não foram fornecidos, a migração não cria registros institucionais fictícios. Depois de importar os campi e associar os cursos com os dados oficiais, execute `php artisan requests:unresolved-access-contexts` para listar IDs de pedidos legados sem curso ou campus histórico confirmado; a rotina é somente leitura e não apresenta dados pessoais.
+
 ## Fase 11 — Catálogo e orientações públicas
 
 A página pública [`/servicos`](frontend/app/servicos/page.tsx) consulta `GET /api/service-catalog` e `GET /api/knowledge-articles`. Ela mostra somente conteúdos publicados pelo back-end, permite busca textual e filtro por categoria, diferencia atendimento digital de orientação para canal externo e preserva estados explícitos de carregamento, erro e lista vazia. As informações são conteúdo editorial sujeito à revisão/homologação institucional; a página não promete protocolo, prazo ou regra acadêmica que não tenham sido publicados e aprovados.

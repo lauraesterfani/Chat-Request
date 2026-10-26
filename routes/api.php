@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuditRecordController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CourseController;
+use App\Http\Controllers\CampusController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnrollmentController;
@@ -102,7 +103,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function
     Route::get('/staffs', [StaffController::class, 'index']);
 });
 
-Route::middleware(['auth:staff_admins'])->get('/admins', [StaffAdminController::class, 'admins']);
+Route::middleware(['auth:staff_admins', 'password.changed', 'role:admin'])->get('/admins', [StaffAdminController::class, 'admins']);
 
 /*
 |--------------------------------------------------------------------------
@@ -115,7 +116,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
         ->middleware('role:admin,cradt');
 });
 
-Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+Route::middleware(['auth:staff_admins', 'password.changed', 'role:admin,cradt'])->group(function () {
     Route::post('/type-requests', [TypeRequestController::class, 'store']);
     Route::put('/type-requests/{id}', [TypeRequestController::class, 'update']);
     Route::delete('/type-requests/{id}', [TypeRequestController::class, 'destroy']);
@@ -128,9 +129,6 @@ Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () 
     Route::post('/admin/service-catalog', [ServiceCatalogController::class, 'store']);
     Route::put('/admin/service-catalog/{serviceCatalogEntry}', [ServiceCatalogController::class, 'update']);
     Route::get('/audit-records', [AuditRecordController::class, 'index']);
-    Route::get('/staff-access-scopes', [StaffAccessScopeController::class, 'index']);
-    Route::post('/staff-access-scopes', [StaffAccessScopeController::class, 'store']);
-    Route::delete('/staff-access-scopes/{scope}', [StaffAccessScopeController::class, 'destroy']);
     Route::post('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'store']);
     Route::get('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'versions']);
     Route::put('/form-versions/{schemaVersion}', [FormSchemaController::class, 'update']);
@@ -148,14 +146,8 @@ Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () 
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:staff'])->group(function () {
-    Route::get('/staff-admins', [StaffAdminController::class, 'index']);
-    Route::post('/staff-admins', [StaffAdminController::class, 'store']);
-
     Route::post('/staffs', [StaffController::class, 'store']);
     Route::delete('/staffs/{id}', [StaffController::class, 'destroy']);
-
-    Route::delete('/staff-admins/{id}', [StaffAdminController::class, 'destroy']);
-
 });
 
 Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staff,cradt,coordenacao'])->group(function () {
@@ -164,6 +156,21 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
     Route::post('/response-templates', [ResponseTemplateController::class, 'store']);
     Route::put('/response-templates/{responseTemplate}', [ResponseTemplateController::class, 'update']);
     Route::patch('/response-templates/{responseTemplate}/status', [ResponseTemplateController::class, 'updateStatus']);
+});
+
+Route::middleware(['auth:staff_admins', 'password.changed', 'role:admin'])->group(function () {
+    Route::get('/admin/campuses', [CampusController::class, 'index']);
+    Route::post('/admin/campuses', [CampusController::class, 'store']);
+    Route::patch('/admin/campuses/{campus}', [CampusController::class, 'update']);
+    Route::put('/admin/courses/{course}/campus', [CampusController::class, 'assignCourse']);
+    Route::get('/staff-admins', [StaffAdminController::class, 'index']);
+    Route::post('/staff-admins', [StaffAdminController::class, 'store']);
+    Route::delete('/staff-admins/{id}', [StaffAdminController::class, 'destroy']);
+    Route::patch('/staff-admins/{id}/status', [StaffAdminController::class, 'updateStatus']);
+    Route::get('/staff-access-scopes/options', [StaffAccessScopeController::class, 'options']);
+    Route::get('/staff-access-scopes', [StaffAccessScopeController::class, 'index']);
+    Route::post('/staff-access-scopes', [StaffAccessScopeController::class, 'store']);
+    Route::delete('/staff-access-scopes/{scope}', [StaffAccessScopeController::class, 'destroy']);
 });
 
 /*

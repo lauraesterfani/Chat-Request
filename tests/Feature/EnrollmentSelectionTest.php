@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\Campus;
 use App\Models\Enrollment;
 use App\Models\Request as RequestModel;
 use App\Models\RequestDraft;
@@ -73,6 +74,27 @@ class EnrollmentSelectionTest extends TestCase
         $this->actingAs($student, 'api')->getJson('/api/enrollments/active')->assertOk()->assertJsonPath('requires_selection', false);
         $this->postJson('/api/drafts', ['type_request_id' => $type->id])
             ->assertCreated()->assertJsonPath('course_id', $course->id)->assertJsonPath('enrollment_id', $enrollment->id);
+    }
+
+    public function test_campus_is_snapshotted_on_the_draft_and_submitted_request(): void
+    {
+        $student = $this->student();
+        $campus = Campus::create(['name' => 'Campus de teste', 'code' => 'CAMP-QA']);
+        $course = Course::create(['name' => 'Curso em campus', 'code' => 'QA-CAMP', 'campus_id' => $campus->id]);
+        $enrollment = $this->enroll($student, $course, 'QA-CAMP-001');
+        $type = TypeRequest::create(['name' => 'Serviço com campus']);
+
+        $draft = $this->actingAs($student, 'api')->postJson('/api/drafts', ['type_request_id' => $type->id])
+            ->assertCreated()->assertJsonPath('campus_id', $campus->id)->json();
+        $created = $this->postJson('/api/requests', [
+            'type_id' => $type->id,
+            'subject' => 'Pedido de campus',
+            'description' => 'Solicitação de teste',
+            'enrollment_id' => $enrollment->id,
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('request_drafts', ['id' => $draft['id'], 'campus_id' => $campus->id]);
+        $this->assertDatabaseHas('requests', ['id' => $created->json('id'), 'course_id' => $course->id, 'campus_id' => $campus->id]);
     }
 
     public function test_direct_submission_requires_selection_and_idempotency_cannot_cross_enrollments(): void

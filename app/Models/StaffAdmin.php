@@ -17,12 +17,23 @@ class StaffAdmin extends Authenticatable implements JWTSubject
         'role',
         'password',
         'must_change_password',
+        'is_active',
         'course_id',
     ];
 
     protected $hidden = [
         'password',
     ];
+
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean', 'must_change_password' => 'boolean'];
+    }
+
+    public function isActive(): bool
+    {
+        return ($this->getAttribute('is_active') ?? true) === true;
+    }
 
     public function accessScopes()
     {

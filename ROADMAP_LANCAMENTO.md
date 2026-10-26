@@ -38,7 +38,7 @@ Fase 7 tecnicamente concluída e testada. Formulários versionados por serviço,
 
 ## Fase 8 — Permissões por campus, curso e setor (núcleo incremental)
 
-Escopos explícitos para acesso administrativo e verificações de autorização em requerimentos, documentos, indicadores e auditoria foram adicionados. Escopos expirados continuam restringindo o perfil em vez de devolver acesso global; dashboards calculam somente registros visíveis. A matriz final de campi, cursos, setores e perfis precisa ser aprovada pelo IFPE antes da produção.
+Fase 8 tecnicamente implementada e coberta por testes. Concessões têm campus/curso/setor, capacidades, início, expiração e revogação preservada; somente administrador institucional sem escopo restritivo pode delegar ou administrar contas/campi. A mesma concessão precisa conter a capacidade e o escopo, e contas técnicas não recebem acesso acadêmico implícito. Listas, filas, totais, detalhes, documentos, mensagens e respostas pré-configuradas aplicam escopo no servidor. Coordenações sem concessão explícita ficam limitadas ao curso do vínculo do servidor e aos pedidos atualmente sob coordenação; pedidos legados sem snapshot de curso/campus não herdam o perfil atual do aluno. Os endpoints administrativos de campi e associação de cursos existem, mas não foram cadastrados campi reais. Antes de produção, a gestão precisa fornecer e aprovar a matriz institucional, importar os vínculos corretos e revisar os registros legados listados por `php artisan requests:unresolved-access-contexts`.
 
 ## Fase 9 — Auditoria, proteção de dados e recuperação (núcleo incremental)
 
@@ -66,7 +66,7 @@ Foram preparados adaptador de identidade institucional desativado por padrão, h
 |------|-------------|
 | **Notificações (F6)** | Central interna, contador, leitura individual e em massa, preferências por categoria, job de e-mail com idempotência |
 | **Formulários dinâmicos (F7)** | Schemas versionados por serviço, validação server-side, rascunhos com lock otimista, prevenção de duplicidade |
-| **Permissões por escopo (F8)** | Escopos explícitos por campus/setor em requerimentos, documentos e auditoria; middleware `role` por perfil |
+| **Permissões por escopo (F8)** | Escopos explícitos por campus/curso/setor e capacidade, grants temporais e revogáveis, isolamento de listagens, detalhes, documentos, mensagens, templates e agregados |
 | **Auditoria e dados (F9)** | Trilha de auditoria com metadados protegidos, controles de acesso granulares, documentação de proteção de dados |
 | **Indicadores e satisfação (F10)** | Métricas agregadas por escopo, coleta voluntária de satisfação, dicionário de métricas no endpoint `/metrics` |
 | **Catálogo e calendários (F11)** | Catálogo governado com janelas de abertura, base de conhecimento, pages responsivas, acessibilidade inicial |

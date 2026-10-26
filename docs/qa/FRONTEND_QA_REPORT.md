@@ -133,6 +133,17 @@ Nenhum defeito bloqueador reproduzido na rodada final. Os defeitos QA-001 (pop-o
 ## Conclusão
 
 **Fase 8 aprovada para avanço** quanto às mudanças visuais solicitadas.
+
+## Reteste final — Fase 8: campi e ciclo de vida dos escopos
+
+- **Resultado:** aprovado com ressalvas documentadas.
+- **Ambiente:** Next.js em `http://127.0.0.1:3001`, Playwright com Node.js 24, Chromium desktop e emulação iPhone 13.
+- **Execução:** suíte completa serial — `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3001 npm run qa:frontend -- --workers=1` — **22 passaram, 2 ignorados**. Os dois ignorados são o fluxo setorial integrado condicionado à disponibilidade de integração real. Uma tentativa paralela anterior teve colisão nos arquivos temporários de trace/screenshot; a repetição serial passou.
+- **Fluxo Fase 8:** cadastro de campus, vínculo com curso e atualização da contagem para “1 curso”; concessão com início futuro exibido como “Agendado”; horário local enviado no instante UTC correspondente; revogação de concessão agendada. Passou em desktop e mobile.
+- **Responsividade e console:** sem overflow horizontal e sem erros de console na tela testada.
+- **Evidências:** `/tmp/chat-request-phase8-chromium-desktop.png` e `/tmp/chat-request-phase8-chromium-mobile.png`.
+- **Limitação:** o teste de interface usa APIs simuladas, portanto não comprova persistência HTTP nessa navegação nem testa estados de erro, vazio ou falha de rede. A persistência e autorização da API são cobertas pelos testes de Feature Laravel: **122 passaram, 612 assertions**.
+- **Demais verificações:** `npx tsc --noEmit` passou; `npm run lint` passou sem erros, com 56 avisos preexistentes; `npm run build` passou. Avisos de build incluem lockfiles nas raízes do repositório e frontend e dados desatualizados do `baseline-browser-mapping`.
 # Validação de autenticação institucional — 2026-09-09
 
 - **Passou (desktop e login mobile 390×844):** `/login` exibe matrícula, normaliza letras para maiúsculas, mantém erro genérico em credencial inválida e não apresentou overflow. A página inicial não oferece autocadastro.

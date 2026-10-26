@@ -51,7 +51,10 @@ class RequestController extends Controller
 
         // Se for coordenação, vê apenas os requerimentos do curso vinculado
         if ($user->role === 'coordenacao') {
-            $user->course_id ? app(RequestAccessService::class)->constrainCourse($query, $user->course_id) : $query->whereRaw('1 = 0');
+            app(RequestAccessService::class)->constrainVisibleRequests($query, $user);
+        }
+        if ($user instanceof StaffAdmin && in_array($user->role, ['admin', 'cradt'], true)) {
+            app(RequestAccessService::class)->constrainVisibleRequests($query, $user);
         }
 
         // Filtros
@@ -94,7 +97,9 @@ class RequestController extends Controller
         }
         $query = RequestModel::with(['user.course', 'type', 'assignedStaff', 'slaPolicy'])->whereNotIn('status', ['completed', 'canceled']);
         if ($user->role === 'coordenacao') {
-            $user->course_id ? app(RequestAccessService::class)->constrainCourse($query, $user->course_id) : $query->whereRaw('1 = 0');
+            app(RequestAccessService::class)->constrainVisibleRequests($query, $user);
+        } else {
+            app(RequestAccessService::class)->constrainVisibleRequests($query, $user);
         }
         if ($request->filled('assigned')) {
             $request->input('assigned') === 'none' ? $query->whereNull('assigned_staff_id') : $query->where('assigned_staff_id', $request->input('assigned'));
@@ -282,7 +287,7 @@ class RequestController extends Controller
                 })->orderByRaw('CASE WHEN type_request_id IS NULL THEN 1 ELSE 0 END')->latest('version')->first();
                 $createdAt = now();
                 $enrollment = $submissionDraft
-                    ? ['course_id' => $submissionDraft->course_id, 'enrollment_id' => $submissionDraft->enrollment_id]
+                    ? ['course_id' => $submissionDraft->course_id, 'campus_id' => $submissionDraft->campus_id, 'enrollment_id' => $submissionDraft->enrollment_id]
                     : app(EnrollmentSnapshotService::class)->forStudent($user, $validated['enrollment_id'] ?? null);
                 if ($type->duplicate_window_days) {
                     $cutoff = now()->subDays($type->duplicate_window_days);
@@ -412,6 +417,14 @@ class RequestController extends Controller
 
         if ($user instanceof User || $user instanceof StaffAdmin) {
             if (app(RequestAccessService::class)->canView($user, $requestModel)) {
+                $capabilities = app(RequestAccessService::class)->capabilitiesFor($user, $requestModel);
+                $canReviewDocuments = $user instanceof User || in_array('review_document', $capabilities, true);
+                $requestModel->setAttribute('effective_capabilities', $capabilities);
+                $requestModel->setAttribute('can_review_documents', $canReviewDocuments);
+                if (! $canReviewDocuments) {
+                    $requestModel->setRelation('documents', $requestModel->documents()->getRelated()->newCollection());
+                }
+
                 return response()->json($requestModel);
             }
         }

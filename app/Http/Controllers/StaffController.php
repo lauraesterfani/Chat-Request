@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\StaffAdmin;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -20,7 +21,7 @@ class StaffController extends Controller
             'email' => 'required|email|unique:staff_admins',
             'phone' => 'required|string|max:20',
             'cpf' => 'required|string|unique:staff_admins',
-            'role' => 'required|in:admin,staff',
+            'role' => 'required|in:staff',
         ]);
 
         // Gerar senha aleatória
@@ -50,9 +51,13 @@ class StaffController extends Controller
     public function destroy($id)
     {
         $staff = StaffAdmin::findOrFail($id);
-        $staff->delete();
+        if ($staff->role !== 'staff') {
+            return response()->json(['message' => 'A equipe técnica só pode desativar contas técnicas.'], 403);
+        }
+        $staff->update(['is_active' => false]);
+        app(AuditService::class)->record(request(), 'technical_account_deactivated', 'staff_admin', $staff->id, ['role' => $staff->role]);
 
-        return response()->json(['message' => 'Removido com sucesso']);
+        return response()->json(['message' => 'Conta técnica desativada.']);
     }
 
     /**

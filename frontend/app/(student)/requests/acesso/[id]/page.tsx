@@ -50,7 +50,6 @@ export default function RequestDetailsPage() {
   const [observation, setObservation] = useState("");
   const [decisionJustification, setDecisionJustification] = useState("");
   const [conclusionSummary, setConclusionSummary] = useState("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [nextStatus, setNextStatus] = useState("");
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -84,20 +83,14 @@ export default function RequestDetailsPage() {
       if (!token) return router.push("/login");
 
       try {
-        const [meRes, reqRes] = await Promise.all([
-          fetch(`${API_BASE}/me`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE}/requests/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-
-        const currentUserData = meRes.ok ? await meRes.json() : null;
-        if (currentUserData) setCurrentUser(currentUserData);
+        const reqRes = await fetch(`${API_BASE}/requests/${id}`, { headers: { Authorization: `Bearer ${token}` } });
         if (reqRes.ok) {
           const data = await reqRes.json();
           setRequest(data);
           setObservation(data.observation || "");
 
           // Falhas ao buscar templates não interrompem o atendimento já existente.
-          if (currentUserData && ["admin", "staff", "cradt", "coordenacao"].includes(currentUserData.role) && data.type_id) {
+          if ((data.effective_capabilities?.includes("use_templates") || data.effective_capabilities?.includes("manage_templates")) && data.type_id) {
             try {
               const templatesResponse = await fetch(
                 `${API_BASE}/response-templates/active?request_id=${id}`,
@@ -180,8 +173,11 @@ export default function RequestDetailsPage() {
     );
   }
 
-  const isAdmin = ["admin", "staff", "cradt", "coordenacao"].includes(currentUser?.role);
-  const canChangeStatus = ["admin", "cradt"].includes(currentUser?.role) && !["completed", "canceled"].includes(request.status);
+  const capabilities: string[] = Array.isArray(request.effective_capabilities) ? request.effective_capabilities : [];
+  const canReply = capabilities.includes("reply_request") || capabilities.includes("reply_own_request");
+  const canChangeStatus = capabilities.includes("decide_request") && !["completed", "canceled"].includes(request.status);
+  const canManageTemplates = capabilities.includes("manage_templates");
+  const canAttend = canReply || canChangeStatus;
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] py-10 px-4">
@@ -226,7 +222,9 @@ export default function RequestDetailsPage() {
 
             <section>
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ml-1">Documentos Anexados</h3>
-              {request.documents?.length > 0 ? (
+              {request.can_review_documents === false ? (
+                <p className="text-sm text-gray-500 italic ml-1">Seu perfil pode acompanhar este requerimento, mas não tem permissão para revisar os anexos.</p>
+              ) : request.documents?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {request.documents.map((doc: DocumentInfo) => <RequestDocument key={doc.id} requestId={String(id)} document={doc} />)}
                 </div>
@@ -235,7 +233,7 @@ export default function RequestDetailsPage() {
               )}
             </section>
 
-            <RequestChat requestId={String(id)} status={request.status} templates={isAdmin ? responseTemplates : []} />
+            <RequestChat requestId={String(id)} status={request.status} canReply={canReply} templates={responseTemplates} />
             <RequestTimeline requestId={String(id)} />
           </div>
 
@@ -253,15 +251,15 @@ export default function RequestDetailsPage() {
               </div>
             </div>
 
-            {isAdmin && (
+            {canAttend && (
               <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm">
                 <h3 className="text-[11px] font-black text-emerald-800 uppercase mb-4 tracking-widest text-center">
-                  Área da Coordenação
+                  Área de atendimento
                 </h3>
 
-                <Link href="/dashboard/admin/response-templates" className="mb-4 block text-center text-[11px] font-bold text-emerald-700 hover:underline">
+                {canManageTemplates && <Link href="/dashboard/admin/response-templates" className="mb-4 block text-center text-[11px] font-bold text-emerald-700 hover:underline">
                   Gerenciar respostas pré-configuradas
-                </Link>
+                </Link>}
 
                 {responseTemplates.length > 0 && (
                   <label className="block mb-4">

@@ -68,6 +68,7 @@ class DocumentController extends Controller
         $actor = Auth::guard('api')->user() ?? Auth::guard('staff_admins')->user() ?? $request->user();
         if (! ($actor instanceof User || $actor instanceof StaffAdmin)
             || ! app(RequestAccessService::class)->canView($actor, $requestModel)
+            || ($actor instanceof StaffAdmin && ! in_array('review_document', app(RequestAccessService::class)->capabilitiesFor($actor, $requestModel), true))
             || ! $requestModel->documents()->whereKey($document->id)->exists()) {
             return response()->json(['message' => 'Acesso não autorizado.'], 403);
         }

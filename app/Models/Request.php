@@ -13,7 +13,7 @@ class Request extends Model
 
     protected $fillable = [
         'user_id',
-        'course_id', 'enrollment_id',
+        'course_id', 'campus_id', 'enrollment_id',
         'type_id',
         'form_schema_version_id',
         'subject',
@@ -43,6 +43,11 @@ class Request extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class);
     }
 
     public function type()

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Trash2, UserPlus, Users, X, ShieldAlert, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
+import { UserPlus, Users, X, ShieldAlert, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 const API_BASE = "/api";
@@ -20,7 +20,7 @@ export default function StaffPage() {
     email: "",
     phone: "",
     cpf: "",
-    role: "admin",
+    role: "cradt",
     course_id: ""
   });
 
@@ -67,7 +67,7 @@ export default function StaffPage() {
       });
 
       setModalOpen(false);
-      setFormData({ name: "", email: "", phone: "", cpf: "", role: "admin", course_id: "" });
+      setFormData({ name: "", email: "", phone: "", cpf: "", role: "cradt", course_id: "" });
       fetchStaffs();
       setSuccessData(response.data);
     } catch (error: any) {
@@ -82,7 +82,8 @@ export default function StaffPage() {
     if (!deleteId) return;
     try {
       const token = sessionStorage.getItem("jwt_token");
-      await axios.delete(`${API_BASE}/staff-admins/${deleteId}`, {
+      const target = staffs.find((staff) => staff.id === deleteId);
+      await axios.patch(`${API_BASE}/staff-admins/${deleteId}/status`, { is_active: !target?.is_active }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDeleteId(null);
@@ -128,11 +129,14 @@ export default function StaffPage() {
                     <td className="px-6 py-4 font-bold text-gray-800">{user.name}</td>
                     <td className="px-6 py-4 text-gray-500 text-sm">{user.email}</td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold uppercase">{user.role}</span>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold uppercase">{user.role}</span>
+                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${user.is_active ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-600"}`}>{user.is_active ? "Ativa" : "Desativada"}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => setDeleteId(user.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 size={18} />
+                      <button onClick={() => setDeleteId(user.id)} className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${user.is_active ? "text-red-700 hover:bg-red-50" : "text-emerald-700 hover:bg-emerald-50"}`}>
+                        {user.is_active ? "Desativar" : "Ativar"}
                       </button>
                     </td>
                   </tr>
@@ -175,8 +179,8 @@ export default function StaffPage() {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Função</label>
                 <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" required>
-                  <option value="admin">Admin</option>
-                  <option value="staff">Staff</option>
+                  <option value="admin">Administrador institucional</option>
+                  <option value="cradt">CRADT</option>
                   <option value="coordenacao">Coordenação</option>
                 </select>
               </div>
@@ -215,18 +219,18 @@ export default function StaffPage() {
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {/* MODAL DE ALTERAÇÃO DE ACESSO */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in duration-200">
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Remover Acesso?</h2>
-            <p className="text-gray-500 mb-8 text-sm">Esta ação é permanente e o membro não poderá mais acessar o painel administrativo.</p>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Alterar acesso?</h2>
+            <p className="text-gray-500 mb-8 text-sm">{staffs.find((staff) => staff.id === deleteId)?.is_active ? "A conta será desativada. O vínculo e o histórico serão preservados." : "A conta será reativada e poderá voltar a acessar o sistema."}</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">Cancelar</button>
-              <button onClick={confirmDelete} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-100">Sim, Remover</button>
+              <button onClick={confirmDelete} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-100">Confirmar</button>
             </div>
           </div>
         </div>

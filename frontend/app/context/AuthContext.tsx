@@ -25,6 +25,7 @@ interface User {
     birthday: string;
     matricula?: string;
     must_change_password?: boolean;
+    capabilities?: string[];
     created_at?: string;
     updated_at?: string;
     [key: string]: any;

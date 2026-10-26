@@ -22,7 +22,7 @@ class MetricsTest extends TestCase
         $student = User::create(['name' => 'Aluno', 'email' => 'metric@example.test', 'cpf' => '90000003001', 'phone' => '81900003001', 'matricula' => 'MQA001', 'birthday' => '2000-01-01', 'password' => 'secret', 'role' => 'student', 'course_id' => $course->id]);
         $type = TypeRequest::create(['name' => 'Métrica']);
         foreach (['pending', 'completed', 'canceled'] as $index => $status) {
-            RequestModel::create(['user_id' => $student->id, 'type_id' => $type->id, 'subject' => "S$index", 'description' => 'D', 'status' => $status, 'protocol' => "20260907-1234$index"]);
+            RequestModel::create(['user_id' => $student->id, 'course_id' => $course->id, 'type_id' => $type->id, 'subject' => "S$index", 'description' => 'D', 'status' => $status, 'protocol' => "20260907-1234$index"]);
         }
         $admin = StaffAdmin::create(['name' => 'Admin', 'email' => 'metric-admin@example.test', 'cpf' => '90000003002', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
         $this->actingAs($admin, 'staff_admins')->getJson('/api/metrics?course_id='.$course->id)->assertOk()->assertJsonPath('total', 3)->assertJsonPath('open', 1)->assertJsonPath('completed', 1)->assertJsonPath('canceled', 1);
@@ -49,7 +49,7 @@ class MetricsTest extends TestCase
         $type = TypeRequest::create(['name' => 'Métrica escopo']);
         foreach ([$allowedCourse, $otherCourse] as $index => $course) {
             $student = User::create(['name' => "Aluno $index", 'email' => "scope$index@example.test", 'cpf' => '9000000310'.$index, 'phone' => '81900009991', 'matricula' => '20241MP'.($index + 1).'IG001', 'birthday' => '2000-01-01', 'password' => 'secret', 'role' => 'student', 'course_id' => $course->id]);
-            RequestModel::create(['user_id' => $student->id, 'type_id' => $type->id, 'subject' => 'S', 'description' => 'D', 'status' => 'pending', 'protocol' => '20260909-00000'.$index]);
+            RequestModel::create(['user_id' => $student->id, 'course_id' => $course->id, 'type_id' => $type->id, 'subject' => 'S', 'description' => 'D', 'status' => 'pending', 'protocol' => '20260909-00000'.$index]);
         }
         $admin = StaffAdmin::create(['name' => 'Admin escopado', 'email' => 'scoped-admin@example.test', 'cpf' => '90000003199', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
         StaffAccessScope::create(['staff_admin_id' => $admin->id, 'course_id' => $allowedCourse->id, 'abilities' => ['view_request'], 'reason' => 'QA']);

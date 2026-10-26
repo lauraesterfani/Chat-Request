@@ -48,7 +48,11 @@ class ResponseTemplateController extends Controller
         ]);
 
         $requestModel = RequestModel::with('user')->findOrFail($request->input('request_id'));
-        abort_unless(app(RequestAccessService::class)->canView($request->user(), $requestModel), 403);
+        $actor = $request->user();
+        $access = app(RequestAccessService::class);
+        abort_unless($actor instanceof StaffAdmin
+            && $access->canReply($actor, $requestModel)
+            && in_array($requestModel->responsible_sector, $access->templateSectors($actor), true), 403);
 
         $templates = ResponseTemplate::query()
             ->with('typeRequests:id,name')
@@ -139,9 +143,11 @@ class ResponseTemplateController extends Controller
 
     private function allowedSectors(Request $request): array
     {
-        return in_array($request->user()?->role, ['admin', 'cradt'], true)
-            ? ['CRADT', 'COORDENACAO']
-            : [$request->user()?->role === 'coordenacao' ? 'COORDENACAO' : 'CRADT'];
+        $actor = $request->user();
+
+        return $actor instanceof StaffAdmin
+            ? app(RequestAccessService::class)->templateSectors($actor, forManagement: true)
+            : [];
     }
 
     private function assertSectorAccess(Request $request, string $sector): void

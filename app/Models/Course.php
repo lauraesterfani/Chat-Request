@@ -10,7 +10,7 @@ class Course extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $fillable = ['name', 'code', 'is_active'];
+    protected $fillable = ['name', 'code', 'is_active', 'campus_id'];
     
     public $incrementing = false;
     protected $keyType = 'string';
@@ -19,5 +19,10 @@ class Course extends Model
     public function users()
     {
         return $this->hasMany(User::class);
+    }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class);
     }
 }

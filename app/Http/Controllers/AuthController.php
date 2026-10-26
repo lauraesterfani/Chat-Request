@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\StaffAdmin;
 use App\Services\AuditService;
+use App\Services\RequestAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -69,6 +71,11 @@ class AuthController extends Controller
         }
 
         $user = auth('staff_admins')->user();
+        if (! $user->is_active) {
+            auth('staff_admins')->logout();
+
+            return response()->json(['message' => 'Credenciais inválidas.'], 401);
+        }
 
         // Se for primeiro acesso, força redefinição
         if ($user->must_change_password) {
@@ -108,12 +115,16 @@ class AuthController extends Controller
         if (! $user) {
             return response()->json(['message' => 'Token inválido ou expirado.'], 401);
         }
+        if ($user instanceof StaffAdmin && ! $user->isActive()) {
+            return response()->json(['message' => 'Acesso não autorizado.'], 401);
+        }
 
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'capabilities' => app(RequestAccessService::class)->capabilitiesFor($user),
             'must_change_password' => (bool) $user->must_change_password,
         ]);
     }
@@ -138,6 +149,12 @@ class AuthController extends Controller
     public function refresh()
     {
         if (auth('staff_admins')->check()) {
+            if (! auth('staff_admins')->user()->isActive()) {
+                auth('staff_admins')->logout();
+
+                return response()->json(['message' => 'Token inválido ou expirado.'], 401);
+            }
+
             return response()->json([
                 'token' => auth('staff_admins')->refresh(),
                 'expires_in' => auth('staff_admins')->factory()->getTTL() * 60,

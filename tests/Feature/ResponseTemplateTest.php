@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\StaffAccessScope;
 use App\Models\Request as RequestModel;
 use App\Models\ResponseTemplate;
 use App\Models\StaffAdmin;
@@ -159,7 +160,7 @@ class ResponseTemplateTest extends TestCase
         $this->actingAs($admin, 'staff_admins')->getJson("/api/response-templates/active?request_id={$request->id}")
             ->assertOk()->assertJsonCount(1)->assertJsonPath('0.id', $coordination->id);
 
-        $other = $this->staff();
+        $other = $this->staff('staff');
         $this->actingAs($other, 'staff_admins')->getJson("/api/response-templates/active?request_id={$request->id}")
             ->assertForbidden();
     }
@@ -175,6 +176,37 @@ class ResponseTemplateTest extends TestCase
         $this->actingAs($coordinator, 'staff_admins')->postJson('/api/response-templates', [
             'title' => 'Outra área', 'content' => 'Texto de teste', 'sector' => 'CRADT', 'type_request_ids' => [$type->id],
         ])->assertForbidden();
+    }
+
+    public function test_scoped_template_access_is_limited_to_granted_sector_and_capabilities(): void
+    {
+        $operator = $this->staff('cradt');
+        $operator->update(['role' => 'cradt']);
+        $type = $this->type('Escopo de modelos');
+        $coordinationTemplate = $this->template($operator, $type);
+        $coordinationTemplate->update(['sector' => 'COORDENACAO']);
+        $cradtTemplate = $this->template($operator, $type, true, 'CRADT limitado');
+        $course = Course::create(['name' => 'Curso com escopo', 'code' => 'CE'.uniqid()]);
+        $request = $this->requestFor($type);
+        $request->update(['course_id' => $course->id, 'responsible_sector' => 'CRADT']);
+        StaffAccessScope::create([
+            'staff_admin_id' => $operator->id,
+            'course_id' => $course->id,
+            'sector' => 'CRADT',
+            'abilities' => ['view_request', 'reply_request', 'use_templates'],
+            'starts_at' => now()->subMinute(),
+            'reason' => 'Atendimento limitado ao curso e setor.',
+        ]);
+
+        $this->actingAs($operator, 'staff_admins')
+            ->getJson('/api/response-templates')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+        $this->getJson('/api/response-templates/active?request_id='.$request->id)
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $cradtTemplate->id);
+        $this->getJson('/api/response-templates/'.$coordinationTemplate->id)->assertForbidden();
     }
 
     public function test_creation_fails_for_unknown_request_type(): void
@@ -206,13 +238,13 @@ class ResponseTemplateTest extends TestCase
             ->assertJsonValidationErrors(['title', 'content']);
     }
 
-    private function staff(): StaffAdmin
+    private function staff(string $role = 'cradt'): StaffAdmin
     {
         return StaffAdmin::create([
             'name' => 'Equipe Técnica',
             'email' => 'staff'.uniqid().'@example.test',
             'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT),
-            'role' => 'staff',
+            'role' => $role,
             'password' => 'secret',
             'must_change_password' => false,
         ]);

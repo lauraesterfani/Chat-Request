@@ -5,7 +5,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 type ChatMessage = { id: string; content: string; sender: { name: string; role: string }; is_mine: boolean; created_at: string };
 type ResponseTemplate = { id: string; title: string; content: string };
 
-export default function RequestChat({ requestId, status, templates = [] }: { requestId: string; status: string; templates?: ResponseTemplate[] }) {
+export default function RequestChat({ requestId, status, canReply = true, templates = [] }: { requestId: string; status: string; canReply?: boolean; templates?: ResponseTemplate[] }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -69,7 +69,7 @@ export default function RequestChat({ requestId, status, templates = [] }: { req
         </div>
       </div>)}
     </div>
-    {closed ? <p className="mt-3 rounded-lg bg-gray-100 p-3 text-center text-xs text-gray-500">Este requerimento está encerrado. O histórico permanece disponível somente para leitura.</p> : <>
+    {closed ? <p className="mt-3 rounded-lg bg-gray-100 p-3 text-center text-xs text-gray-500">Este requerimento está encerrado. O histórico permanece disponível somente para leitura.</p> : !canReply ? <p className="mt-3 rounded-lg bg-gray-100 p-3 text-center text-xs text-gray-600">Você pode consultar este histórico, mas não tem permissão para responder.</p> : <>
       {templates.length > 0 && <label className="mt-3 block text-xs font-bold text-emerald-800">Resposta pré-configurada
         <select defaultValue="" onChange={(event) => { const template = templates.find((item) => item.id === event.target.value); if (template && (!text.trim() || window.confirm("Substituir o texto atual pela resposta pré-configurada?"))) setText(template.content); }} className="mt-1 w-full rounded-xl border border-emerald-100 bg-emerald-50/50 p-2 text-sm font-normal text-slate-700">
           <option value="">Selecionar texto-base...</option>

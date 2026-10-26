@@ -120,6 +120,14 @@ export default function DashboardPage() {
                 <Clock size={18} />
                 <span>Fila de atendimentos</span>
               </Link>
+              <Link href="/dashboard/admin/staff" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <Users size={18} />
+                <span>Gestão de equipe</span>
+              </Link>
+              <Link href="/dashboard/admin/access-scopes" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <ShieldCheck size={18} />
+                <span>Campi e permissões</span>
+              </Link>
             </>
           )}
 
@@ -135,10 +143,6 @@ export default function DashboardPage() {
               <Link href="/dashboard/admin/response-templates" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
                 <MessageSquareText size={18} />
                 <span>Respostas pré-configuradas</span>
-              </Link>
-              <Link href="/dashboard/admin/staff" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
-                <Users size={18} />
-                <span>Gestão de Acessos</span>
               </Link>
             </>
           )}
@@ -177,6 +181,15 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="text-lg font-bold text-gray-800">Gestão de Equipe</h3>
                   <p className="text-sm text-gray-400 mt-1">Adicionar admins e staff.</p>
+                </Link>
+                <Link href="/dashboard/admin/access-scopes" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <ShieldCheck size={24} />
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Campi e permissões</h3>
+                  <p className="text-sm text-gray-400 mt-1">Associar cursos e conceder acessos com escopo.</p>
                 </Link>
                 <Link href="/dashboard/admin/response-templates" className="group p-6 border border-gray-100 rounded-2xl hover:border-emerald-500 hover:shadow-lg transition-all text-left">
                   <div className="flex items-center justify-between mb-4">
