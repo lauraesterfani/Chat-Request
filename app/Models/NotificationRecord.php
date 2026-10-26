@@ -9,7 +9,7 @@ class NotificationRecord extends Model
 {
     use HasUuids;
 
-    public const CATEGORIES = ['message', 'status', 'request', 'document', 'workflow'];
+    public const CATEGORIES = ['message', 'status', 'request', 'document', 'workflow', 'satisfaction'];
 
     protected $table = 'notification_records';
 

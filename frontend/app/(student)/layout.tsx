@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { HelpCircle, X, MessageSquare, FileText, CheckCircle, LogOut, ChevronDown } from "lucide-react";
+import { HelpCircle, X, MessageSquare, FileText, CheckCircle, LogOut, ChevronDown, ShieldCheck, BookOpen } from "lucide-react";
 import NotificationBell from "../../components/NotificationBell";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -156,6 +156,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <p className="text-[13px] text-slate-700 leading-relaxed font-bold">Se o sistema pedir, anexe o comprovante pelo ícone de clipe.</p>
               </div>
             </div>
+
+            {user?.role === "student" && (
+              <Link
+                href="/knowledge"
+                onClick={() => setIsHelpOpen(false)}
+                className="mb-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+              >
+                <BookOpen size={18} aria-hidden="true" />
+                Ver orientações para estudantes
+              </Link>
+            )}
+
+            <Link
+              href="/requests/privacidade"
+              onClick={() => setIsHelpOpen(false)}
+              className="mb-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+            >
+              <ShieldCheck size={18} aria-hidden="true" />
+              Privacidade e solicitações sobre seus dados
+            </Link>
 
             <button
               onClick={() => setIsHelpOpen(false)}

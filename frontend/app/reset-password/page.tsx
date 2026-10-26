@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -39,6 +40,7 @@ export default function ResetPasswordPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          current_password: currentPassword,
           new_password: newPassword,
           new_password_confirmation: confirmPassword,
         }),
@@ -81,23 +83,37 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={handleReset} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Nova Senha</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Senha temporária atual</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-4 py-3 border rounded-xl"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Nova senha</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full px-4 py-3 border rounded-xl"
+              autoComplete="new-password"
               required
             />
+            <p className="mt-1 text-xs text-slate-500">Use ao menos 8 caracteres, com maiúscula, minúscula, número e símbolo.</p>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Confirmar Senha</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Confirmar senha</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full px-4 py-3 border rounded-xl"
+              autoComplete="new-password"
               required
             />
           </div>

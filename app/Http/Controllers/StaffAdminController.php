@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\StaffAdmin;
 use App\Services\AuditService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class StaffAdminController extends Controller
 {
@@ -50,26 +52,30 @@ class StaffAdminController extends Controller
             }
 
             $data = $request->validate([
-                'name'  => 'required|string',
+                'name' => 'required|string',
                 'email' => 'required|email|unique:staff_admins,email',
-                'role'  => 'required|string|in:admin,cradt,coordenacao',
-                'cpf'   => 'nullable|string|unique:staff_admins,cpf',
-                'course_id' => 'nullable|exists:courses,id'
+                'role' => 'required|string|in:admin,cradt,coordenacao',
+                'cpf' => 'nullable|string|unique:staff_admins,cpf',
+                'course_id' => 'nullable|exists:courses,id',
             ]);
 
             // gera senha aleatória
-            $tempPassword = \Illuminate\Support\Str::random(10);
+            $tempPassword = Str::random(10);
             $data['password'] = Hash::make($tempPassword);
             $data['must_change_password'] = true; // flag para redefinição obrigatória
 
-            $staff = StaffAdmin::create($data);
-            app(AuditService::class)->record($request, 'staff_account_created', 'staff_admin', $staff->id, ['role' => $staff->role]);
+            $staff = DB::transaction(function () use ($request, $data): StaffAdmin {
+                $staff = StaffAdmin::create($data);
+                app(AuditService::class)->record($request, 'staff_account_created', 'staff_admin', $staff->id, ['role' => $staff->role]);
+
+                return $staff;
+            });
 
             // retorna a senha temporária junto com os dados
             return response()->json([
                 'message' => 'Criado com sucesso!',
                 'user' => $staff,
-                'temp_password' => $tempPassword
+                'temp_password' => $tempPassword,
             ], 201);
 
         } catch (ValidationException $e) {
@@ -98,11 +104,13 @@ class StaffAdminController extends Controller
             }
         }
 
-        $target->update(['is_active' => $isActive]);
-        app(AuditService::class)->record($request, $isActive ? 'staff_account_activated' : 'staff_account_deactivated', 'staff_admin', $target->id, [
-            'role' => $target->role,
-            'is_active' => $isActive,
-        ]);
+        DB::transaction(function () use ($request, $isActive, $target): void {
+            $target->update(['is_active' => $isActive]);
+            app(AuditService::class)->record($request, $isActive ? 'staff_account_activated' : 'staff_account_deactivated', 'staff_admin', $target->id, [
+                'role' => $target->role,
+                'is_active' => $isActive,
+            ]);
+        });
 
         return response()->json(['message' => $isActive ? 'Conta ativada.' : 'Conta desativada.', 'is_active' => $target->is_active]);
     }

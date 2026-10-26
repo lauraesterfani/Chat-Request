@@ -2,18 +2,22 @@
 
 use App\Http\Controllers\AuditRecordController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CourseController;
 use App\Http\Controllers\CampusController;
+use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\FormSchemaController;
 use App\Http\Controllers\KnowledgeArticleController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MetricExportController;
 use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PrivacyDataRequestController;
+use App\Http\Controllers\PrivacyNoticeController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ResponseTemplateController;
+use App\Http\Controllers\RetentionSimulationController;
 use App\Http\Controllers\SatisfactionResponseController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\ServiceOpeningWindowController;
@@ -24,6 +28,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TypeRequestController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,15 +42,15 @@ Route::middleware(['auth:staff_admins', 'password.changed', 'role:staff'])->get(
     $dbOk = true;
     try {
         DB::connection()->getPdo();
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $dbOk = false;
     }
     $pendingJobs = 0;
     try {
-        if (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+        if (Schema::hasTable('jobs')) {
             $pendingJobs = DB::table('jobs')->count();
         }
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
     }
 
     return response()->json([
@@ -58,7 +63,7 @@ Route::middleware(['auth:staff_admins', 'password.changed', 'role:staff'])->get(
     ], $dbOk ? 200 : 503);
 });
 
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/staff', [AuthController::class, 'loginStaff']);
 Route::post('/validate-token', [EnrollmentController::class, 'validateToken']);
 
@@ -66,7 +71,11 @@ Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/type-requests', [TypeRequestController::class, 'index']);
 Route::get('/service-catalog', [ServiceCatalogController::class, 'index']);
 Route::get('/knowledge-articles', [KnowledgeArticleController::class, 'index']);
+Route::get('/privacy-notice/current', [PrivacyNoticeController::class, 'current']);
 Route::get('/type-requests/{typeId}/form', [FormSchemaController::class, 'published']);
+
+Route::middleware(['auth:api', 'password.changed', 'role:student'])
+    ->get('/knowledge-articles/authenticated', [KnowledgeArticleController::class, 'authenticatedIndex']);
 
 /*
 |--------------------------------------------------------------------------
@@ -91,6 +100,7 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function
     Route::get('/requests/{requestModel}/documents/{document}', [DocumentController::class, 'show']);
 
     Route::post('/requests', [RequestController::class, 'store']);
+    Route::post('/requests/duplicates/check', [RequestController::class, 'checkDuplicates']);
     Route::get('/enrollments/active', [FormSchemaController::class, 'activeEnrollments']);
     Route::get('/drafts', [FormSchemaController::class, 'drafts']);
     Route::get('/drafts/{draft}/documents/{document}', [DocumentController::class, 'showDraft']);
@@ -117,9 +127,11 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
 });
 
 Route::middleware(['auth:staff_admins', 'password.changed', 'role:admin,cradt'])->group(function () {
+    Route::get('/admin/type-requests', [TypeRequestController::class, 'adminIndex']);
     Route::post('/type-requests', [TypeRequestController::class, 'store']);
     Route::put('/type-requests/{id}', [TypeRequestController::class, 'update']);
     Route::delete('/type-requests/{id}', [TypeRequestController::class, 'destroy']);
+    Route::get('/admin/knowledge-articles', [KnowledgeArticleController::class, 'adminIndex']);
     Route::post('/admin/knowledge-articles', [KnowledgeArticleController::class, 'store']);
     Route::put('/admin/knowledge-articles/{knowledgeArticle}', [KnowledgeArticleController::class, 'update']);
     Route::get('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'index']);
@@ -128,7 +140,6 @@ Route::middleware(['auth:staff_admins', 'password.changed', 'role:admin,cradt'])
     Route::get('/admin/service-catalog', [ServiceCatalogController::class, 'adminIndex']);
     Route::post('/admin/service-catalog', [ServiceCatalogController::class, 'store']);
     Route::put('/admin/service-catalog/{serviceCatalogEntry}', [ServiceCatalogController::class, 'update']);
-    Route::get('/audit-records', [AuditRecordController::class, 'index']);
     Route::post('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'store']);
     Route::get('/type-requests/{typeId}/form-versions', [FormSchemaController::class, 'versions']);
     Route::put('/form-versions/{schemaVersion}', [FormSchemaController::class, 'update']);
@@ -139,6 +150,23 @@ Route::middleware(['auth:staff_admins', 'password.changed', 'role:admin,cradt'])
     Route::post('/sla-policies', [SlaPolicyController::class, 'store']);
     Route::post('/sla-policies/{slaPolicy}/activate', [SlaPolicyController::class, 'activate']);
 });
+
+Route::middleware(['auth:staff_admins', 'password.changed'])
+    ->get('/audit-records', [AuditRecordController::class, 'index']);
+
+Route::middleware(['auth:staff_admins', 'password.changed'])
+    ->post('/admin/retention/simulate', RetentionSimulationController::class);
+
+Route::middleware(['auth:staff_admins', 'password.changed'])
+    ->prefix('admin/privacy-notices')->group(function (): void {
+        Route::get('/', [PrivacyNoticeController::class, 'adminIndex']);
+        Route::post('/', [PrivacyNoticeController::class, 'store']);
+        Route::put('/{privacyNotice}', [PrivacyNoticeController::class, 'update']);
+        Route::post('/{privacyNotice}/submit-review', [PrivacyNoticeController::class, 'submitForReview']);
+        Route::post('/{privacyNotice}/return-to-draft', [PrivacyNoticeController::class, 'returnToDraft']);
+        Route::post('/{privacyNotice}/publish', [PrivacyNoticeController::class, 'publish']);
+        Route::post('/{privacyNotice}/new-version', [PrivacyNoticeController::class, 'newVersion']);
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -196,13 +224,28 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->prefix('reques
     Route::post('/read', [MessageController::class, 'markRead']);
 });
 
+Route::middleware(['auth:api', 'password.changed'])->prefix('privacy/data-requests')->group(function () {
+    Route::get('/', [PrivacyDataRequestController::class, 'index']);
+    Route::post('/', [PrivacyDataRequestController::class, 'store']);
+    Route::get('/{privacyDataRequest}', [PrivacyDataRequestController::class, 'showMine']);
+});
+
+Route::middleware(['auth:staff_admins', 'password.changed'])->prefix('admin/privacy/data-requests')->group(function () {
+    Route::get('/', [PrivacyDataRequestController::class, 'adminIndex']);
+    Route::get('/{privacyDataRequest}', [PrivacyDataRequestController::class, 'adminShow']);
+    Route::patch('/{privacyDataRequest}', [PrivacyDataRequestController::class, 'transition']);
+});
+
 Route::middleware(['auth:api', 'password.changed'])->group(function () {
     Route::get('/requests/{id}/satisfaction', [SatisfactionResponseController::class, 'show']);
     Route::post('/requests/{id}/satisfaction', [SatisfactionResponseController::class, 'store']);
 });
 
 Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,cradt'])->group(function () {
+    Route::get('/metrics/filters', [MetricsController::class, 'filters']);
     Route::get('/metrics', [MetricsController::class, 'index']);
+    Route::post('/metrics/exports/{format}', [MetricExportController::class, 'store']);
+    Route::get('/metrics/exports/{id}/download', [MetricExportController::class, 'download']);
     Route::put('/requests/{id}', [RequestController::class, 'update']);
     Route::post('/requests/{id}/forward', [RequestController::class, 'forward']);
     Route::post('/requests/{id}/return', [RequestController::class, 'returnToPrevious']);

@@ -1,5 +1,9 @@
 # Roadmap de lançamento
 
+## Objetivo atual: MVP local
+
+O objetivo imediato é um MVP para demonstrações e validação com dados sintéticos, não uma implantação institucional. Para esse escopo, integrações reais, políticas aprovadas pelo IFPE e infraestrutura de produção são pendências de lançamento, não bloqueios para validar localmente. Consulte [`docs/ESCOPO_MVP.md`](docs/ESCOPO_MVP.md) para o conjunto incluído, evidências e roteiro de validação. O sistema continua **NO-GO para dados reais/produção** até cumprir os portões institucionais.
+
 ## Fase 0 — Estabilização (concluída)
 
 Prioridade máxima: fluxo de requerimentos, upload protegido, protocolos únicos, status centralizados, autorização no back-end, dashboard de atrasos, configuração única do Next, seeders fictícios, documentação e testes.
@@ -8,13 +12,13 @@ Prioridade máxima: fluxo de requerimentos, upload protegido, protocolos únicos
 
 Conversas textuais persistentes vinculadas ao requerimento, participantes, autorização por escopo, paginação, leituras individuais e polling REST foram implementados. WebSockets, anexos e notificações externas continuam planejados para evolução posterior.
 
-## Fase 2 — Operação e regras configuráveis
+## Fase 2 — Operação e regras configuráveis (núcleo implementado nas Fases 4–11)
 
-Respostas pré-configuradas, exigências documentais configuráveis, fluxo completo de status, encaminhamento, prazos/SLA, notificações, decisões/documentos formais, rascunhos, prevenção de duplicidade e linha do tempo.
+Respostas pré-configuradas por setor, exigências documentais, estados e decisões, encaminhamento, mecanismos de prazo, notificações internas, documentos protegidos, rascunhos, duplicidade e linha do tempo estão implementados. Regras acadêmicas, SLA e mensagens externas ainda dependem de homologação institucional.
 
-## Fase 3 — Integrações e escala institucional
+## Fase 3 — Integrações e escala institucional (parcial)
 
-Autenticação institucional, possível SUAP, múltiplos campi, calendário acadêmico, catálogo oficial, formulários dinâmicos e distribuição de atendimentos.
+Escopos multi-campus, catálogo, calendário de janelas e formulários dinâmicos têm base técnica. Autenticação institucional e SUAP não estão conectados; calendário acadêmico oficial, dados institucionais reais e distribuição automática ainda precisam de implementação/aprovação.
 
 ## Fase 5 — Governança, experiência e observabilidade
 
@@ -30,27 +34,27 @@ Políticas de prazo em rascunho/ativa, snapshot de metas no requerimento, indica
 
 ## Fase 6 — Notificações internas e por e-mail (núcleo incremental)
 
-Central interna, contador individual, leitura, preferências por categoria, idempotência e job de e-mail foram adicionados para mensagens públicas e mudanças de status. O canal externo permanece desativado até configuração e homologação de SMTP; não há WhatsApp, SMS, push ou campanhas.
+Central interna, contador individual, leitura, preferências por categoria, idempotência e job de e-mail existem. O e-mail foi bloqueado para endereços ainda não verificados, inclusive na execução de jobs antigos; acesso a notificações vinculadas a requerimentos é revalidado após revogação de escopo. Ainda faltam o fluxo de verificação, cobertura completa dos eventos, E2E com API real em sessões de aluno/equipe, SMTP e política institucional homologados; fase 6 parcial (ver `docs/FASE_6_VALIDACAO.md`).
 
 ## Fase 7 — Formulários dinâmicos, rascunhos e duplicidade (núcleo incremental)
 
-Fase 7 tecnicamente concluída e testada. Formulários versionados por serviço, validação no servidor, rascunhos com proteção contra conflito e idempotência de submissão estão implementados. O editor administrativo permite criar e editar rascunhos de schema, comparar com a versão publicada, usar prévia fictícia e publicar uma nova versão sem mutar a anterior. O aluno pode listar, distinguir pelo assunto, retomar e descartar logicamente seus rascunhos. Ao retomar um rascunho cuja versão foi substituída, a API mostra respostas compatíveis, removidas e novos campos obrigatórios; a mudança requer confirmação e mantém revisão protegida contra conflito. Múltiplos anexos privados podem ser salvos e retomados com o rascunho, e o pedido final valida a mesma lista antes de vinculá-los. Com várias matrículas ativas, o aluno escolhe explicitamente o vínculo; curso e matrícula são preservados no rascunho e no pedido. A prevenção configurável de duplicidade pode ser ativada por serviço, por um prazo de 1 a 365 dias, e compara o mesmo aluno, serviço, matrícula e assunto normalizado em requerimentos ainda abertos. A regra vem desativada por padrão. Uma rotina manual simula ou remove apenas uploads privados antigos sem vínculo; a retenção formal continua pendente. Testes integrados de API e navegação real passaram em desktop e celular. Pedidos legados sem snapshot de matrícula mantêm o vínculo do perfil atual, pois o curso histórico não pode ser reconstruído com certeza. A configuração de regras acadêmicas e de todos os serviços ainda depende de homologação institucional.
+O núcleo técnico da Fase 7 está implementado e validado localmente. Schemas são versionados e validados no servidor; rascunhos têm revisão otimista, propriedade verificada, anexos privados, retomada entre dispositivos, preservação em falha de rede e migração confirmada entre versões; chaves de idempotência são escopadas por aluno e o envio é repetível. A regra de duplicidade avisa por padrão, oferece o pedido próprio existente e exige confirmação; bloqueio duro exige referência de regra e administrador institucional sem escopo restrito. A comparação atual usa aluno, serviço, vínculo e assunto normalizado, não equivalência semântica. Os fluxos cobertos em Feature, E2E visual e E2E contra API/SQLite isolados estão documentados em `docs/FASE_7_VALIDACAO.md`. Pendências para homologação: mapear oficialmente os 33 serviços e suas exigências; decidir elegibilidade de graduados/desvinculados e regras de duplicidade específicas; homologar schemas acadêmicos. Pedidos legados sem snapshot de matrícula mantêm o vínculo disponível no perfil, sem inferir histórico que não foi armazenado.
 
 ## Fase 8 — Permissões por campus, curso e setor (núcleo incremental)
 
-Fase 8 tecnicamente implementada e coberta por testes. Concessões têm campus/curso/setor, capacidades, início, expiração e revogação preservada; somente administrador institucional sem escopo restritivo pode delegar ou administrar contas/campi. A mesma concessão precisa conter a capacidade e o escopo, e contas técnicas não recebem acesso acadêmico implícito. Listas, filas, totais, detalhes, documentos, mensagens e respostas pré-configuradas aplicam escopo no servidor. Coordenações sem concessão explícita ficam limitadas ao curso do vínculo do servidor e aos pedidos atualmente sob coordenação; pedidos legados sem snapshot de curso/campus não herdam o perfil atual do aluno. Os endpoints administrativos de campi e associação de cursos existem, mas não foram cadastrados campi reais. Antes de produção, a gestão precisa fornecer e aprovar a matriz institucional, importar os vínculos corretos e revisar os registros legados listados por `php artisan requests:unresolved-access-contexts`.
+Fase 8 validada tecnicamente, inclusive com fluxo Playwright + Laravel real em desktop e mobile (2/2): concessão agendada, fila limitada ao campus autorizado, detalhe de outro campus negado e revogação que remove acesso após recarga. A fila mobile foi reorganizada em cartões; as mensagens de concessão e revogação permanecem visíveis após atualizar a lista. Concessões têm campus/curso/setor, capacidades, início, expiração e revogação preservada; somente administrador institucional sem escopo restritivo pode delegar ou administrar contas/campi. A mesma concessão precisa conter a capacidade e o escopo, e contas técnicas não recebem acesso acadêmico implícito. Listas, filas, totais, detalhes, documentos, mensagens e respostas pré-configuradas aplicam escopo no servidor. Coordenações sem concessão explícita ficam limitadas ao curso do vínculo do servidor e aos pedidos atualmente sob coordenação; pedidos legados sem snapshot de curso/campus não herdam o perfil atual do aluno. Os endpoints administrativos de campi e associação de cursos existem, mas não foram cadastrados campi reais. Antes de produção, a gestão precisa fornecer e aprovar a matriz institucional, importar os vínculos corretos e revisar os registros legados listados por `php artisan requests:unresolved-access-contexts`. Consulte [`docs/FASE_8_VALIDACAO.md`](docs/FASE_8_VALIDACAO.md) para resultados, capturas e pendências.
 
-## Fase 9 — Auditoria, proteção de dados e recuperação (núcleo incremental)
+## Fase 9 — Auditoria, proteção de dados e recuperação (núcleo técnico validado; homologação parcial)
 
-Trilha de auditoria com metadados protegidos, controles de acesso e documentação de proteção de dados e recuperação foram adicionados. Políticas de retenção, respostas a incidentes e responsabilidades institucionais ainda exigem definição formal.
+Trilha de auditoria com metadados protegidos, controles de acesso, histórico de pedidos dos titulares, aviso versionado de privacidade, simulação de retenção somente leitura e ensaio de restauração em fixture isolada foram adicionados. A fase continua parcial: faltam política aprovada de retenção e guarda, testes de descarte controlado, cobertura de dependências/backups e definições formais de resposta a incidentes, encarregado e canais institucionais. Os fluxos não equivalem a conformidade LGPD.
 
 ## Fase 10 — Indicadores, relatórios e satisfação (núcleo incremental)
 
-Indicadores agregados por escopo, coleta voluntária de satisfação e dicionário de métricas foram adicionados. Metas, relatórios oficiais e critérios de interpretação permanecem sujeitos à validação institucional.
+Painel com sete filtros limitados ao escopo visível, tabelas acessíveis, satisfação agregada e exportação privada autenticada XLSX/PDF estão implementados. Cálculo de percentis/coortes/SLA e definição de metas ou interpretação de resultados continuam pendentes de escopo e validação institucional.
 
 ## Fase 11 — Catálogo, calendários, acessibilidade e orientação (núcleo incremental)
 
-Catálogo público governado, janelas de abertura, base de conhecimento, acessibilidade inicial, páginas responsivas e orientação de uso foram adicionados. A publicação dos serviços, regras de calendário e revisão completa de acessibilidade permanecem pendentes de homologação.
+Catálogo governado, janelas de atendimento com fuso/UTC explícito, tela de gestão de calendário, base de conhecimento versionada, feed de orientações autenticado para alunos (`/knowledge`), telas responsivas e acessibilidade automatizada foram adicionados. Datas e referências reais, conteúdo oficial e acessibilidade manual precisam de homologação.
 
 ## Fase 12 — Integrações, homologação e lançamento assistido (preparação técnica)
 
@@ -67,14 +71,14 @@ Foram preparados adaptador de identidade institucional desativado por padrão, h
 | **Notificações (F6)** | Central interna, contador, leitura individual e em massa, preferências por categoria, job de e-mail com idempotência |
 | **Formulários dinâmicos (F7)** | Schemas versionados por serviço, validação server-side, rascunhos com lock otimista, prevenção de duplicidade |
 | **Permissões por escopo (F8)** | Escopos explícitos por campus/curso/setor e capacidade, grants temporais e revogáveis, isolamento de listagens, detalhes, documentos, mensagens, templates e agregados |
-| **Auditoria e dados (F9)** | Trilha de auditoria com metadados protegidos, controles de acesso granulares, documentação de proteção de dados |
-| **Indicadores e satisfação (F10)** | Métricas agregadas por escopo, coleta voluntária de satisfação, dicionário de métricas no endpoint `/metrics` |
-| **Catálogo e calendários (F11)** | Catálogo governado com janelas de abertura, base de conhecimento, pages responsivas, acessibilidade inicial |
-| **Infraestrutura e docs (F12)** | Health check com verificação de banco e fila (`GET /api/health`), `docs/API.md`, `docs/RUNBOOK.md`, adaptador de IdP desativado |
+| **Auditoria e dados (F9)** | Auditoria protegida, solicitações autenticadas de titulares, aviso versionado e simulação de recuperação |
+| **Indicadores e satisfação (F10)** | Métricas com filtros escopados, tabelas, satisfação agregada e exports privados XLSX/PDF |
+| **Catálogo e calendários (F11)** | Catálogo, janelas configuráveis com guarda de timezone legado, editor de calendário e artigos autenticados para aluno |
+| **Infraestrutura e docs (F12)** | Health check, CI com auditoria de dependências, Gitleaks, Dependency Review, runbooks e adaptador de IdP desativado |
 
 ### O que ainda falta antes de ir a produção
 
-As pendências abaixo **não são omissões técnicas** — são decisões institucionais ou contratuais que o IFPE precisa formalizar:
+O trabalho técnico local está coberto pelos testes descritos nas fases. Permanecem pendências reais de implementação avançada, infraestrutura e decisões institucionais:
 
 | Pendência | Detalhes |
 |-----------|---------|
@@ -85,6 +89,7 @@ As pendências abaixo **não são omissões técnicas** — são decisões insti
 | **Matriz de campi e cursos** | Os escopos de autorização foram implementados, mas a matriz real (quais setores, cursos e campi existem) precisa ser fornecida e cadastrada pela gestão. |
 | **Regras de transição de status** | O fluxo de encaminhamento e devolução está implementado, mas as regras institucionais específicas (quem aprova o quê, em qual ordem) precisam ser validadas com a CRADT. |
 | **Políticas de SLA** | O mecanismo existe, mas prazos reais (por tipo de requerimento) precisam ser definidos e ativados com a gestão. |
+| **Indicadores avançados** | Percentis/coortes, tempos úteis, métricas de fila e relatórios oficiais exigem definição de regras e interpretação antes de implementação. |
 | **Calendário acadêmico** | Janelas de abertura de serviço estão implementadas, mas os calendários oficiais por curso/período ainda não foram configurados. |
 | **Publicação do catálogo de serviços** | Os formulários dinâmicos e o catálogo existem, mas nenhum serviço real foi configurado e publicado ainda. |
 | **Servidor de produção** | Não há provisionamento de infraestrutura de produção (servidor, banco, proxy reverso, HTTPS, backups automáticos). |

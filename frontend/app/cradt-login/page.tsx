@@ -88,7 +88,7 @@ export default function CradtLoginPage() {
   <div className="absolute inset-0 bg-gradient-to-br from-green-900 to-[#15803d]">
     <div className="absolute top-[-20%] left-[-10%] w-[700px] h-[700px] bg-green-500/20 rounded-full blur-[120px]"></div>
     <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-emerald-400/20 rounded-full blur-[100px]"></div>
-    <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10 mix-blend-overlay"></div>
+    <div className="login-grid-pattern absolute inset-0"></div>
   </div>
 
   <div className="relative z-10 flex flex-col items-center text-center max-w-2xl animate-fade-in-up">

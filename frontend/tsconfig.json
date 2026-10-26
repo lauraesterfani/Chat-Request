@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,7 +23,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -28,7 +34,63 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    ".next-phase7-139141/types/**/*.ts",
+    ".next-phase7-139141/dev/types/**/*.ts",
+    ".next-phase7-157306/types/**/*.ts",
+    ".next-phase7-157306/dev/types/**/*.ts",
+    ".next-phase7-159589/types/**/*.ts",
+    ".next-phase7-159589/dev/types/**/*.ts",
+    ".next-phase7-160819/types/**/*.ts",
+    ".next-phase7-160819/dev/types/**/*.ts",
+    ".next-phase7-162122/types/**/*.ts",
+    ".next-phase7-162122/dev/types/**/*.ts",
+    ".next-phase7-162800/types/**/*.ts",
+    ".next-phase7-162800/dev/types/**/*.ts",
+    ".next-phase7-163350/types/**/*.ts",
+    ".next-phase7-163350/dev/types/**/*.ts",
+    ".next-phase7-164057/types/**/*.ts",
+    ".next-phase7-164057/dev/types/**/*.ts",
+    ".next-phase7-164948/types/**/*.ts",
+    ".next-phase7-164948/dev/types/**/*.ts",
+    ".next-phase7-visual-171928/types/**/*.ts",
+    ".next-phase7-visual-171928/dev/types/**/*.ts",
+    ".next-phase7-172344/types/**/*.ts",
+    ".next-phase7-172344/dev/types/**/*.ts",
+    ".next-phase7-180621/types/**/*.ts",
+    ".next-phase7-180621/dev/types/**/*.ts",
+    ".next-phase7-182141/types/**/*.ts",
+    ".next-phase7-182141/dev/types/**/*.ts",
+    ".next-phase7-183110/types/**/*.ts",
+    ".next-phase7-183110/dev/types/**/*.ts",
+    ".next-phase8-187082/types/**/*.ts",
+    ".next-phase8-187082/dev/types/**/*.ts",
+    ".next-phase8-187522/types/**/*.ts",
+    ".next-phase8-187522/dev/types/**/*.ts",
+    ".next-phase8-188128/types/**/*.ts",
+    ".next-phase8-188128/dev/types/**/*.ts",
+    ".next-phase8-188585/types/**/*.ts",
+    ".next-phase8-188585/dev/types/**/*.ts",
+    ".next-phase8-189394/types/**/*.ts",
+    ".next-phase8-189394/dev/types/**/*.ts",
+    ".next-phase8-190093/types/**/*.ts",
+    ".next-phase8-190093/dev/types/**/*.ts",
+    ".next-phase8-190689/types/**/*.ts",
+    ".next-phase8-190689/dev/types/**/*.ts",
+    ".next-phase8-191558/types/**/*.ts",
+    ".next-phase8-191558/dev/types/**/*.ts",
+    ".next-phase8-191907/types/**/*.ts",
+    ".next-phase8-191907/dev/types/**/*.ts",
+    ".next-phase8-193263/types/**/*.ts",
+    ".next-phase8-193263/dev/types/**/*.ts",
+    ".next-phase8-193284/types/**/*.ts",
+    ".next-phase8-193284/dev/types/**/*.ts",
+    ".next-phase8-195056/types/**/*.ts",
+    ".next-phase8-195056/dev/types/**/*.ts",
+    ".next-phase8-195346/types/**/*.ts",
+    ".next-phase8-195346/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

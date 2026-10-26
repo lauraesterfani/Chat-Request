@@ -15,6 +15,7 @@
 /node_modules
 /frontend/test-results
 /frontend/playwright-report
+/frontend/.next-phase7-*
 /public/build
 /public/hot
 /public/storage

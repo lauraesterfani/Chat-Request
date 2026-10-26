@@ -9,10 +9,12 @@ use App\Models\Message;
 use App\Models\Request as RequestModel;
 use App\Models\RequestDraft;
 use App\Models\RequestEvent;
+use App\Models\ServiceCatalogEntry;
 use App\Models\SlaPolicy;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\EnrollmentSnapshotService;
 use App\Services\FormSchemaValidator;
 use App\Services\NotificationService;
@@ -147,10 +149,14 @@ class RequestController extends Controller
         if ($validated['staff_id'] && $target->assigned_staff_id && (int) $target->assigned_staff_id !== (int) $validated['staff_id'] && trim((string) ($validated['reason'] ?? '')) === '') {
             return response()->json(['message' => 'Informe o motivo da redistribuição.'], 422);
         }
-        DB::transaction(function () use ($target, $actor, $validated) {
+        DB::transaction(function () use ($request, $target, $actor, $validated) {
             $from = $target->assigned_staff_id;
             $target->update(['assigned_staff_id' => $validated['staff_id'] ?? null]);
             RequestEvent::create(['request_id' => $target->id, 'event_type' => 'assignment_changed', 'actor_id' => $actor->getKey(), 'actor_type' => 'staff_admin', 'sector' => $target->responsible_sector, 'data' => ['from' => $from, 'to' => $validated['staff_id'] ?? null, 'reason' => $validated['reason'] ?? null], 'created_at' => now()]);
+            app(AuditService::class)->record($request, 'request_assignment_changed', 'request', $target->id, [
+                'assignment_present' => ($validated['staff_id'] ?? null) !== null,
+                'sector' => $target->responsible_sector,
+            ]);
         });
 
         return response()->json(['message' => 'Atribuição atualizada.', 'assigned_staff_id' => $target->fresh()->assigned_staff_id]);
@@ -177,6 +183,7 @@ class RequestController extends Controller
             'form_schema_version_id' => ['nullable', 'uuid', 'exists:form_schema_versions,id'],
             'form_responses' => ['nullable', 'array'],
             'idempotency_key' => ['nullable', 'string', 'min:8', 'max:120'],
+            'duplicate_acknowledged' => ['sometimes', 'boolean'],
             'draft_id' => ['nullable', 'uuid', 'exists:request_drafts,id'],
             'enrollment_id' => ['nullable', 'uuid'],
             'document_ids' => ['sometimes', 'array'],
@@ -187,11 +194,6 @@ class RequestController extends Controller
         $idempotencyKey = $validated['idempotency_key'] ?? null;
         $legacyPayloadHash = hash('sha256', json_encode([$validated['type_id'], $validated['subject'], $validated['description'], $validated['form_responses'] ?? [], $documentIds]));
         $payloadHash = hash('sha256', json_encode([$validated['type_id'], $validated['subject'], $validated['description'], $validated['form_responses'] ?? [], $documentIds, $validated['draft_id'] ?? null, $validated['enrollment_id'] ?? null]));
-        $student = Auth::guard('api')->user();
-        if (! app(ServiceAvailabilityService::class)->isOpen($validated['type_id'], $student)) {
-            return response()->json(['message' => 'Este serviço não está disponível para envio neste período. Seu rascunho foi preservado.'], 422);
-        }
-
         try {
             return DB::transaction(function () use ($request, $validated, $documentIds, $idempotencyKey, $payloadHash, $legacyPayloadHash) {
                 // Requerimentos são criados por alunos da tabela users. Um JWT
@@ -215,7 +217,9 @@ class RequestController extends Controller
                 $user = User::whereKey($user->getKey())->lockForUpdate()->firstOrFail();
 
                 if ($idempotencyKey) {
-                    $previous = RequestModel::where('submission_idempotency_key', $idempotencyKey)->first();
+                    $previous = RequestModel::where('user_id', $user->id)
+                        ->where('submission_idempotency_key', $idempotencyKey)
+                        ->first();
                     if ($previous) {
                         if (! $this->sameSubmission($previous, $user->id, $validated, $payloadHash, $legacyPayloadHash)) {
                             return response()->json(['message' => 'Chave de idempotência já utilizada com dados diferentes.'], 409);
@@ -226,6 +230,21 @@ class RequestController extends Controller
                 }
 
                 $type = TypeRequest::findOrFail($validated['type_id']);
+                $catalogEntry = ServiceCatalogEntry::query()
+                    ->where('type_request_id', $type->id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($catalogEntry?->channel === 'external') {
+                    return response()->json([
+                        'message' => 'Este serviço é atendido por um canal externo e não pode gerar um requerimento ou protocolo no Chat Request.',
+                        'external_channel' => true,
+                        'channel_instructions' => $catalogEntry->channel_instructions,
+                    ], 422);
+                }
+                if (! app(ServiceAvailabilityService::class)->isOpen($type->id, $user, $validated['enrollment_id'] ?? null)) {
+                    return response()->json(['message' => 'Este serviço não possui uma janela publicada compatível com o período e o vínculo acadêmico selecionado. Seu rascunho foi preservado.'], 422);
+                }
+
                 $schema = FormSchemaVersion::where('type_request_id', $type->id)->where('status', 'published')->latest('version')->first();
                 if ($schema && ($validated['form_schema_version_id'] ?? null) !== $schema->id) {
                     return response()->json([
@@ -289,22 +308,16 @@ class RequestController extends Controller
                 $enrollment = $submissionDraft
                     ? ['course_id' => $submissionDraft->course_id, 'campus_id' => $submissionDraft->campus_id, 'enrollment_id' => $submissionDraft->enrollment_id]
                     : app(EnrollmentSnapshotService::class)->forStudent($user, $validated['enrollment_id'] ?? null);
-                if ($type->duplicate_window_days) {
-                    $cutoff = now()->subDays($type->duplicate_window_days);
-                    $candidates = RequestModel::query()
-                        ->where('user_id', (string) $user->getJWTIdentifier())
-                        ->where('type_id', $type->id)
-                        ->whereNotIn('status', [RequestStatus::COMPLETED->value, RequestStatus::CANCELED->value])
-                        ->where('created_at', '>=', $cutoff)
-                        ->when($enrollment['enrollment_id'], fn ($query, $enrollmentId) => $query->where('enrollment_id', $enrollmentId))
-                        ->when(! $enrollment['enrollment_id'], fn ($query) => $query->whereNull('enrollment_id'))
-                        ->get(['id', 'protocol', 'subject']);
-                    $normalizeSubject = static fn (string $subject): string => mb_strtolower(preg_replace('/\\s+/u', ' ', trim($subject)) ?? trim($subject));
-                    $duplicate = $candidates->first(fn (RequestModel $candidate): bool => $normalizeSubject($candidate->subject) === $normalizeSubject($validated['subject']));
-                    if ($duplicate) {
+                $duplicates = $this->matchingOpenRequests($user, $type, $enrollment, $validated['subject']);
+                if ($duplicates->isNotEmpty()) {
+                    $duplicateMode = $type->duplicate_mode ?: 'warn';
+                    if ($duplicateMode === 'block' || ! ($validated['duplicate_acknowledged'] ?? false)) {
                         return response()->json([
-                            'message' => 'Já existe um requerimento em aberto para este serviço, matrícula e assunto dentro do prazo configurado.',
-                            'duplicate' => ['id' => $duplicate->id, 'protocol' => $duplicate->protocol],
+                            'message' => $duplicateMode === 'block'
+                                ? 'Já existe um requerimento em aberto compatível com a regra deste serviço.'
+                                : 'Encontramos um requerimento em aberto parecido. Confira se ele já atende sua necessidade antes de continuar.',
+                            'duplicate_mode' => $duplicateMode,
+                            'duplicate_matches' => $this->duplicateSummaries($duplicates),
                         ], 409);
                     }
                 }
@@ -316,7 +329,7 @@ class RequestController extends Controller
                     'subject' => $validated['subject'],
                     'description' => $validated['description'],
                     'form_responses' => $validated['form_responses'] ?? null,
-                    'status' => \App\Enums\RequestStatus::PENDING,
+                    'status' => RequestStatus::PENDING,
                     'protocol' => $this->generateProtocol(),
                     'submission_idempotency_key' => $idempotencyKey,
                     'submission_payload_hash' => $idempotencyKey ? $payloadHash : null,
@@ -339,21 +352,30 @@ class RequestController extends Controller
                     'data' => ['status' => RequestStatus::PENDING->value],
                     'created_at' => now(),
                 ]);
+                app(AuditService::class)->record($request, 'request_created', 'request', $newRequest->id, [
+                    'status' => RequestStatus::PENDING->value,
+                    'sector' => 'CRADT',
+                    'document_count' => $documents->count(),
+                ]);
 
                 if ($submissionDraft) {
                     $submissionDraft->update(['submitted_at' => now(), 'request_id' => $newRequest->id]);
                 }
 
                 return response()->json(['message' => 'Sucesso', 'id' => $newRequest->id], 201);
-            });
+            }, 3);
         } catch (HttpExceptionInterface|ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
             if ($idempotencyKey) {
                 try {
-                    $previous = RequestModel::where('submission_idempotency_key', $idempotencyKey)->first();
+                    $actor = Auth::guard('api')->user() ?? $request->user();
+                    $previous = $actor instanceof User
+                        ? RequestModel::where('user_id', $actor->getKey())
+                            ->where('submission_idempotency_key', $idempotencyKey)
+                            ->first()
+                        : null;
                     if ($previous) {
-                        $actor = Auth::guard('api')->user() ?? $request->user();
                         if (! $this->sameSubmission($previous, $actor?->getKey(), $validated, $payloadHash, $legacyPayloadHash)) {
                             return response()->json(['message' => 'Chave de idempotência já utilizada com dados diferentes.'], 409);
                         }
@@ -388,6 +410,33 @@ class RequestController extends Controller
                 'message' => 'Não foi possível registrar o requerimento. Tente novamente.',
             ], 500);
         }
+    }
+
+    /**
+     * Returns possible duplicates belonging to the authenticated student only.
+     * With no configured lookback, all matching open requests are considered;
+     * no arbitrary business period is introduced.
+     */
+    public function checkDuplicates(Request $request)
+    {
+        $student = Auth::guard('api')->user();
+        if (! $student instanceof User || $student->role !== User::ROLE_STUDENT) {
+            return response()->json(['message' => 'Apenas alunos podem verificar pedidos semelhantes.'], 403);
+        }
+
+        $validated = $request->validate([
+            'type_id' => ['required', 'uuid', 'exists:type_requests,id'],
+            'subject' => ['required', 'string', 'max:255'],
+            'enrollment_id' => ['nullable', 'uuid'],
+        ]);
+        $type = TypeRequest::findOrFail($validated['type_id']);
+        $enrollment = app(EnrollmentSnapshotService::class)->forStudent($student, $validated['enrollment_id'] ?? null);
+        $duplicates = $this->matchingOpenRequests($student, $type, $enrollment, $validated['subject']);
+
+        return response()->json([
+            'mode' => $type->duplicate_mode ?: 'warn',
+            'matches' => $this->duplicateSummaries($duplicates),
+        ]);
     }
 
     private function generateProtocol(): string
@@ -425,8 +474,16 @@ class RequestController extends Controller
                     $requestModel->setRelation('documents', $requestModel->documents()->getRelated()->newCollection());
                 }
 
+                app(AuditService::class)->record($request, 'request_viewed', 'request', $requestModel->id, [
+                    'actor_scope' => $user instanceof User ? 'owner' : 'authorized_staff',
+                ]);
+
                 return response()->json($requestModel);
             }
+        }
+
+        if ($user instanceof User || $user instanceof StaffAdmin) {
+            app(AuditService::class)->record($request, 'request_access_denied', 'request', (string) $id, ['reason' => 'not_authorized'], 'denied');
         }
 
         return response()->json(['message' => 'Acesso não autorizado'], 403);
@@ -471,7 +528,7 @@ class RequestController extends Controller
             return response()->json(['message' => 'Informe o motivo do cancelamento.'], 422);
         }
 
-        DB::transaction(function () use ($req, $user, $validated, $currentStatus, $nextStatus, $observation): void {
+        DB::transaction(function () use ($request, $req, $user, $validated, $currentStatus, $nextStatus, $observation): void {
             $req->update([
                 'status' => $nextStatus,
                 'observation' => $validated['observation'] ?? $req->observation,
@@ -485,6 +542,13 @@ class RequestController extends Controller
                 'data' => ['from' => $currentStatus, 'to' => $nextStatus, 'reason' => $nextStatus === RequestStatus::CANCELED->value ? $observation : null],
                 'created_at' => now(),
             ]);
+            app(AuditService::class)->record(
+                $request,
+                $nextStatus === RequestStatus::CANCELED->value ? 'request_canceled' : 'request_status_changed',
+                'request',
+                $req->id,
+                ['previous_status' => $currentStatus, 'new_status' => $nextStatus, 'sector' => $req->responsible_sector],
+            );
             if ($observation !== '') {
                 Message::create([
                     'request_id' => $req->id,
@@ -506,8 +570,14 @@ class RequestController extends Controller
         $target = RequestModel::with('events')->findOrFail($id);
         $user = Auth::guard('api')->user() ?? Auth::guard('staff_admins')->user() ?? $request->user();
         if (! ($user instanceof User || $user instanceof StaffAdmin) || ! app(RequestAccessService::class)->canView($user, $target)) {
+            if ($user instanceof User || $user instanceof StaffAdmin) {
+                app(AuditService::class)->record($request, 'request_events_access_denied', 'request', $target->id, ['reason' => 'not_authorized'], 'denied');
+            }
+
             return response()->json(['message' => 'Acesso não autorizado.'], 403);
         }
+
+        app(AuditService::class)->record($request, 'request_events_viewed', 'request', $target->id);
 
         return response()->json($target->events);
     }
@@ -533,9 +603,10 @@ class RequestController extends Controller
             return response()->json(['message' => 'O setor de destino deve ser diferente do atual.'], 422);
         }
         $old = $target->responsible_sector;
-        DB::transaction(function () use ($target, $user, $validated, $old) {
+        DB::transaction(function () use ($request, $target, $user, $validated, $old) {
             $target->update(['responsible_sector' => $validated['sector']]);
             RequestEvent::create(['request_id' => $target->id, 'event_type' => 'forwarded', 'actor_id' => $user->getKey(), 'actor_type' => 'staff_admin', 'sector' => $old, 'data' => ['from' => $old, 'to' => $validated['sector'], 'reason' => $validated['reason']], 'created_at' => now()]);
+            app(AuditService::class)->record($request, 'request_forwarded', 'request', $target->id, ['from_sector' => $old, 'to_sector' => $validated['sector']]);
         });
 
         return response()->json(['message' => 'Requerimento encaminhado.', 'responsible_sector' => $target->responsible_sector]);
@@ -561,10 +632,15 @@ class RequestController extends Controller
         if ($validated['result'] === 'na' && $target->type?->requires_decision) {
             return response()->json(['message' => 'Este serviço exige uma decisão de deferimento ou indeferimento.'], 422);
         }
-        DB::transaction(function () use ($target, $user, $validated) {
+        DB::transaction(function () use ($request, $target, $user, $validated) {
             $target->update(['status' => RequestStatus::COMPLETED, 'result' => $validated['result'], 'observation' => $validated['justification'], 'conclusion_summary' => $validated['conclusion_summary']]);
             RequestEvent::create(['request_id' => $target->id, 'event_type' => 'final_decision', 'actor_id' => $user->getKey(), 'actor_type' => 'staff_admin', 'sector' => $target->responsible_sector, 'data' => $validated, 'created_at' => now()]);
             Message::create(['request_id' => $target->id, 'sender_id' => $user->getKey(), 'sender_type' => 'staff_admin', 'content' => $validated['conclusion_summary']]);
+            app(AuditService::class)->record($request, 'request_decision_recorded', 'request', $target->id, [
+                'result' => $validated['result'],
+                'new_status' => RequestStatus::COMPLETED->value,
+                'sector' => $target->responsible_sector,
+            ]);
         });
         if ($target->user) {
             app(NotificationService::class)->forStudent(
@@ -574,6 +650,14 @@ class RequestController extends Controller
                 $validated['conclusion_summary'],
                 $target,
                 'decision:'.$target->id.':'.$validated['result'],
+            );
+            app(NotificationService::class)->forStudent(
+                $target->user,
+                'satisfaction',
+                'Avalie o atendimento',
+                'A avaliação é opcional e não altera seu requerimento. Você pode responder pela tela de detalhes.',
+                $target,
+                'satisfaction:'.$target->id,
             );
         }
 
@@ -603,9 +687,10 @@ class RequestController extends Controller
             return response()->json(['message' => 'Não existe setor anterior válido para devolução.'], 422);
         }
         $current = $target->responsible_sector;
-        DB::transaction(function () use ($target, $user, $validated, $previous, $current) {
+        DB::transaction(function () use ($request, $target, $user, $validated, $previous, $current) {
             $target->update(['responsible_sector' => $previous]);
             RequestEvent::create(['request_id' => $target->id, 'event_type' => 'returned', 'actor_id' => $user->getKey(), 'actor_type' => 'staff_admin', 'sector' => $current, 'data' => ['from' => $current, 'to' => $previous, 'reason' => $validated['reason']], 'created_at' => now()]);
+            app(AuditService::class)->record($request, 'request_returned', 'request', $target->id, ['from_sector' => $current, 'to_sector' => $previous]);
         });
 
         return response()->json(['message' => 'Requerimento devolvido.', 'responsible_sector' => $target->responsible_sector]);
@@ -626,6 +711,35 @@ class RequestController extends Controller
         return Auth::guard('staff_admins')->user()
             ?? Auth::guard('api')->user()
             ?? $request->user();
+    }
+
+    private function matchingOpenRequests(User $student, TypeRequest $type, array $enrollment, string $subject)
+    {
+        $query = RequestModel::query()
+            ->where('user_id', (string) $student->getJWTIdentifier())
+            ->where('type_id', $type->id)
+            ->whereNotIn('status', [RequestStatus::COMPLETED->value, RequestStatus::CANCELED->value])
+            ->when($type->duplicate_window_days, fn ($builder) => $builder->where('created_at', '>=', now()->subDays($type->duplicate_window_days)))
+            ->when($enrollment['enrollment_id'], fn ($builder, $enrollmentId) => $builder->where('enrollment_id', $enrollmentId))
+            ->when(! $enrollment['enrollment_id'], fn ($builder) => $builder->whereNull('enrollment_id'));
+
+        $normalize = static fn (string $value): string => mb_strtolower(preg_replace('/\\s+/u', ' ', trim($value)) ?? trim($value));
+        $normalizedSubject = $normalize($subject);
+
+        return $query->latest('created_at')->get(['id', 'protocol', 'subject', 'status', 'created_at'])
+            ->filter(fn (RequestModel $candidate) => $normalize($candidate->subject) === $normalizedSubject)
+            ->take(5)->values();
+    }
+
+    private function duplicateSummaries($duplicates): array
+    {
+        return $duplicates->map(fn (RequestModel $duplicate) => [
+            'id' => $duplicate->id,
+            'protocol' => $duplicate->protocol,
+            'subject' => $duplicate->subject,
+            'status' => $duplicate->status?->value ?? (string) $duplicate->status,
+            'created_at' => $duplicate->created_at?->toIso8601String(),
+        ])->all();
     }
 
     private function sameSubmission(RequestModel $previous, ?string $studentId, array $validated, string $payloadHash, string $legacyPayloadHash): bool

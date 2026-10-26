@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Course;
+use App\Models\StaffAccessScope;
 use App\Models\StaffAdmin;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -39,6 +42,55 @@ class TypeRequestManagementAuthorizationTest extends TestCase
     {
         $staff = $this->staff('staff');
         $this->actingAs($staff, 'staff_admins')->postJson('/api/type-requests', ['name' => 'Não autorizado'])->assertForbidden();
+    }
+
+    public function test_hard_duplicate_block_requires_a_rule_reference_and_unrestricted_administrator(): void
+    {
+        $admin = $this->staff('admin');
+        $this->actingAs($admin, 'staff_admins')->postJson('/api/type-requests', [
+            'name' => 'Tipo sem referência',
+            'duplicate_mode' => 'block',
+            'duplicate_window_days' => 30,
+        ])->assertUnprocessable()->assertJsonValidationErrors('duplicate_rule_reference');
+
+        $course = Course::create(['name' => 'Curso de teste', 'code' => 'TYPE-QA']);
+        StaffAccessScope::create([
+            'staff_admin_id' => $admin->id,
+            'course_id' => $course->id,
+            'abilities' => ['view_request'],
+            'reason' => 'Escopo de QA',
+        ]);
+
+        $this->postJson('/api/type-requests', [
+            'name' => 'Tipo com bloqueio',
+            'duplicate_mode' => 'block',
+            'duplicate_window_days' => 30,
+            'duplicate_rule_reference' => 'DECISAO-QA-01',
+        ])->assertForbidden();
+    }
+
+    public function test_public_service_type_list_hides_internal_rule_reference_and_admin_list_includes_it(): void
+    {
+        $admin = $this->staff('admin');
+        $type = $this->actingAs($admin, 'staff_admins')->postJson('/api/type-requests', [
+            'name' => 'Tipo para consulta pública autenticada',
+            'duplicate_window_days' => 30,
+            'duplicate_mode' => 'block',
+            'duplicate_rule_reference' => 'DECISAO-QA-02',
+        ])->assertCreated()->json();
+
+        $this->getJson('/api/type-requests')->assertOk()->assertJsonMissingPath('0.duplicate_rule_reference');
+
+        $student = User::factory()->create([
+            'role' => 'student', 'cpf' => '90000007111', 'phone' => '81900007111',
+            'matricula' => 'TYPE-QA-111', 'birthday' => '2000-01-01', 'must_change_password' => false,
+        ]);
+        $this->actingAs($student, 'api')->getJson('/api/type-requests')
+            ->assertOk()->assertJsonMissingPath('0.duplicate_rule_reference')
+            ->assertJsonPath('0.duplicate_mode', 'block');
+
+        $this->actingAs($admin, 'staff_admins')->getJson('/api/admin/type-requests')
+            ->assertOk()->assertJsonPath('0.duplicate_rule_reference', 'DECISAO-QA-02');
     }
 
     private function staff(string $role): StaffAdmin

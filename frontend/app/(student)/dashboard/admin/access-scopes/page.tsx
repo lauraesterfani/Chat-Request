@@ -64,7 +64,7 @@ export default function AccessScopesPage() {
   const [form, setForm] = useState({ staff_admin_id: "", campus_id: "", course_id: "", sector: "", abilities: ["view_request"], starts_at: "", expires_at: "", reason: "" });
   const token = () => sessionStorage.getItem("jwt_token") ?? "";
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveFeedback = false) => {
     try {
       const headers = { Authorization: `Bearer ${token()}` };
       const [scopeResponse, optionsResponse] = await Promise.all([
@@ -77,8 +77,10 @@ export default function AccessScopesPage() {
       setScopes(scopeData.data ?? []);
       setOptions(optionData);
       setCampuses(campusData.data ?? []);
-      setMessage("");
-      setIsError(false);
+      if (!preserveFeedback) {
+        setMessage("");
+        setIsError(false);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível carregar os escopos.");
       setIsError(true);
@@ -120,7 +122,7 @@ export default function AccessScopesPage() {
       if (!response.ok) throw new Error(describeError(payload));
       setMessage("Acesso concedido e registrado.");
       setForm({ staff_admin_id: "", campus_id: "", course_id: "", sector: "", abilities: ["view_request"], starts_at: localDateTime(), expires_at: "", reason: "" });
-      await load();
+      await load(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível conceder o acesso.");
       setIsError(true);
@@ -145,7 +147,7 @@ export default function AccessScopesPage() {
     setCampusForm({ name: "", code: "" });
     setMessage("Campus cadastrado.");
     setIsError(false);
-    await load();
+    await load(true);
   };
 
   const updateCampusStatus = async (campus: CampusOption) => {
@@ -162,7 +164,7 @@ export default function AccessScopesPage() {
     }
     setMessage(campus.is_active ? "Campus desativado." : "Campus ativado.");
     setIsError(false);
-    await load();
+    await load(true);
   };
 
   const assignCourse = async (event: FormEvent) => {
@@ -180,7 +182,7 @@ export default function AccessScopesPage() {
     }
     setMessage("Vínculo do curso atualizado.");
     setIsError(false);
-    await load();
+    await load(true);
   };
 
   const revoke = async (scope: AccessScope) => {
@@ -194,7 +196,7 @@ export default function AccessScopesPage() {
     }
     setMessage("Acesso revogado; o registro foi preservado no histórico.");
     setIsError(false);
-    await load();
+    await load(true);
   };
 
   const statusLabel = (scope: AccessScope) => {

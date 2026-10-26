@@ -3,15 +3,21 @@
 namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
+use App\Models\AuditRecord;
 use App\Models\Course;
+use App\Models\Document;
 use App\Models\Enrollment;
 use App\Models\Request as RequestModel;
+use App\Models\ServiceCatalogEntry;
+use App\Models\ServiceOpeningWindow;
+use App\Models\StaffAccessScope;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class RequestFlowTest extends TestCase
@@ -22,6 +28,7 @@ class RequestFlowTest extends TestCase
     {
         $student = $this->student();
         $type = $this->type();
+        $this->publishGlobalWindow($type);
 
         $response = $this->actingAs($student, 'api')->postJson('/api/requests', [
             'type_id' => $type->id,
@@ -34,6 +41,12 @@ class RequestFlowTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{8}-\d{6}$/', $request->protocol);
         $this->assertSame($student->course_id, $request->course_id);
         $this->assertNull($request->enrollment_id);
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'request_created',
+            'resource_id' => (string) $request->id,
+            'actor_id' => (string) $student->id,
+            'outcome' => 'success',
+        ]);
 
         $second = $this->actingAs($student, 'api')->postJson('/api/requests', [
             'type_id' => $type->id,
@@ -51,6 +64,60 @@ class RequestFlowTest extends TestCase
             ->postJson('/api/requests', ['subject' => '', 'description' => ''])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['type_id', 'subject', 'description']);
+    }
+
+    public function test_published_external_service_never_creates_a_local_request_or_protocol(): void
+    {
+        $student = $this->student();
+        $type = $this->type();
+        $this->publishGlobalWindow($type);
+        $catalog = ServiceCatalogEntry::create([
+            'type_request_id' => $type->id,
+            'channel' => 'external',
+            'channel_instructions' => 'Use o canal institucional indicado pela CRADT.',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+        $payload = [
+            'type_id' => $type->id,
+            'subject' => 'Pedido pelo canal externo',
+            'description' => 'Este envio não deve criar protocolo local.',
+        ];
+
+        $this->actingAs($student, 'api')->withHeader('Idempotency-Key', 'external-service-test-001')
+            ->postJson('/api/requests', $payload)
+            ->assertUnprocessable()
+            ->assertJsonPath('external_channel', true)
+            ->assertJsonPath('channel_instructions', 'Use o canal institucional indicado pela CRADT.');
+        $this->assertDatabaseCount('requests', 0);
+
+        // Uma nova tentativa após o serviço ser oficialmente publicado como digital
+        // ainda pode usar a mesma chave, pois a recusa anterior não a consumiu.
+        $catalog->update(['channel' => 'digital']);
+        $created = $this->withHeader('Idempotency-Key', 'external-service-test-001')
+            ->postJson('/api/requests', $payload)
+            ->assertCreated();
+        $this->assertDatabaseCount('requests', 1);
+        $this->assertNotEmpty(RequestModel::findOrFail($created->json('id'))->protocol);
+
+        // A despublicação de uma entrada externa não converte o serviço em
+        // digital nem permite criar protocolo por uma janela antiga.
+        $catalog->update(['channel' => 'external', 'status' => 'draft']);
+        $this->withHeader('Idempotency-Key', 'external-service-inactive-test-001')
+            ->postJson('/api/requests', [...$payload, 'subject' => 'Tentativa após despublicação externa'])
+            ->assertUnprocessable()
+            ->assertJsonPath('external_channel', true);
+        $this->assertDatabaseCount('requests', 1);
+
+        // Uma resposta de timeout pode ser repetida mesmo que o canal/janela
+        // mude depois da criação já confirmada.
+        ServiceOpeningWindow::where('type_request_id', $type->id)->update(['ends_at' => now()->subMinute()]);
+        $this->withHeader('Idempotency-Key', 'external-service-test-001')
+            ->postJson('/api/requests', $payload)
+            ->assertOk()
+            ->assertJsonPath('id', $created->json('id'))
+            ->assertJsonPath('idempotent_replay', true);
+        $this->assertDatabaseCount('requests', 1);
     }
 
     public function test_student_cannot_view_another_students_request(): void
@@ -75,6 +142,7 @@ class RequestFlowTest extends TestCase
             'status' => 'active',
         ]);
         $type = $this->type();
+        $this->publishGlobalWindow($type);
         $draft = $this->actingAs($student, 'api')->postJson('/api/drafts', [
             'type_request_id' => $type->id,
             'responses' => ['subject' => 'Pedido antes da troca de curso'],
@@ -115,6 +183,12 @@ class RequestFlowTest extends TestCase
 
         $this->actingAs($coordination, 'staff_admins')->getJson("/api/requests/{$request->id}")->assertForbidden();
         $this->actingAs($coordination, 'staff_admins')->getJson("/api/requests/{$request->id}/events")->assertForbidden();
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'request_access_denied',
+            'resource_id' => (string) $request->id,
+            'actor_id' => (string) $coordination->id,
+            'outcome' => 'denied',
+        ]);
         $this->actingAs($technical, 'staff_admins')->getJson("/api/requests/{$request->id}")->assertForbidden();
         $this->actingAs($technical, 'staff_admins')->getJson("/api/requests/{$request->id}/messages")->assertForbidden();
     }
@@ -164,11 +238,17 @@ class RequestFlowTest extends TestCase
             'sender_type' => 'staff_admin', 'content' => 'Seu requerimento foi deferido.',
         ]);
         $this->assertDatabaseHas('requests', ['id' => $request->id, 'status' => 'completed', 'result' => 'deferido']);
+        $decisionAudit = AuditRecord::where('action', 'request_decision_recorded')->where('resource_id', $request->id)->firstOrFail();
+        $this->assertSame('deferido', $decisionAudit->metadata['result']);
+        $this->assertArrayNotHasKey('justification', $decisionAudit->metadata);
+        $this->assertArrayNotHasKey('conclusion_summary', $decisionAudit->metadata);
         $this->actingAs($student, 'api')->getJson("/api/requests/{$request->id}/messages")
             ->assertJsonPath('data.0.content', 'Seu requerimento foi deferido.');
         $this->getJson('/api/notifications')->assertOk()
-            ->assertJsonPath('data.0.title', 'Decisão registrada')
-            ->assertJsonPath('data.0.body', 'Seu requerimento foi deferido.');
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['category' => 'status', 'title' => 'Decisão registrada', 'body' => 'Seu requerimento foi deferido.'])
+            ->assertJsonFragment(['category' => 'satisfaction', 'title' => 'Avalie o atendimento']);
+        $this->assertDatabaseHas('notification_records', ['idempotency_key' => 'satisfaction:'.$request->id]);
     }
 
     public function test_authorized_staff_can_forward_and_return_request_with_history(): void
@@ -181,6 +261,15 @@ class RequestFlowTest extends TestCase
         $this->assertDatabaseHas('requests', ['id' => $request->id, 'responsible_sector' => 'COORDENACAO']);
         $this->actingAs($admin, 'staff_admins')->postJson("/api/requests/{$request->id}/return", ['reason' => 'Parecer concluído'])->assertOk();
         $this->assertDatabaseHas('requests', ['id' => $request->id, 'responsible_sector' => 'CRADT']);
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'request_forwarded',
+            'resource_id' => (string) $request->id,
+            'metadata' => json_encode(['from_sector' => 'CRADT', 'to_sector' => 'COORDENACAO']),
+        ]);
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'request_returned',
+            'resource_id' => (string) $request->id,
+        ]);
         $this->actingAs($student, 'api')->getJson("/api/requests/{$request->id}/events")->assertOk()->assertJsonCount(2);
     }
 
@@ -196,6 +285,16 @@ class RequestFlowTest extends TestCase
         $this->putJson("/api/requests/{$request->id}", ['status' => 'waiting', 'observation' => 'Envie o verso do documento.'])->assertOk();
         $this->putJson("/api/requests/{$request->id}", ['status' => 'canceled'])->assertUnprocessable();
         $this->putJson("/api/requests/{$request->id}", ['status' => 'canceled', 'observation' => 'Solicitação cancelada a pedido do aluno.'])->assertOk();
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'request_status_changed',
+            'resource_id' => (string) $request->id,
+            'metadata' => json_encode(['previous_status' => 'pending', 'new_status' => 'analyzing', 'sector' => 'CRADT']),
+        ]);
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'request_canceled',
+            'resource_id' => (string) $request->id,
+            'outcome' => 'success',
+        ]);
         $this->putJson("/api/requests/{$request->id}", ['status' => 'analyzing'])->assertConflict();
     }
 
@@ -208,7 +307,7 @@ class RequestFlowTest extends TestCase
         $this->postJson("/api/requests/{$request->id}/forward", ['sector' => 'COORDENACAO', 'reason' => 'Encaminhamento permitido'])->assertOk();
 
         $scopedAdmin = StaffAdmin::create(['name' => 'Admin sem escopo', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
-        \App\Models\StaffAccessScope::create(['staff_admin_id' => $scopedAdmin->id, 'course_id' => $this->student()->course_id, 'abilities' => ['view_request'], 'reason' => 'Escopo não relacionado']);
+        StaffAccessScope::create(['staff_admin_id' => $scopedAdmin->id, 'course_id' => $this->student()->course_id, 'abilities' => ['view_request'], 'reason' => 'Escopo não relacionado']);
         $this->actingAs($scopedAdmin, 'staff_admins')->postJson("/api/requests/{$request->id}/return", ['reason' => 'Não autorizado'])->assertForbidden();
     }
 
@@ -250,6 +349,16 @@ class RequestFlowTest extends TestCase
         ]);
         $invalid->assertUnprocessable();
 
+        $spoofedMime = $this->actingAs($student, 'api')->post('/api/documents/upload', [
+            'arquivo' => UploadedFile::fake()->create('script.png', 20, 'application/x-php'),
+        ]);
+        $spoofedMime->assertUnprocessable();
+
+        $oversized = $this->actingAs($student, 'api')->post('/api/documents/upload', [
+            'arquivo' => UploadedFile::fake()->create('grande.pdf', 10241, 'application/pdf'),
+        ]);
+        $oversized->assertUnprocessable();
+
         $valid = $this->actingAs($student, 'api')->post('/api/documents/upload', [
             'arquivo' => UploadedFile::fake()->create('comprovante.png', 20, 'image/png'),
         ]);
@@ -257,8 +366,12 @@ class RequestFlowTest extends TestCase
         $this->assertDatabaseHas('documents', [
             'id' => $valid->json('id'),
             'user_id' => $student->id,
+            'name' => 'comprovante.png',
         ]);
-        Storage::disk('local')->assertExists(\App\Models\Document::findOrFail($valid->json('id'))->path);
+        $document = Document::findOrFail($valid->json('id'));
+        $this->assertStringStartsWith('documents/', $document->path);
+        $this->assertStringNotContainsString('comprovante.png', $document->path);
+        Storage::disk('local')->assertExists($document->path);
     }
 
     public function test_coordination_can_open_own_course_document_but_other_users_cannot(): void
@@ -280,7 +393,7 @@ class RequestFlowTest extends TestCase
         ]);
         $this->actingAs($coordination, 'staff_admins')->get($url)->assertOk()->assertHeader('Content-Type', 'image/png');
         $this->actingAs($this->student(), 'api')->get($url)->assertForbidden();
-        $this->get('/api/requests/'.$target->id.'/documents/'.\Illuminate\Support\Str::uuid())->assertNotFound();
+        $this->get('/api/requests/'.$target->id.'/documents/'.Str::uuid())->assertNotFound();
     }
 
     public function test_dashboard_counts_only_non_final_requests_older_than_configured_days(): void
@@ -335,6 +448,17 @@ class RequestFlowTest extends TestCase
     private function type(): TypeRequest
     {
         return TypeRequest::create(['name' => 'Tipo '.uniqid()]);
+    }
+
+    private function publishGlobalWindow(TypeRequest $type): void
+    {
+        ServiceOpeningWindow::create([
+            'type_request_id' => $type->id,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addYear(),
+            'timezone' => 'America/Recife',
+            'status' => 'published',
+        ]);
     }
 
     private function requestFor(User $student): RequestModel

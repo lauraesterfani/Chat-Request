@@ -24,13 +24,15 @@ export default function TypeRequestsPage() {
     requires_document: false,
     document_instructions: "",
     duplicate_window_days: "",
+    duplicate_mode: "warn",
+    duplicate_rule_reference: "",
     requires_decision: true
   });
 
   const fetchTypes = async () => {
     try {
       const token = sessionStorage.getItem("jwt_token");
-      const res = await axios.get(`${API_BASE}/type-requests`, {
+      const res = await axios.get(`${API_BASE}/admin/type-requests`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Tratamento caso a resposta venha envelopada em .data
@@ -71,6 +73,8 @@ export default function TypeRequestsPage() {
         requires_document: Boolean(type.requires_document),
         document_instructions: type.document_instructions || "",
         duplicate_window_days: type.duplicate_window_days ? String(type.duplicate_window_days) : "",
+        duplicate_mode: type.duplicate_mode || "warn",
+        duplicate_rule_reference: type.duplicate_rule_reference || "",
         requires_decision: type.requires_decision !== false
       });
     } else {
@@ -81,6 +85,8 @@ export default function TypeRequestsPage() {
         requires_document: false,
         document_instructions: "",
         duplicate_window_days: "",
+        duplicate_mode: "warn",
+        duplicate_rule_reference: "",
         requires_decision: true
       });
     }
@@ -97,7 +103,9 @@ export default function TypeRequestsPage() {
       const dataToSave = {
         ...formData,
         document_instructions: formData.requires_document ? formData.document_instructions : "",
-        duplicate_window_days: formData.duplicate_window_days ? Number(formData.duplicate_window_days) : null
+        duplicate_window_days: formData.duplicate_window_days ? Number(formData.duplicate_window_days) : null,
+        duplicate_mode: formData.duplicate_mode,
+        duplicate_rule_reference: formData.duplicate_rule_reference.trim() || null,
       };
 
       if (editingType) {
@@ -188,12 +196,14 @@ export default function TypeRequestsPage() {
                                     {(userRole === 'admin' || userRole === 'cradt') && (
                                         <>
                                             <button 
+                                                aria-label={`Editar ${type.name}`}
                                                 onClick={() => openModal(type)}
                                                 className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
                                             >
                                                 <Edit size={18} />
                                             </button>
                                             <button 
+                                                aria-label={`Excluir ${type.name}`}
                                                 onClick={() => handleDelete(type.id)}
                                                 className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                                             >
@@ -213,10 +223,10 @@ export default function TypeRequestsPage() {
 
       {/* MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4">
+            <div role="dialog" aria-modal="true" aria-labelledby="type-request-dialog-title" className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-xl animate-in fade-in zoom-in duration-200 sm:max-h-[calc(100dvh-2rem)] sm:p-6">
                 <div className="flex justify-between items-center mb-6 border-b pb-4">
-                    <h2 className="text-xl font-bold text-gray-800">
+                    <h2 id="type-request-dialog-title" className="text-xl font-bold text-gray-800">
                         {editingType ? "Editar Tipo" : "Novo Tipo"}
                     </h2>
                     <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -290,23 +300,34 @@ export default function TypeRequestsPage() {
                             <input type="checkbox" checked={formData.requires_decision} onChange={(e) => setFormData({...formData, requires_decision: e.target.checked})} className="mt-0.5 h-4 w-4 accent-emerald-700" />
                             <span>Serviço exige resultado acadêmico de deferimento ou indeferimento<span className="mt-1 block text-xs font-normal text-slate-600">Desative somente para serviços que podem ser encerrados sem uma decisão desse tipo.</span></span>
                         </label>
-                        <label htmlFor="duplicate-window-days" className="block text-sm font-bold text-gray-700 mb-1">Evitar requerimentos abertos repetidos</label>
-                        <p className="mb-3 text-sm text-slate-600">Quando ativado, o aluno verá um aviso se enviar o mesmo assunto para este serviço e matrícula enquanto já houver um pedido aberto no período.</p>
+                        <label htmlFor="duplicate-window-days" className="block text-sm font-bold text-gray-700 mb-1">Período para identificar pedidos parecidos</label>
+                        <p className="mb-3 text-sm text-slate-600">O aluno recebe um aviso e pode consultar o pedido anterior. Deixe vazio para considerar todos os pedidos ainda abertos deste serviço e matrícula.</p>
                         <div className="flex flex-wrap items-center gap-2">
                             <input
                                 id="duplicate-window-days"
                                 type="number"
+                                required={formData.duplicate_mode === "block"}
                                 min={1}
                                 max={365}
                                 value={formData.duplicate_window_days}
                                 onChange={(e) => setFormData({...formData, duplicate_window_days: e.target.value})}
-                                placeholder="Desativado"
+                                placeholder="Todos os pedidos abertos"
                                 aria-describedby="duplicate-window-help"
                                 className="w-36 rounded-lg border border-gray-200 bg-white px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
                             />
-                            <span className="text-sm text-slate-600">dias (vazio desativa)</span>
+                            <span className="text-sm text-slate-600">dias</span>
                         </div>
-                        <p id="duplicate-window-help" className="mt-2 text-xs text-slate-500">A comparação ignora maiúsculas e espaços repetidos. Pedidos concluídos ou cancelados não bloqueiam um novo envio.</p>
+                        <p id="duplicate-window-help" className="mt-2 text-xs text-slate-500">A comparação considera apenas o mesmo aluno, serviço, matrícula e assunto normalizado. Pedido concluído ou cancelado não gera aviso.</p>
+                        <label htmlFor="duplicate-mode" className="mt-4 block text-sm font-bold text-gray-700">Ação quando houver correspondência</label>
+                        <select id="duplicate-mode" value={formData.duplicate_mode} onChange={(event) => setFormData({ ...formData, duplicate_mode: event.target.value })} className="mt-2 min-h-11 w-full rounded-lg border border-gray-200 bg-white px-3">
+                            <option value="warn">Avisar e permitir continuar (padrão)</option>
+                            <option value="block">Bloquear conforme regra homologada</option>
+                        </select>
+                        {formData.duplicate_mode === "block" && <div className="mt-3">
+                            <label htmlFor="duplicate-rule-reference" className="block text-sm font-bold text-gray-700">Referência da regra aprovada</label>
+                            <input id="duplicate-rule-reference" required value={formData.duplicate_rule_reference} onChange={(event) => setFormData({ ...formData, duplicate_rule_reference: event.target.value })} maxLength={255} placeholder="Documento ou decisão institucional" className="mt-2 min-h-11 w-full rounded-lg border border-gray-200 px-3" />
+                            <p className="mt-2 text-xs text-slate-600">Bloqueios só devem ser ativados após homologação institucional. A referência registra a decisão; o sistema não valida sua existência.</p>
+                        </div>}
                     </div>
                     
                     <div className="flex gap-3 pt-4">

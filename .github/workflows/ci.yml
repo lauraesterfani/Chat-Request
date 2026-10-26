@@ -12,14 +12,16 @@ jobs:
     name: Backend tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           coverage: none
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Check formatting
+      - name: Audit PHP dependencies
+        run: composer audit --locked --no-interaction
+      - name: Check formatting (known baseline)
         continue-on-error: true
         run: vendor/bin/pint --test
       - name: Run isolated Laravel tests
@@ -32,18 +34,20 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      # v6 runs on Node.js 24, which is required by current GitHub-hosted runners.
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=low
       - name: TypeScript
         run: npx tsc --noEmit
-      - name: Lint baseline
-        continue-on-error: true
+      - name: Lint
         run: npm run lint
       - name: Production build
         run: npm run build
@@ -51,3 +55,23 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run browser regression
         run: npx playwright test
+
+  security:
+    name: Secrets and dependency review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+      - name: Scan repository history for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+      - name: Review new pull request dependencies
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0

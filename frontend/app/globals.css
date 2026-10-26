@@ -107,3 +107,9 @@ body {
   border-radius: 5px;
   cursor: pointer;
 }
+
+.login-grid-pattern {
+  background-image: url("/grid-pattern.svg");
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+}

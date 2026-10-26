@@ -19,6 +19,7 @@ test("múltiplos anexos privados permanecem no rascunho após recarregar", async
     if (url.pathname === "/api/notifications") return json({ data: [] });
     if (url.pathname === "/api/notifications/count") return json({ unread: 0 });
     if (url.pathname === "/api/type-requests") return json([{ id: typeId, name: "Atestado QA", requires_document: true, document_instructions: "Envie o comprovante." }]);
+    if (url.pathname === "/api/requests/duplicates/check") return json({ mode: "warn", matches: [] });
     if (url.pathname === `/api/type-requests/${typeId}/form`) return json({ version_id: null, schema: { fields: [] } });
     if (url.pathname === "/api/documents/upload" && route.request().method() === "POST") {
       const id = documentIds[uploadCount];

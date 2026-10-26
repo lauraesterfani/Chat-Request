@@ -91,7 +91,7 @@ test("admin cadastra campus, associa curso e preserva início local da concessã
   await expect(page.getByRole("button", { name: "Revogar" })).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Revogar" }).click();
-  await expect(page.getByText("Revogado")).toBeVisible();
+  await expect(page.getByText("Revogado", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   expect(errors).toEqual([]);
   await page.evaluate(() => {

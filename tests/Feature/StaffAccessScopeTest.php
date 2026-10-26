@@ -2,16 +2,20 @@
 
 namespace Tests\Feature;
 
-use App\Models\Course;
+use App\Models\AuditRecord;
 use App\Models\Campus;
+use App\Models\Course;
 use App\Models\Document;
 use App\Models\Request as RequestModel;
 use App\Models\StaffAccessScope;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\RequestAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -24,18 +28,26 @@ class StaffAccessScopeTest extends TestCase
         $course = Course::create(['name' => 'Curso QA', 'code' => 'QA']);
         $student = User::create(['name' => 'Aluno', 'email' => 'student@example.test', 'cpf' => '90000002001', 'phone' => '81900002001', 'matricula' => 'QA02001', 'birthday' => '2000-01-01', 'password' => 'secret', 'role' => 'student', 'course_id' => $course->id]);
         $type = TypeRequest::create(['name' => 'Tipo QA']);
-        $request = RequestModel::create(['user_id' => $student->id, 'course_id' => $course->id, 'type_id' => $type->id, 'subject' => 'A', 'description' => 'B', 'status' => 'pending', 'protocol' => '20260905-123456', 'responsible_sector' => 'CRADT']);
+        $request = RequestModel::create(['user_id' => $student->id, 'course_id' => $course->id, 'type_id' => $type->id, 'subject' => 'A', 'description' => 'B', 'status' => 'pending', 'protocol' => '20260905-123456', 'responsible_sector' => 'COORDENACAO']);
         $admin = $this->staff('admin');
-        $agent = $this->staff('cradt');
+        $agent = $this->staff('coordenacao');
 
-        $created = $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-access-scopes', ['staff_admin_id' => $agent->id, 'course_id' => $course->id, 'sector' => 'CRADT', 'abilities' => ['view_request'], 'starts_at' => now()->toIso8601String(), 'reason' => 'Cobertura temporária'])->assertCreated()->json();
+        $this->actingAs($agent, 'staff_admins')->getJson('/api/requests/'.$request->id)->assertForbidden();
+
+        $created = $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-access-scopes', ['staff_admin_id' => $agent->id, 'course_id' => $course->id, 'sector' => 'COORDENACAO', 'abilities' => ['view_request'], 'starts_at' => now()->toIso8601String(), 'reason' => 'Cobertura temporária'])->assertCreated()->json();
         $this->assertTrue(app(RequestAccessService::class)->canView($agent, $request));
         $this->assertFalse(app(RequestAccessService::class)->canOperate($agent, $request, 'forward_request'));
+        $this->actingAs($agent, 'staff_admins')->getJson('/api/requests')
+            ->assertOk()->assertJsonCount(1)->assertJsonFragment(['id' => $request->id]);
+        $this->getJson('/api/requests/'.$request->id)->assertOk();
         $this->assertDatabaseHas('audit_records', ['action' => 'scope_granted', 'resource_id' => (string) $created['id']]);
         $this->actingAs($admin, 'staff_admins')->deleteJson('/api/staff-access-scopes/'.$created['id'])->assertOk();
         $this->assertDatabaseHas('audit_records', ['action' => 'scope_revoked', 'resource_id' => (string) $created['id']]);
         $this->assertDatabaseHas('staff_access_scopes', ['id' => $created['id'], 'revoked_by' => $admin->id]);
         $this->assertFalse(app(RequestAccessService::class)->canView($agent, $request));
+        $this->actingAs($agent, 'staff_admins')->getJson('/api/requests')
+            ->assertOk()->assertJsonCount(0);
+        $this->getJson('/api/requests/'.$request->id)->assertForbidden();
     }
 
     public function test_expired_scope_does_not_grant_access(): void
@@ -56,17 +68,77 @@ class StaffAccessScopeTest extends TestCase
         $admin = $this->staff('admin');
         $technical = $this->staff('staff');
         $this->actingAs($admin, 'staff_admins')->getJson('/api/audit-records')->assertOk();
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'audit_records_viewed',
+            'actor_type' => 'staff_admin',
+            'actor_id' => (string) $admin->id,
+            'resource_type' => 'audit_records',
+        ]);
+
         $this->actingAs($technical, 'staff_admins')->getJson('/api/audit-records')->assertForbidden();
+        $this->actingAs($this->staff('cradt'), 'staff_admins')->getJson('/api/audit-records')->assertForbidden();
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'audit_records_access_denied',
+            'actor_id' => (string) $technical->id,
+            'outcome' => 'denied',
+        ]);
+
+        $scopedAdmin = $this->staff('admin');
+        $course = Course::create(['name' => 'Curso admin restrito', 'code' => 'QAR']);
+        StaffAccessScope::create([
+            'staff_admin_id' => $scopedAdmin->id,
+            'course_id' => $course->id,
+            'abilities' => ['view_request'],
+            'starts_at' => now()->subMinute(),
+            'reason' => 'Acesso limitado para teste.',
+        ]);
+        $this->actingAs($scopedAdmin, 'staff_admins')->getJson('/api/audit-records')->assertForbidden();
+        $this->assertDatabaseHas('audit_records', [
+            'action' => 'audit_records_access_denied',
+            'actor_id' => (string) $scopedAdmin->id,
+            'metadata' => json_encode(['reason' => 'scoped_account']),
+            'outcome' => 'denied',
+        ]);
+
+        $inactiveAdmin = $this->staff('admin');
+        $inactiveAdmin->update(['is_active' => false]);
+        $this->actingAs($inactiveAdmin, 'staff_admins')->getJson('/api/audit-records')->assertForbidden();
     }
 
     public function test_audit_metadata_excludes_sensitive_keys(): void
     {
         $admin = $this->staff('admin');
-        $course = Course::create(['name' => 'Curso audit', 'code' => 'QAA']);
-        $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-access-scopes', ['staff_admin_id' => $this->staff('cradt')->id, 'course_id' => $course->id, 'abilities' => ['view_request'], 'starts_at' => now()->toIso8601String(), 'reason' => 'Teste'])->assertCreated();
-        $metadata = \App\Models\AuditRecord::latest('created_at')->value('metadata');
-        $this->assertArrayNotHasKey('password', $metadata ?? []);
-        $this->assertArrayNotHasKey('token', $metadata ?? []);
+        $this->actingAs($admin, 'staff_admins');
+        app(AuditService::class)->record(Request::create('/audit-test', 'POST'), 'test', 'test', null, [
+            'scope' => [
+                'course_id' => 'course-qa',
+                'abilities' => ['view_request'],
+                'refresh_Token' => 'secret-refresh-token',
+                'student_Matricula' => '20241TSIIG0249',
+                'medical_document' => 'private-atestado.png',
+                'nested' => [
+                    'authorizationHeader' => 'Bearer secret-access-token',
+                    'private_url' => 'https://example.test/path?token=secret',
+                    'emailAddress' => 'student@example.test',
+                    'safe_state' => 'open',
+                ],
+            ],
+            'private_comment' => 'Não deve ser armazenado.',
+            'safe_count' => 3,
+        ]);
+
+        $metadata = AuditRecord::latest('created_at')->value('metadata');
+        $this->assertSame('course-qa', $metadata['scope']['course_id']);
+        $this->assertSame(['view_request'], $metadata['scope']['abilities']);
+        $this->assertSame('open', $metadata['scope']['nested']['safe_state']);
+        $this->assertArrayNotHasKey('refresh_Token', $metadata['scope']);
+        $this->assertArrayNotHasKey('student_Matricula', $metadata['scope']);
+        $this->assertArrayNotHasKey('medical_document', $metadata['scope']);
+        $this->assertArrayNotHasKey('authorizationHeader', $metadata['scope']['nested']);
+        $this->assertArrayNotHasKey('private_url', $metadata['scope']['nested']);
+        $this->assertArrayNotHasKey('emailAddress', $metadata['scope']['nested']);
+        $this->assertArrayNotHasKey('private_comment', $metadata);
+        $this->assertSame(3, $metadata['safe_count']);
     }
 
     public function test_scoped_staff_list_and_queue_only_include_authorized_course_and_sector(): void
@@ -150,7 +222,7 @@ class StaffAccessScopeTest extends TestCase
             'reason' => 'Concessão agendada.',
         ])->assertCreated()->json();
 
-        $this->assertTrue(\Illuminate\Support\Carbon::parse($scope['starts_at'])->equalTo($scheduledStart));
+        $this->assertTrue(Carbon::parse($scope['starts_at'])->equalTo($scheduledStart));
         $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-access-scopes', [
             'staff_admin_id' => $this->staff('cradt')->id,
             'course_id' => $course->id,

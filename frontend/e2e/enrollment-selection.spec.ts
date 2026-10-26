@@ -22,6 +22,7 @@ test("matrícula escolhida antes do serviço permanece no rascunho", async ({ pa
       { id: secondEnrollment, enrollment: "20241ADMIG002", course_id: "adm", course_name: "Administração" },
     ], requires_selection: true });
     if (url.pathname === "/api/type-requests") return json([{ id: typeId, name: "Declaração QA", requires_document: false }]);
+    if (url.pathname === "/api/requests/duplicates/check") return json({ mode: "warn", matches: [] });
     if (url.pathname === `/api/type-requests/${typeId}/form`) return json({ version_id: null, schema: { fields: [] } });
     if (url.pathname === "/api/drafts" && route.request().method() === "GET") return json(draft ? [draft] : []);
     if ((url.pathname === "/api/drafts" || url.pathname === `/api/drafts/${draftId}`) && ["POST", "PUT"].includes(route.request().method())) {

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\Request as RequestModel;
+use App\Models\ServiceOpeningWindow;
 use App\Models\SlaPolicy;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
@@ -18,6 +19,7 @@ class SlaAndQueueTest extends TestCase
     public function test_policy_starts_as_draft_and_snapshot_is_saved_on_new_request(): void
     {
         $student = $this->student(); $type = TypeRequest::create(['name' => 'Serviço']);
+        ServiceOpeningWindow::create(['type_request_id' => $type->id, 'starts_at' => now()->subDay(), 'ends_at' => now()->addYear(), 'timezone' => 'America/Recife', 'status' => 'published']);
         $admin = $this->admin();
         $policy = SlaPolicy::create(['name'=>'Teste','status'=>'active','type_request_id'=>$type->id,'first_response_minutes'=>60,'resolution_minutes'=>240,'created_by'=>$admin->id]);
         $response = $this->actingAs($student, 'api')->postJson('/api/requests', ['type_id'=>$type->id,'subject'=>'Assunto','description'=>'Descrição']);

@@ -34,6 +34,35 @@ class StudentAuthenticationTest extends TestCase
         $wrongPassword->assertUnprocessable()->assertJsonPath('errors.matricula.0', 'Credenciais inválidas.');
     }
 
+    public function test_student_login_limit_is_per_account_and_does_not_block_other_students_on_shared_network(): void
+    {
+        $limitedStudent = $this->student('20241LIMIT0001', false);
+        $otherStudent = $this->student('20241LIMIT0002', false);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/login', ['matricula' => $limitedStudent->matricula, 'password' => 'wrong-password'])
+                ->assertUnprocessable();
+        }
+
+        $this->postJson('/api/login', ['matricula' => $limitedStudent->matricula, 'password' => 'wrong-password'])
+            ->assertStatus(429)
+            ->assertHeader('Retry-After');
+        $this->postJson('/api/login', ['matricula' => $otherStudent->matricula, 'password' => 'Senha@123'])
+            ->assertOk()
+            ->assertJsonPath('user.id', $otherStudent->id);
+    }
+
+    public function test_student_logout_revokes_the_session_token_and_prevents_refresh(): void
+    {
+        $student = $this->student('20241LOGOUT001', false);
+        $token = $this->postJson('/api/login', ['matricula' => $student->matricula, 'password' => 'Senha@123'])
+            ->assertOk()->json('token');
+
+        $this->withToken($token)->postJson('/api/logout')->assertOk();
+        $this->withToken($token)->getJson('/api/me')->assertUnauthorized();
+        $this->withToken($token)->postJson('/api/refresh')->assertUnauthorized();
+    }
+
     public function test_pending_student_is_blocked_until_password_is_changed_then_can_use_a_new_token(): void
     {
         $student = $this->student('20242TSIIG0249', true);

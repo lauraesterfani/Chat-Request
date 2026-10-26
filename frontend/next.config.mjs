@@ -1,7 +1,13 @@
+import { fileURLToPath } from "node:url";
+
 const laravelOrigin = (process.env.LARAVEL_API_ORIGIN || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  turbopack: {
+    root: fileURLToPath(new URL(".", import.meta.url)),
+  },
   async rewrites() {
     return [
       {

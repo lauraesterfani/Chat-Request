@@ -27,7 +27,7 @@ class StaffAdmin extends Authenticatable implements JWTSubject
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'must_change_password' => 'boolean'];
+        return ['is_active' => 'boolean', 'must_change_password' => 'boolean', 'email_verified_at' => 'datetime'];
     }
 
     public function isActive(): bool

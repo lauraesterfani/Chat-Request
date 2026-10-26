@@ -2,6 +2,8 @@
 
 Aplicação acadêmica para abertura e acompanhamento de requerimentos do IFPE.
 
+O objetivo atual é um MVP local para demonstração com dados sintéticos. Veja o [escopo e roteiro de validação do MVP](docs/ESCOPO_MVP.md); uso com dados reais e produção institucional seguem bloqueados pelas homologações descritas no [roadmap](ROADMAP_LANCAMENTO.md).
+
 ## Tecnologias
 
 - Back-end: Laravel 12, PHP 8.2+, JWT e Eloquent.
@@ -38,7 +40,7 @@ Essas contas servem somente para validar fluxos. O suporte técnico não recebe 
 
 ### Anexos e respostas prontas
 
-Novos anexos são armazenados no disco privado e abertos pela API autenticada `GET /api/requests/{request}/documents/{document}`. O aluno acessa seus próprios anexos; a coordenação acessa os requerimentos do curso autorizado. Arquivos legados no disco público continuam legíveis pelo endpoint autenticado e devem ser migrados para o disco privado antes da implantação institucional.
+Novos anexos são armazenados no disco privado e abertos pela API autenticada `GET /api/requests/{request}/documents/{document}`. O aluno acessa seus próprios anexos; a coordenação acessa os requerimentos do curso autorizado. Arquivos legados no disco público não são servidos pela API. Para migrá-los, faça backup e execute primeiro `php artisan documents:migrate-to-private` (simulação); use `--apply` somente em uma cópia autorizada após conferir o resultado.
 
 Respostas pré-configuradas pertencem ao setor `CRADT` ou `COORDENACAO`. A lista de atendimento usa o setor atualmente responsável pelo requerimento; encaminhar um pedido altera as respostas disponíveis. O painel permite filtrar por setor e criar textos para o setor permitido ao perfil.
 
@@ -52,7 +54,13 @@ Contas com `must_change_password=true` recebem um JWT limitado: podem consultar 
 
 `php artisan test`, `vendor/bin/pint --test`, `cd frontend && npm run lint`, `npx tsc --noEmit` e `npm run build`.
 
-O workflow versionado em `.github/workflows/ci.yml` executa testes PHP isolados, Pint, TypeScript e build com Node 20 em pushes e pull requests. Pint e o lint completo estão registrados como baselines não bloqueantes até que os erros históricos sejam removidos; não devem ser interpretados como aprovação de formatação ou lint.
+Para executar o fluxo de criação da Fase 7 em navegador contra Laravel e SQLite temporários isolados, use `scripts/run-phase7-api-e2e.sh`. O script migra e semeia somente um banco novo em `/tmp`, inicia API e frontend em portas dedicadas e encerra os servidores ao terminar. Os usuários do cenário são fictícios e marcados como contas de QA.
+
+O workflow versionado em `.github/workflows/ci.yml` executa testes PHP, lint, TypeScript, build, Playwright, revisão de novas dependências em pull requests e varredura de segredos. O CI usa Node 24. O lint bloqueia erros, embora ainda reporte avisos; Pint permanece não bloqueante porque o baseline global falha em arquivos legados. A existência do workflow não comprova que ele foi executado ou exigido pelo GitHub.
+
+O painel de métricas permite gerar XLSX e PDF sintéticos com dados agregados, sem identificadores ou conteúdo de requerimentos. Arquivos temporários ficam em storage privado, expiram e exigem revalidação do escopo no download. A documentação da Fase 10 descreve fórmulas, formatos e limites.
+
+Alunos podem abrir solicitações autenticadas de acesso, correção ou avaliação de eliminação em `/requests/privacidade`. O protocolo não promete prazo legal nem executa exportação, correção histórica ou exclusão automática. O aviso institucional em `/privacidade` permanece pendente até o IFPE publicar uma versão aprovada.
 
 ## Perfis e estrutura
 

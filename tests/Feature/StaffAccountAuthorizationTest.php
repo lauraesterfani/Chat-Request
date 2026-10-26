@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Course;
 use App\Models\StaffAccessScope;
 use App\Models\StaffAdmin;
+use App\Services\AuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class StaffAccountAuthorizationTest extends TestCase
@@ -80,6 +82,27 @@ class StaffAccountAuthorizationTest extends TestCase
         $this->deleteJson('/api/staff-admins/'.$admin->id)->assertUnprocessable();
         $this->assertDatabaseHas('staff_admins', ['id' => $admin->id, 'is_active' => true]);
         $this->assertDatabaseHas('staff_admins', ['id' => $second->id, 'is_active' => false]);
+    }
+
+    public function test_staff_account_changes_roll_back_when_audit_recording_fails(): void
+    {
+        $admin = $this->staff('admin');
+        $target = $this->staff('cradt');
+        $audit = Mockery::mock(AuditService::class);
+        $audit->shouldReceive('record')->twice()->andThrow(new \RuntimeException('synthetic audit failure'));
+        $this->app->instance(AuditService::class, $audit);
+
+        $this->actingAs($admin, 'staff_admins')->deleteJson('/api/staff-admins/'.$target->id)->assertStatus(500);
+        $storeResponse = $this->actingAs($admin, 'staff_admins')->postJson('/api/staff-admins', [
+            'name' => 'Conta rollback',
+            'email' => 'account-rollback@example.test',
+            'cpf' => '90000009991',
+            'role' => 'cradt',
+        ]);
+        $storeResponse->assertStatus(500);
+        $this->assertDatabaseHas('staff_admins', ['id' => $target->id, 'is_active' => true]);
+        $this->assertDatabaseMissing('staff_admins', ['email' => 'account-rollback@example.test']);
+        $this->assertDatabaseMissing('audit_records', ['action' => 'staff_account_deactivated', 'resource_id' => (string) $target->id]);
     }
 
     private function staff(string $role): StaffAdmin

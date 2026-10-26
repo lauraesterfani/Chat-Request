@@ -36,6 +36,10 @@ Este roteiro serve para desenvolvimento e homologação com dados fictícios. El
 3. Registre RPO/RTO observados como medição do ensaio, não como garantia institucional.
 4. O retorno de código pode ser seguro; retorno de schema ou dados exige plano específico e não deve usar comandos destrutivos automáticos.
 
+### Ensaio técnico local de restauração
+
+`scripts/phase9-restore-drill.sh` cria um banco SQLite e storage novos sob `/tmp`, inclui somente um solicitante, requerimento, versão publicada, evento e anexo fictícios, copia esses artefatos para um destino de restauração isolado e verifica integridade e relações. E-mail usa array, a fila é local e nenhum job é reexecutado. A pasta temporária é removida ao sair. O ensaio valida o mecanismo local; não representa backup de produção, não mede perda de uma falha real e não aprova RPO/RTO.
+
 ## Itens que exigem homologação do IFPE
 
 - Serviços, calendários, janelas de abertura, documentos alternativos e regras acadêmicas.

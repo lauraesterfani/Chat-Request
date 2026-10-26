@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\StaffAdmin;
+use App\Models\User;
 use App\Services\AuditService;
 use App\Services\RequestAccessService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private const STAFF_LOGIN_ACCOUNT_LIMIT = 5;
+
+    private const STUDENT_LOGIN_ACCOUNT_LIMIT = 5;
+
+    private const STAFF_LOGIN_DECAY_SECONDS = 60;
+
     /**
      * Login usando matrícula e senha (para alunos).
      */
@@ -24,17 +32,25 @@ class AuthController extends Controller
         ]);
 
         $matricula = strtoupper(preg_replace('/\s+/', '', $request->string('matricula')->toString()));
+        $accountKey = 'student-login:account:'.hash_hmac('sha256', $matricula, (string) config('app.key'));
+        if (RateLimiter::tooManyAttempts($accountKey, self::STUDENT_LOGIN_ACCOUNT_LIMIT)) {
+            return response()->json(['message' => 'Credenciais inválidas.'], 429)
+                ->header('Retry-After', (string) RateLimiter::availableIn($accountKey));
+        }
+
         $credentials = ['matricula' => $matricula, 'password' => $request->string('password')->toString()];
         $token = auth('api')->attempt($credentials);
 
         if (! $token) {
-            app(AuditService::class)->record($request, 'student_login_failed', 'auth', null, ['identifier_hash' => hash('sha256', $matricula)]);
+            RateLimiter::hit($accountKey, self::STAFF_LOGIN_DECAY_SECONDS);
+            app(AuditService::class)->record($request, 'student_login_failed', 'auth', null, ['identifier_hash' => hash_hmac('sha256', $matricula, (string) config('app.key'))], 'failure');
             throw ValidationException::withMessages([
                 'matricula' => [__('Credenciais inválidas.')],
             ]);
         }
 
         $user = auth('api')->user() ?? User::where('matricula', $matricula)->first();
+        RateLimiter::clear($accountKey);
         app(AuditService::class)->record($request, 'student_login_succeeded', 'auth', $user->id);
 
         return response()->json([
@@ -61,21 +77,38 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $credentials = $request->only('email', 'password');
+        $email = mb_strtolower(trim($request->string('email')->toString()));
+        $keySecret = (string) config('app.key');
+        $accountKey = 'staff-login:account:'.hash_hmac('sha256', $email, $keySecret);
+
+        if (RateLimiter::tooManyAttempts($accountKey, self::STAFF_LOGIN_ACCOUNT_LIMIT)) {
+            return response()->json(['message' => 'Credenciais inválidas.'], 429)
+                ->header('Retry-After', (string) RateLimiter::availableIn($accountKey));
+        }
+
+        $credentials = ['email' => $email, 'password' => $request->string('password')->toString()];
         $token = auth('staff_admins')->attempt($credentials);
 
         if (! $token) {
+            RateLimiter::hit($accountKey, self::STAFF_LOGIN_DECAY_SECONDS);
+            app(AuditService::class)->record($request, 'staff_login_failed', 'auth', null, ['reason' => 'invalid_credentials'], 'failure');
+
             throw ValidationException::withMessages([
                 'email' => ['Credenciais inválidas.'],
             ]);
         }
 
         $user = auth('staff_admins')->user();
-        if (! $user->is_active) {
+        if (! $user->isActive()) {
             auth('staff_admins')->logout();
+            RateLimiter::hit($accountKey, self::STAFF_LOGIN_DECAY_SECONDS);
+            app(AuditService::class)->record($request, 'staff_login_failed', 'auth', null, ['reason' => 'inactive_account'], 'failure');
 
             return response()->json(['message' => 'Credenciais inválidas.'], 401);
         }
+
+        RateLimiter::clear($accountKey);
+        app(AuditService::class)->record($request, 'staff_login_succeeded', 'auth', $user->id);
 
         // Se for primeiro acesso, força redefinição
         if ($user->must_change_password) {
@@ -175,20 +208,34 @@ class AuthController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'new_password' => 'required|min:8|confirmed',
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
-        $user = auth('staff_admins')->user() ?? auth('api')->user();
+        $user = auth('staff_admins')->user();
+        if (! $user instanceof StaffAdmin || ! $user->isActive()) {
+            return response()->json(['message' => 'Acesso não autorizado.'], 403);
+        }
+        if (! $user->must_change_password) {
+            return response()->json(['message' => 'A troca obrigatória de senha não está pendente.'], 403);
+        }
+        if (! Hash::check($request->string('current_password')->toString(), $user->password)) {
+            app(AuditService::class)->record($request, 'staff_initial_password_change_failed', 'auth', $user->id, ['reason' => 'invalid_current_password'], 'failure');
 
-        if (! $user) {
-            return response()->json(['message' => 'Usuário não autenticado'], 401);
+            return response()->json(['message' => 'Não foi possível redefinir a senha.'], 422);
         }
 
-        $user->password = Hash::make($request->new_password);
-        $user->must_change_password = false;
-        $user->save();
+        DB::transaction(function () use ($request, $user): void {
+            $user->forceFill([
+                'password' => Hash::make($request->string('new_password')->toString()),
+                'must_change_password' => false,
+            ])->save();
+            app(AuditService::class)->record($request, 'staff_initial_password_changed', 'auth', $user->id);
+        });
 
-        return response()->json(['message' => 'Senha redefinida com sucesso']);
+        auth('staff_admins')->logout();
+
+        return response()->json(['message' => 'Senha redefinida com sucesso. Faça login novamente.']);
     }
 
     public function changeInitialPassword(Request $request)

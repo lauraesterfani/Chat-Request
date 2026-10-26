@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const externalServers = process.env.PLAYWRIGHT_EXTERNAL_SERVERS === "1";
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
@@ -9,8 +11,8 @@ export default defineConfig({
   outputDir: "test-results",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000",
-    screenshot: "only-on-failure",
-    trace: "retain-on-failure",
+  screenshot: "only-on-failure",
+  trace: externalServers ? "off" : "retain-on-failure",
     video: "retain-on-failure",
     ignoreHTTPSErrors: true,
   },
@@ -18,7 +20,7 @@ export default defineConfig({
     { name: "chromium-desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "chromium-mobile", use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],
-  webServer: {
+  webServer: externalServers ? undefined : {
     command: "npm run start -- --hostname 127.0.0.1 --port 3000",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,

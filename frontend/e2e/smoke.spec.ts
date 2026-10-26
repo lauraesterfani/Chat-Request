@@ -71,4 +71,21 @@ test.describe("smoke público do Chat Request", () => {
     await expect(page.getByText("Declaração de matrícula")).toBeVisible();
     await expect(page.getByText("Como acompanhar")).not.toBeVisible();
   });
+
+  test("serviço de canal externo orienta o aluno sem oferecer protocolo local", async ({ page }) => {
+    await page.route("**/api/service-catalog", async (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([{
+        id: "service-external", name: "Orientação externa de QA", description: "Este serviço não é protocolado pelo Chat Request.", category: "Orientação", audience: "Estudantes", channel: "external", channel_instructions: "Use o canal oficial informado pela instituição.", responsible_sector: "CRADT", documentation: { required: false, instructions: null },
+      }]),
+    }));
+    await page.route("**/api/knowledge-articles", async (route) => route.fulfill({ contentType: "application/json", body: "[]" }));
+
+    await page.goto("/servicos");
+    const serviceCard = page.locator("article").filter({ hasText: "Orientação externa de QA" });
+    await expect(serviceCard).toContainText("Canal externo");
+    await expect(serviceCard).toContainText("Use o canal oficial informado pela instituição.");
+    await expect(serviceCard.getByRole("link", { name: "Acessar para solicitar" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Acessar conta" })).toBeVisible();
+  });
 });

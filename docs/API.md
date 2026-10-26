@@ -22,6 +22,7 @@ Não exigem autenticação.
 | GET | `/type-requests` | ✗ | — | Lista tipos de requerimento |
 | GET | `/service-catalog` | ✗ | — | Catálogo de serviços publicados |
 | GET | `/knowledge-articles` | ✗ | — | Artigos da base de conhecimento |
+| GET | `/privacy-notice/current` | ✗ | — | Aviso aprovado mais recente ou estado `pending_approval` |
 | GET | `/type-requests/{typeId}/form` | ✗ | — | Formulário publicado de um tipo de requerimento |
 
 ---
@@ -39,11 +40,19 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | GET | `/requests` | ✓ | aluno | Lista requerimentos do aluno |
 | GET | `/my-requests` | ✓ | aluno | Alias de `/requests` |
 | POST | `/requests` | ✓ | aluno | Cria novo requerimento |
+| POST | `/requests/duplicates/check` | ✓ | aluno | Busca pedidos abertos semelhantes do próprio aluno antes do envio |
+| GET | `/knowledge-articles/authenticated` | ✓ | aluno | Orientações publicadas para usuários autenticados; nunca inclui conteúdo interno |
+| GET | `/privacy/data-requests` | ✓ | aluno | Lista as próprias solicitações de privacidade |
+| POST | `/privacy/data-requests` | ✓ | aluno | Registra solicitação autenticada de acesso, correção ou avaliação de eliminação |
+| GET | `/privacy/data-requests/{id}` | ✓ | aluno | Consulta somente solicitação própria |
 | POST | `/documents/upload` | ✓ | aluno | Faz upload de documento vinculado a requerimento |
 | GET | `/drafts` | ✓ | aluno | Lista rascunhos do aluno |
 | POST | `/drafts` | ✓ | aluno | Salva novo rascunho |
 | PUT | `/drafts/{draft}` | ✓ | aluno | Atualiza rascunho existente |
 | DELETE | `/drafts/{draft}` | ✓ | aluno | Descarta rascunho |
+| GET | `/drafts/{draft}/migration` | ✓ | aluno | Prévia de migração para a versão publicada atual |
+| POST | `/drafts/{draft}/migration` | ✓ | aluno | Confirma a migração revisada do rascunho |
+| GET | `/enrollments/active` | ✓ | aluno | Lista vínculos ativos do solicitante |
 | POST | `/change-enrollment/{id}` | ✓ | aluno | Altera matrícula ativa |
 | GET | `/staffs` | ✓ | aluno | Lista servidores (atendentes) |
 | GET | `/requests/{id}` | ✓ | any | Detalhe de um requerimento |
@@ -75,6 +84,7 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | PUT | `/response-templates/{id}` | ✓ | admin,staff,cradt | Atualiza template |
 | PATCH | `/response-templates/{id}/status` | ✓ | admin,staff,cradt | Altera status do template |
 | GET | `/admin/requests` | ✓ | admin,cradt | Lista requerimentos (visão admin) |
+| GET | `/admin/type-requests` | ✓ | admin,cradt | Lista tipos e configurações administrativas de duplicidade |
 
 ### Exclusivas Admin / CRADT (`role:admin,cradt`)
 
@@ -93,7 +103,9 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | GET | `/sla-policies` | ✓ | admin,cradt | Lista políticas de SLA |
 | POST | `/sla-policies` | ✓ | admin,cradt | Cria política de SLA |
 | POST | `/sla-policies/{id}/activate` | ✓ | admin,cradt | Ativa política de SLA |
-| GET | `/audit-records` | ✓ | admin,cradt | Trilha de auditoria |
+| POST | `/metrics/exports/{format}` | ✓ | admin,cradt com `view_request` | Gera relatório sintético XLSX ou PDF no storage privado |
+| GET | `/metrics/exports/{id}/download` | ✓ | mesmo autor, escopo vigente | Revalida acesso e gera novamente o relatório antes do download |
+| GET | `/admin/knowledge-articles` | ✓ | admin,cradt | Lista artigos, versões de trabalho e estados editoriais |
 | GET | `/staff-access-scopes` | ✓ | admin,cradt | Lista escopos de acesso |
 | POST | `/staff-access-scopes` | ✓ | admin,cradt | Cria escopo de acesso |
 | DELETE | `/staff-access-scopes/{id}` | ✓ | admin,cradt | Remove escopo de acesso |
@@ -108,7 +120,18 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | POST | `/admin/service-opening-windows` | ✓ | admin,cradt | Cria janela de abertura |
 | PUT | `/admin/service-opening-windows/{id}` | ✓ | admin,cradt | Atualiza janela de abertura |
 | POST | `/admin/knowledge-articles` | ✓ | admin,cradt | Cria artigo na base de conhecimento |
-| PUT | `/admin/knowledge-articles/{id}` | ✓ | admin,cradt | Atualiza artigo |
+| PUT | `/admin/knowledge-articles/{id}` | ✓ | admin,cradt | Salva rascunho, envia para revisão, publica (admin global) ou desativa |
+| GET | `/admin/privacy/data-requests` | ✓ | admin global sem escopos | Fila de solicitações de titulares |
+| GET | `/admin/privacy/data-requests/{id}` | ✓ | admin global sem escopos | Consulta uma solicitação para análise humana |
+| PATCH | `/admin/privacy/data-requests/{id}` | ✓ | admin global sem escopos | Move para análise, responde ou registra rejeição fundamentada |
+| GET/POST | `/admin/privacy-notices` | ✓ | admin global sem escopos | Lista/cria versões de rascunho do aviso |
+| PUT | `/admin/privacy-notices/{id}` | ✓ | admin global sem escopos | Edita somente rascunho |
+| POST | `/admin/privacy-notices/{id}/submit-review` | ✓ | admin global sem escopos | Envia versão para revisão |
+| POST | `/admin/privacy-notices/{id}/return-to-draft` | ✓ | admin global sem escopos | Devolve versão em revisão para edição |
+| POST | `/admin/privacy-notices/{id}/publish` | ✓ | admin global sem escopos | Publica após campos e referências institucionais obrigatórias |
+| POST | `/admin/privacy-notices/{id}/new-version` | ✓ | admin global sem escopos | Cria novo rascunho sem alterar a versão publicada |
+| GET | `/audit-records` | ✓ | admin global ativo sem escopos | Busca paginada e auditada; demais contas de equipe recebem 403 e têm tentativa registrada |
+| POST | `/admin/retention/simulate` | ✓ | admin global | Estima registros anteriores a um corte temporal e retorna referências pseudonimizadas; não executa descarte nem representa política aprovada |
 | GET | `/dashboard/requerimentos` | ✓ | admin,cradt | Dashboard – requerimentos |
 | GET | `/dashboard/estatisticas` | ✓ | admin,cradt | Dashboard – estatísticas gerais |
 | GET | `/dashboard/graficos/status` | ✓ | admin,cradt | Gráfico – requerimentos por status |
@@ -123,8 +146,14 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | DELETE | `/staff-admins/{id}` | ✓ | staff | Remove usuário staff-admin |
 | POST | `/staffs` | ✓ | staff | Cadastra atendente |
 | DELETE | `/staffs/{id}` | ✓ | staff | Remove atendente |
-| POST | `/reset-password` | ✓ | staff_admins | Redefine senha (primeiro acesso) |
+| POST | `/reset-password` | ✓ | staff_admins | Troca de senha no primeiro acesso; exige senha temporária atual e revoga o token usado |
 | GET | `/admins` | ✓ | staff_admins | Lista admins |
+
+Todas as respostas da API incluem `X-Request-ID`, gerado pelo servidor. Eventos de auditoria guardam o mesmo identificador e `outcome` (`success`, `failure`, `denied` ou `unknown`); o cliente não pode escolher esse ID. A trilha rejeita `UPDATE` e `DELETE` via modelo e triggers no SQLite/MySQL. Isso protege contra operações normais da aplicação, não contra administrador de banco capaz de remover triggers ou restaurar outra cópia; não é armazenamento WORM.
+
+Os logins de aluno e equipe limitam falhas por conta (cinco por minuto, chave HMAC); não aplicam bloqueio agregado por IP, para evitar bloquear um campus inteiro atrás de NAT. O endpoint de primeiro acesso da equipe `/reset-password` requer token administrativo, troca pendente, senha temporária atual e uma nova senha forte; após salvar, invalida o token anterior.
+
+Leituras da fila/detalhe de solicitações de privacidade, tentativas negadas e simulações de retenção são auditadas com metadados mínimos; descrição e resposta privada não são copiadas para a trilha. O upload aceita PDF/JPEG/PNG coerentes entre MIME e extensão até 10 MiB, e os detalhes servem arquivos somente do disco privado. `php artisan documents:migrate-to-private` apenas simula por padrão; `--apply` copia arquivos legados, confere SHA-256 e apaga a cópia pública. Faça backup e valide storage autorizado antes de executar a opção.
 
 ---
 
@@ -132,7 +161,7 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 
 ### `POST /api/requests`
 
-Cria um novo requerimento. Requer token de aluno com senha já alterada. Se o serviço tiver `duplicate_window_days` configurado, outro pedido aberto do mesmo aluno, serviço, matrícula e assunto normalizado dentro do prazo responde `409 Conflict` e inclui o ID e protocolo do pedido existente. A regra é configurada por tipo de serviço, aceita de 1 a 365 dias e fica desativada por padrão.
+Cria um novo requerimento. Requer token de aluno com senha já alterada. A regra padrão é avisar sobre outro pedido aberto do mesmo aluno, serviço, matrícula e assunto normalizado. `duplicate_window_days` opcional limita a busca; quando ausente, considera todos os pedidos ainda abertos. O modo `warn` exige confirmação explícita e permite continuar; `block` só pode ser ativado com referência de regra homologada por administrador institucional sem escopo restrito. Um `409 Conflict` contém somente IDs, protocolos e resumos dos pedidos próprios correspondentes. `Idempotency-Key` trata retries técnicos separadamente: a chave é única por aluno na operação de criação e protegida por índice composto no banco; uma repetição com a mesma carga retorna o pedido existente e uma carga diferente recebe conflito.
 
 **Request**
 ```http
@@ -156,6 +185,10 @@ Content-Type: application/json
   "id": "4d7feb9a-1aa3-4810-949f-01649ba847bb"
 }
 ```
+
+`form_schema_version_id` and `form_responses` are required when the service has a published schema. Schemas are read at `GET /api/type-requests/{typeId}/form`; only an authorized editor can create, update, list or publish versions through `/api/type-requests/{typeId}/form-versions` and `/api/form-versions/{id}`. Published versions are immutable. Draft requests use `POST/GET /api/drafts`, `PUT/DELETE /api/drafts/{id}` and optimistic `revision` checks; migration is a separate preview-and-confirm operation. Drafts do not receive a protocol or enter the service queue.
+
+`POST /api/requests/duplicates/check` accepts `type_id`, `subject` and optional `enrollment_id`; it returns `mode` and up to five matching requests owned by the authenticated student. The endpoint does not reveal another student's requests. The final `POST /api/requests` repeats the check transactionally and accepts `duplicate_acknowledged: true` only to continue in warning mode.
 
 ---
 

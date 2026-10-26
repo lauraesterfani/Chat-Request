@@ -9,6 +9,7 @@ type RequestType = { id: string; name: string; requires_document: boolean; docum
 type Condition = { field: string; operator: "equals" | "in" | "present"; value?: unknown };
 type Field = { key: string; label: string; type: string; required?: boolean; instruction?: string; options?: string[]; min?: number; max?: number; max_length?: number; max_items?: number; visible_if?: { all?: Condition[]; any?: Condition[] } };
 type SavedDocument = { id: string; name: string; mime_type?: string; file_size?: number };
+type DuplicateMatch = { id: string; protocol: string; subject: string; status: string; created_at: string | null };
 type Enrollment = { id: string; enrollment: string; course_id: string; course_name?: string | null };
 type Draft = { id: string; revision: number; type_request_id: string; form_schema_version_id?: string | null; enrollment_id?: string | null; responses?: Record<string, unknown>; document_ids?: string[] | null; attached_documents?: SavedDocument[]; schema_version?: { schema: { fields: Field[] } } | null };
 type DraftSnapshot = { type_request_id: string; form_schema_version_id: string | null; enrollment_id: string | null; responses: Record<string, unknown>; document_ids: string[] };
@@ -77,6 +78,10 @@ export default function NewRequestPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [duplicateMode, setDuplicateMode] = useState<"warn" | "block">("warn");
+  const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
 
   const token = () => sessionStorage.getItem("jwt_token") ?? "";
   const selected = useMemo(() => types.find((item) => item.id === typeId), [types, typeId]);
@@ -277,6 +282,10 @@ export default function NewRequestPage() {
       setUndoAnswers(null);
     }
     setFieldErrors({});
+    if (key === "subject") {
+      setDuplicateMatches([]);
+      setDuplicateAcknowledged(false);
+    }
     setAnswers(next);
   };
 
@@ -307,10 +316,12 @@ export default function NewRequestPage() {
     setUndoAnswers(null);
     setFieldErrors({});
     setReviewing(false);
+    setDuplicateMatches([]);
+    setDuplicateAcknowledged(false);
     setError("");
   };
 
-  const reviewRequest = (event: React.FormEvent) => {
+  const reviewRequest = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
     if (uploading) { setError("Aguarde o envio do anexo antes de continuar."); return; }
@@ -318,7 +329,24 @@ export default function NewRequestPage() {
     if (selected?.requires_document && attachedDocuments.length === 0) { setError(`Anexe: ${selected.document_instructions ?? "documento comprobatório"}.`); return; }
     if (conflictDraft) { setError("Resolva o conflito do rascunho antes de enviar."); return; }
     if (migration || migrationLoading || migrationUnavailable) { setError("Revise a nova versão do formulário antes de enviar."); return; }
-    setReviewing(true);
+    setCheckingDuplicates(true);
+    try {
+      const response = await fetch("/api/requests/duplicates/check", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ type_id: typeId, subject, enrollment_id: enrollmentId || null }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Não foi possível verificar pedidos parecidos.");
+      setDuplicateMatches(data.matches ?? []);
+      setDuplicateMode(data.mode === "block" ? "block" : "warn");
+      setDuplicateAcknowledged(false);
+      setReviewing(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível verificar pedidos parecidos.");
+    } finally {
+      setCheckingDuplicates(false);
+    }
   };
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setError("");
@@ -345,9 +373,15 @@ export default function NewRequestPage() {
         submissionAttempt.current = { payload, draft: saved, documentIds };
       }
       const key = `draft:${saved.id}`;
-      const response = await fetch("/api/requests", { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify({ type_id: typeId, subject, description, enrollment_id: enrollmentId || null, form_schema_version_id: versionId, form_responses: formResponses, document_ids: documentIds, draft_id: saved.id, idempotency_key: key }) });
+      const response = await fetch("/api/requests", { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify({ type_id: typeId, subject, description, enrollment_id: enrollmentId || null, form_schema_version_id: versionId, form_responses: formResponses, document_ids: documentIds, draft_id: saved.id, idempotency_key: key, duplicate_acknowledged: duplicateAcknowledged }) });
       const data = await response.json();
       if (!response.ok) {
+        if (Array.isArray(data.duplicate_matches)) {
+          setDuplicateMatches(data.duplicate_matches);
+          setDuplicateMode(data.duplicate_mode === "block" ? "block" : "warn");
+          setDuplicateAcknowledged(false);
+          setReviewing(true);
+        }
         if (data.errors) { setFieldErrors(data.errors); setReviewing(false); }
         throw new Error(data.message ?? "Não foi possível enviar o requerimento.");
       }
@@ -394,6 +428,11 @@ export default function NewRequestPage() {
             <section aria-labelledby="review-title" className="space-y-4">
               <h2 id="review-title" className="text-lg font-bold text-dark-green">Revise seu requerimento</h2>
               <p className="text-sm text-slate-600">O protocolo será gerado somente depois da confirmação.</p>
+              {duplicateMatches.length > 0 && <section aria-labelledby="duplicate-warning-title" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+                <div><h3 id="duplicate-warning-title" className="font-bold">Encontramos pedidos seus ainda em aberto com o mesmo assunto</h3><p className="mt-1 text-sm">Confira se algum deles já atende sua necessidade.</p></div>
+                <ul className="space-y-2">{duplicateMatches.map((match) => <li key={match.id} className="rounded-lg bg-white p-3 text-sm"><Link className="font-semibold text-emerald-900 underline" href={`/requests/visualizar/${match.id}`}>Protocolo {match.protocol} — {match.subject}</Link><span className="mt-1 block text-slate-600">Situação: {match.status}</span></li>)}</ul>
+                {duplicateMode === "block" ? <p className="text-sm font-semibold">Este serviço tem uma regra homologada que impede outro envio enquanto o pedido anterior estiver aberto.</p> : <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-white p-3 text-sm"><input type="checkbox" checked={duplicateAcknowledged} onChange={(event) => setDuplicateAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-emerald-700" /><span>Revisei os pedidos acima e desejo continuar com uma nova solicitação.</span></label>}
+              </section>}
               <dl className="divide-y divide-slate-200 rounded-xl border border-slate-200 px-4">
                 <div className="py-3"><dt className="text-sm font-semibold text-slate-600">Serviço</dt><dd className="mt-1 break-words">{selected?.name}</dd></div>
                 {selectedEnrollment && <div className="py-3"><dt className="text-sm font-semibold text-slate-600">Matrícula</dt><dd className="mt-1 break-words">{selectedEnrollment.enrollment}{selectedEnrollment.course_name ? ` — ${selectedEnrollment.course_name}` : ""}</dd></div>}
@@ -402,7 +441,7 @@ export default function NewRequestPage() {
               </dl>
               <div className="flex flex-col-reverse gap-3 sm:flex-row">
                 <button type="button" onClick={() => setReviewing(false)} className="min-h-12 flex-1 rounded-xl border border-slate-300 px-4 font-semibold">Voltar e editar</button>
-                <button disabled={submitting} className="min-h-12 flex-[2] rounded-xl bg-dark-green px-4 font-bold text-white disabled:opacity-50">{submitting ? "Enviando…" : "Confirmar envio"}</button>
+                <button disabled={submitting || checkingDuplicates || (duplicateMatches.length > 0 && (duplicateMode === "block" || !duplicateAcknowledged))} className="min-h-12 flex-[2] rounded-xl bg-dark-green px-4 font-bold text-white disabled:opacity-50">{submitting ? "Enviando…" : duplicateMode === "block" && duplicateMatches.length > 0 ? "Envio bloqueado" : "Confirmar envio"}</button>
               </div>
             </section>
           ) : (
@@ -434,7 +473,7 @@ export default function NewRequestPage() {
               })}
               {selected?.requires_document && <div className="rounded-xl border border-dashed border-amber-400 bg-amber-50 p-4 text-sm"><label htmlFor="request-document" className="block font-semibold"><span className="flex items-center gap-2"><Paperclip aria-hidden="true" size={17} />Anexos obrigatórios</span><span className="mt-1 block font-normal">{selected.document_instructions}</span><span className="mt-1 block font-normal">Você pode selecionar mais de um arquivo. Formatos: PDF, JPG ou PNG; até 10 MB por arquivo.</span></label><input id="request-document" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" disabled={uploading || (requiresEnrollmentSelection && !enrollmentId)} onChange={(event) => { const selectedFiles = Array.from(event.target.files ?? []); event.target.value = ""; void uploadDocuments(selectedFiles); }} className="mt-3 block w-full text-sm" />{uploading && <p role="status" className="mt-2 font-medium text-amber-900">Enviando anexos…</p>}{attachedDocuments.length > 0 && <p aria-live="polite" className="mt-3 font-medium text-slate-800">{attachedDocuments.length} {attachedDocuments.length === 1 ? "anexo salvo" : "anexos salvos"}</p>}{attachedDocuments.map((attachment) => <div key={attachment.id} className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-white p-3"><p className="min-w-0 break-all font-medium text-slate-800">Anexo salvo: {attachment.name}</p><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void downloadDraftDocument(attachment)} className="min-h-11 rounded-lg border border-emerald-700 px-3 font-semibold text-dark-green">Baixar anexo</button><button type="button" onClick={() => { editCount.current += 1; submissionAttempt.current = null; setAttachedDocuments((current) => current.filter((document) => document.id !== attachment.id)); }} className="min-h-11 rounded-lg border border-red-300 px-3 font-semibold text-red-800">Remover do rascunho</button></div></div>)}</div>}
               <p aria-live="polite" className="flex items-center gap-2 text-sm text-slate-600"><Save aria-hidden="true" size={16} />{saveState}{draft && <span className="sr-only">Revisão {draft.revision}</span>}</p>
-              <div className="flex flex-col-reverse gap-3 sm:flex-row"><button type="button" onClick={() => router.push("/me")} className="min-h-12 flex-1 rounded-xl bg-slate-100 px-4 font-bold"><X aria-hidden="true" size={17} className="mr-1 inline" />Cancelar</button><button disabled={submitting || uploading || Boolean(conflictDraft)} className="min-h-12 flex-[2] rounded-xl bg-dark-green px-4 font-bold text-white disabled:opacity-50">Revisar requerimento</button></div>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row"><button type="button" onClick={() => router.push("/me")} className="min-h-12 flex-1 rounded-xl bg-slate-100 px-4 font-bold"><X aria-hidden="true" size={17} className="mr-1 inline" />Cancelar</button><button disabled={submitting || checkingDuplicates || uploading || Boolean(conflictDraft)} className="min-h-12 flex-[2] rounded-xl bg-dark-green px-4 font-bold text-white disabled:opacity-50">{checkingDuplicates ? "Verificando pedidos…" : "Revisar requerimento"}</button></div>
             </>
           )}
         </form>

@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Document;
 use App\Models\FormSchemaVersion;
+use App\Models\Request as RequestModel;
 use App\Models\RequestDraft;
+use App\Models\ServiceOpeningWindow;
 use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -84,6 +87,7 @@ class DynamicFormTest extends TestCase
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001003', 'phone' => '81900001003', 'matricula' => 'QA003', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 2']);
+        $this->publishGlobalWindow($type);
         $schema = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 1, 'status' => 'published', 'schema' => ['fields' => [['key' => 'subject', 'label' => 'Assunto', 'type' => 'short_text', 'required' => true], ['key' => 'description', 'label' => 'Descrição', 'type' => 'long_text', 'required' => true]]]]);
 
         $this->actingAs($student, 'api')->postJson('/api/requests', ['type_id' => $type->id, 'subject' => 'A', 'description' => 'B', 'form_schema_version_id' => $schema->id, 'form_responses' => ['unknown' => 'x']])->assertStatus(422);
@@ -141,6 +145,7 @@ class DynamicFormTest extends TestCase
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001023', 'phone' => '81900001023', 'matricula' => 'QA023', 'birthday' => '2000-01-01']);
         $other = User::factory()->create(['role' => 'student', 'cpf' => '90000001024', 'phone' => '81900001024', 'matricula' => 'QA024', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Serviço com anexo', 'requires_document' => true]);
+        $this->publishGlobalWindow($type);
         $upload = $this->actingAs($student, 'api')->post('/api/documents/upload', [
             'arquivo' => UploadedFile::fake()->create('comprovante.pdf', 100, 'application/pdf'),
         ])->assertCreated();
@@ -174,6 +179,7 @@ class DynamicFormTest extends TestCase
         Storage::fake('local');
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001025', 'phone' => '81900001025', 'matricula' => 'QA025', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Troca de anexo', 'requires_document' => true]);
+        $this->publishGlobalWindow($type);
         $this->actingAs($student, 'api');
         $firstId = $this->post('/api/documents/upload', ['arquivo' => UploadedFile::fake()->create('primeiro.pdf', 50, 'application/pdf')])->assertCreated()->json('id');
         $secondId = $this->post('/api/documents/upload', ['arquivo' => UploadedFile::fake()->create('segundo.pdf', 50, 'application/pdf')])->assertCreated()->json('id');
@@ -205,6 +211,7 @@ class DynamicFormTest extends TestCase
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001008', 'phone' => '81900001008', 'matricula' => 'QA008', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 7']);
+        $this->publishGlobalWindow($type);
         $schema = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 1, 'status' => 'published', 'schema' => ['fields' => [['key' => 'reason', 'label' => 'Motivo', 'type' => 'short_text', 'required' => true]]]]);
         $payload = ['type_id' => $type->id, 'subject' => 'Assunto', 'description' => 'Descrição'];
 
@@ -217,6 +224,7 @@ class DynamicFormTest extends TestCase
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001009', 'phone' => '81900001009', 'matricula' => 'QA009', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 8']);
+        $this->publishGlobalWindow($type);
         $old = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 1, 'status' => 'published', 'schema' => ['fields' => []]]);
         $current = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 2, 'status' => 'published', 'schema' => ['fields' => []]]);
 
@@ -229,6 +237,7 @@ class DynamicFormTest extends TestCase
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001010', 'phone' => '81900001010', 'matricula' => 'QA010', 'birthday' => '2000-01-01']);
         $other = User::factory()->create(['role' => 'student', 'cpf' => '90000001011', 'phone' => '81900001011', 'matricula' => 'QA011', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 9']);
+        $this->publishGlobalWindow($type);
         $draft = RequestDraft::create(['user_id' => $other->id, 'type_request_id' => $type->id, 'responses' => ['subject' => 'Privado'], 'revision' => 1]);
 
         $this->actingAs($student, 'api')->postJson('/api/requests', ['type_id' => $type->id, 'subject' => 'Assunto', 'description' => 'Descrição', 'draft_id' => $draft->id])->assertForbidden();
@@ -240,6 +249,7 @@ class DynamicFormTest extends TestCase
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001012', 'phone' => '81900001012', 'matricula' => 'QA012', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 10']);
+        $this->publishGlobalWindow($type);
         $payload = ['type_id' => $type->id, 'subject' => 'Assunto', 'description' => 'Descrição', 'idempotency_key' => 'qa-submission-key-0001'];
 
         $created = $this->actingAs($student, 'api')->postJson('/api/requests', $payload)->assertCreated()->json();
@@ -248,10 +258,76 @@ class DynamicFormTest extends TestCase
         $this->assertDatabaseCount('requests', 1);
     }
 
+    public function test_submission_idempotency_key_is_scoped_to_the_authenticated_student(): void
+    {
+        $firstStudent = User::factory()->create(['role' => 'student', 'cpf' => '90000001031', 'phone' => '81900001031', 'matricula' => 'QA031', 'birthday' => '2000-01-01']);
+        $secondStudent = User::factory()->create(['role' => 'student', 'cpf' => '90000001032', 'phone' => '81900001032', 'matricula' => 'QA032', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Tipo QA idempotência por aluno']);
+        $this->publishGlobalWindow($type);
+        $payload = ['type_id' => $type->id, 'subject' => 'Assunto recorrente', 'description' => 'Descrição', 'idempotency_key' => 'shared-test-key-0001'];
+
+        $first = $this->actingAs($firstStudent, 'api')->postJson('/api/requests', $payload)->assertCreated()->json();
+        $second = $this->actingAs($secondStudent, 'api')->postJson('/api/requests', $payload)->assertCreated()->json();
+
+        $this->assertNotSame($first['id'], $second['id']);
+        $this->actingAs($firstStudent, 'api')->postJson('/api/requests', $payload)
+            ->assertOk()->assertJsonPath('id', $first['id'])->assertJsonPath('idempotent_replay', true);
+        $this->actingAs($secondStudent, 'api')->postJson('/api/requests', $payload)
+            ->assertOk()->assertJsonPath('id', $second['id'])->assertJsonPath('idempotent_replay', true);
+        $this->assertDatabaseCount('requests', 2);
+
+        $migration = require base_path('database/migrations/2026_10_26_000009_scope_request_idempotency_key_per_user.php');
+        try {
+            $migration->down();
+            $this->fail('A migração não deve remover a proteção composta se a reversão criaria colisões.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('chaves de idempotência iguais', $exception->getMessage());
+        }
+
+        try {
+            RequestModel::create([
+                'user_id' => $firstStudent->id,
+                'type_id' => $type->id,
+                'subject' => 'Outra tentativa',
+                'description' => 'A restrição composta continua ativa.',
+                'status' => 'pending',
+                'submission_idempotency_key' => 'shared-test-key-0001',
+            ]);
+            $this->fail('A restrição composta deve continuar ativa após a reversão bloqueada.');
+        } catch (QueryException) {
+            $this->assertDatabaseCount('requests', 2);
+        }
+    }
+
+    public function test_database_rejects_a_second_request_with_the_same_student_idempotency_key(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001033', 'phone' => '81900001033', 'matricula' => 'QA033', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Tipo QA restrição de idempotência']);
+        $this->publishGlobalWindow($type);
+        $key = 'same-student-unique-key-01';
+        $this->actingAs($student, 'api')->postJson('/api/requests', [
+            'type_id' => $type->id,
+            'subject' => 'Pedido único',
+            'description' => 'Teste da restrição de banco.',
+            'idempotency_key' => $key,
+        ])->assertCreated();
+
+        $this->expectException(QueryException::class);
+        RequestModel::create([
+            'user_id' => $student->id,
+            'type_id' => $type->id,
+            'subject' => 'Pedido concorrente',
+            'description' => 'Tentativa de contornar o retry da API.',
+            'status' => 'pending',
+            'submission_idempotency_key' => $key,
+        ]);
+    }
+
     public function test_idempotency_header_is_validated_and_can_replay_a_request(): void
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001013', 'phone' => '81900001013', 'matricula' => 'QA013', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 11']);
+        $this->publishGlobalWindow($type);
         $payload = ['type_id' => $type->id, 'subject' => 'Assunto', 'description' => 'Descrição'];
 
         $this->actingAs($student, 'api')->withHeader('Idempotency-Key', 'short')->postJson('/api/requests', $payload)->assertUnprocessable();
@@ -331,9 +407,21 @@ class DynamicFormTest extends TestCase
     {
         $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001015', 'phone' => '81900001015', 'matricula' => 'QA015', 'birthday' => '2000-01-01']);
         $type = TypeRequest::create(['name' => 'Tipo QA 14']);
+        $this->publishGlobalWindow($type);
         $schema = FormSchemaVersion::create(['type_request_id' => $type->id, 'version' => 1, 'status' => 'published', 'schema' => ['fields' => [['key' => 'reason', 'label' => 'Motivo', 'type' => 'short_text', 'required' => true]]]]);
 
         $created = $this->actingAs($student, 'api')->postJson('/api/requests', ['type_id' => $type->id, 'subject' => 'Assunto principal', 'description' => 'Descrição principal', 'form_schema_version_id' => $schema->id, 'form_responses' => ['reason' => 'Motivo adicional']])->assertCreated()->json();
         $this->assertDatabaseHas('requests', ['id' => $created['id'], 'subject' => 'Assunto principal', 'description' => 'Descrição principal', 'form_schema_version_id' => $schema->id]);
+    }
+
+    private function publishGlobalWindow(TypeRequest $type): void
+    {
+        ServiceOpeningWindow::create([
+            'type_request_id' => $type->id,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addYear(),
+            'timezone' => 'America/Recife',
+            'status' => 'published',
+        ]);
     }
 }

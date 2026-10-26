@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\RequestCorrelationId;
 // Importa a classe do nosso Middleware
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Prepend (adiciona no início) para rotas da API
-        $middleware->prependToGroup('api', [ForceJsonResponse::class]);
+        $middleware->prependToGroup('api', [RequestCorrelationId::class, ForceJsonResponse::class]);
 
         // Registro do alias 'role' para uso nas rotas
         $middleware->alias([

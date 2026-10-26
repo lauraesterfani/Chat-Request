@@ -20,6 +20,8 @@ class TypeRequest extends Model
         'requires_document',
         'document_instructions',
         'duplicate_window_days',
+        'duplicate_mode',
+        'duplicate_rule_reference',
         'requires_decision',
     ];
 

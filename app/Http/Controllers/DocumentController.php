@@ -7,6 +7,7 @@ use App\Models\Request as RequestModel;
 use App\Models\RequestDraft;
 use App\Models\StaffAdmin;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\RequestAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,10 +71,16 @@ class DocumentController extends Controller
             || ! app(RequestAccessService::class)->canView($actor, $requestModel)
             || ($actor instanceof StaffAdmin && ! in_array('review_document', app(RequestAccessService::class)->capabilitiesFor($actor, $requestModel), true))
             || ! $requestModel->documents()->whereKey($document->id)->exists()) {
+            app(AuditService::class)->record($request, 'document_access_denied', 'request_document', (string) $document->id, [
+                'request_id' => (string) $requestModel->id,
+            ], 'denied');
+
             return response()->json(['message' => 'Acesso não autorizado.'], 403);
         }
 
-        return $this->serve($document);
+        return $this->serve($document, $request, 'document_access_succeeded', 'request_document', [
+            'request_id' => (string) $requestModel->id,
+        ]);
     }
 
     public function showDraft(Request $request, RequestDraft $draft, Document $document)
@@ -83,18 +90,26 @@ class DocumentController extends Controller
             || $draft->discarded_at || $draft->submitted_at
             || ! in_array($document->id, $draft->document_ids ?? [], true)
             || $document->user_id !== $actor->id) {
+            app(AuditService::class)->record($request, 'draft_document_access_denied', 'draft_document', (string) $document->id, [
+                'draft_id' => (string) $draft->id,
+            ], 'denied');
+
             return response()->json(['message' => 'Acesso não autorizado.'], 403);
         }
 
-        return $this->serve($document);
+        return $this->serve($document, $request, 'draft_document_access_succeeded', 'draft_document', [
+            'draft_id' => (string) $draft->id,
+        ]);
     }
 
-    private function serve(Document $document)
+    private function serve(Document $document, Request $request, string $action, string $resourceType, array $metadata = [])
     {
-        $disk = Storage::disk('local')->exists($document->path) ? 'local' : 'public';
+        $disk = 'local';
         if (! Storage::disk($disk)->exists($document->path)) {
             return response()->json(['message' => 'Documento não encontrado.'], 404);
         }
+
+        app(AuditService::class)->record($request, $action, $resourceType, (string) $document->id, $metadata);
 
         return response()->file(Storage::disk($disk)->path($document->path), [
             'Content-Type' => $document->mime_type,

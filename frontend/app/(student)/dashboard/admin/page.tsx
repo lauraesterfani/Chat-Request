@@ -128,6 +128,22 @@ export default function DashboardPage() {
                 <ShieldCheck size={18} />
                 <span>Campi e permissões</span>
               </Link>
+              <Link href="/dashboard/admin/knowledge" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <BookOpen size={18} />
+                <span>Base de conhecimento</span>
+              </Link>
+              <Link href="/dashboard/admin/privacy-requests" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <ClipboardCheck size={18} />
+                <span>Solicitações de privacidade</span>
+              </Link>
+              <Link href="/dashboard/admin/privacy-notices" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <ShieldCheck size={18} />
+                <span>Avisos de privacidade</span>
+              </Link>
+              <Link href="/dashboard/admin/calendar" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl text-gray-300 transition-colors">
+                <Clock size={18} />
+                <span>Calendário de atendimento</span>
+              </Link>
             </>
           )}
 

@@ -42,6 +42,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   request: 'Requerimentos',
   document: 'Documentos',
   workflow: 'Encaminhamentos',
+  satisfaction: 'Pesquisa de satisfação',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,11 +103,10 @@ export default function NotificationsPage() {
   }, [token, onlyUnread, category]);
 
   useEffect(() => {
-    setPage(1);
-  }, [onlyUnread, category]);
-
-  useEffect(() => {
-    fetchNotifications(page);
+    const timer = window.setTimeout(() => {
+      void fetchNotifications(page);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchNotifications, page]);
 
   // ── Marcar como lida ──────────────────────────────────────────────────────
@@ -164,10 +164,12 @@ export default function NotificationsPage() {
           <button
             disabled={unreadCount === 0 || markingAll}
             onClick={markAllRead}
-            className="flex items-center gap-1.5 text-sm font-semibold bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-xl transition"
+            aria-label="Marcar todas como lidas"
+            title="Marcar todas como lidas"
+            className="flex min-h-11 shrink-0 items-center justify-center gap-1.5 text-sm font-semibold bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed px-2 sm:px-3 py-1.5 rounded-xl transition"
           >
             {markingAll ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
-            Marcar todas como lidas
+            <span className="hidden sm:inline">Marcar todas como lidas</span>
           </button>
         </div>
 
@@ -177,7 +179,10 @@ export default function NotificationsPage() {
 
           {/* Toggle lidas/não lidas */}
           <button
-            onClick={() => setOnlyUnread((v) => !v)}
+            onClick={() => {
+              setPage(1);
+              setOnlyUnread((v) => !v);
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
               onlyUnread
                 ? 'bg-[#004d40] text-white border-[#004d40]'
@@ -190,7 +195,11 @@ export default function NotificationsPage() {
           {/* Filtro por categoria */}
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            aria-label="Categoria da notificação"
+            onChange={(e) => {
+              setPage(1);
+              setCategory(e.target.value);
+            }}
             className="text-xs border border-gray-200 rounded-xl px-3 py-1.5 text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
           >
             <option value="">Todas as categorias</option>
@@ -200,7 +209,7 @@ export default function NotificationsPage() {
           </select>
 
           {total > 0 && (
-            <span className="ml-auto text-xs text-gray-400">{total} no total</span>
+            <span className="ml-auto text-xs text-gray-600">{total} no total</span>
           )}
         </div>
 
@@ -230,7 +239,7 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       {!item.read_at && (
-                        <span className="w-2 h-2 rounded-full bg-[#108542] shrink-0" aria-label="Não lida" />
+                        <span className="w-2 h-2 rounded-full bg-[#108542] shrink-0" role="img" aria-label="Não lida" />
                       )}
                       <p className="text-sm font-bold text-gray-800 truncate">{item.title}</p>
                     </div>
@@ -242,7 +251,7 @@ export default function NotificationsPage() {
                           {CATEGORY_LABELS[item.category]}
                         </span>
                       )}
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-gray-600">
                         {formatDate(item.created_at)}
                       </span>
 

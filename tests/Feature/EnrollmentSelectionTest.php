@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\Course;
 use App\Models\Campus;
+use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Request as RequestModel;
 use App\Models\RequestDraft;
+use App\Models\ServiceOpeningWindow;
 use App\Models\TypeRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -83,6 +84,15 @@ class EnrollmentSelectionTest extends TestCase
         $course = Course::create(['name' => 'Curso em campus', 'code' => 'QA-CAMP', 'campus_id' => $campus->id]);
         $enrollment = $this->enroll($student, $course, 'QA-CAMP-001');
         $type = TypeRequest::create(['name' => 'Serviço com campus']);
+        ServiceOpeningWindow::create([
+            'type_request_id' => $type->id,
+            'campus_id' => $campus->id,
+            'course_id' => $course->id,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addYear(),
+            'timezone' => 'America/Recife',
+            'status' => 'published',
+        ]);
 
         $draft = $this->actingAs($student, 'api')->postJson('/api/drafts', ['type_request_id' => $type->id])
             ->assertCreated()->assertJsonPath('campus_id', $campus->id)->json();
@@ -105,6 +115,7 @@ class EnrollmentSelectionTest extends TestCase
         $first = $this->enroll($student, $courseA, 'QA-DIR-A-001');
         $second = $this->enroll($student, $courseB, 'QA-DIR-B-001');
         $type = TypeRequest::create(['name' => 'Envio direto']);
+        $this->publishGlobalWindow($type);
         $payload = ['type_id' => $type->id, 'subject' => 'Mesmo assunto', 'description' => 'Mesma descrição', 'idempotency_key' => 'qa-enrollment-selection-001'];
 
         $this->actingAs($student, 'api')->postJson('/api/requests', $payload)
@@ -125,6 +136,7 @@ class EnrollmentSelectionTest extends TestCase
         $first = $this->enroll($student, $courseA, 'QA-DRAFT-A-001');
         $second = $this->enroll($student, $courseB, 'QA-DRAFT-B-001');
         $type = TypeRequest::create(['name' => 'Rascunho ambíguo']);
+        $this->publishGlobalWindow($type);
         $draft = RequestDraft::create(['user_id' => $student->id, 'type_request_id' => $type->id, 'revision' => 1, 'course_id' => $courseA->id]);
         $payload = ['type_id' => $type->id, 'subject' => 'Pedido legado', 'description' => 'Descrição', 'draft_id' => $draft->id];
 
@@ -141,6 +153,7 @@ class EnrollmentSelectionTest extends TestCase
     {
         $student = $this->student();
         $type = TypeRequest::create(['name' => 'Envio antigo']);
+        $this->publishGlobalWindow($type);
         $payload = ['type_id' => $type->id, 'subject' => 'Assunto antigo', 'description' => 'Descrição antiga', 'idempotency_key' => 'qa-legacy-enrollment-001'];
         $created = $this->actingAs($student, 'api')->postJson('/api/requests', $payload)->assertCreated();
         $legacyHash = hash('sha256', json_encode([$type->id, 'Assunto antigo', 'Descrição antiga', [], []]));
@@ -169,5 +182,16 @@ class EnrollmentSelectionTest extends TestCase
     private function enroll(User $student, Course $course, string $number, string $status = 'active'): Enrollment
     {
         return Enrollment::create(['user_id' => $student->id, 'course_id' => $course->id, 'enrollment' => $number, 'status' => $status]);
+    }
+
+    private function publishGlobalWindow(TypeRequest $type): void
+    {
+        ServiceOpeningWindow::create([
+            'type_request_id' => $type->id,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addYear(),
+            'timezone' => 'America/Recife',
+            'status' => 'published',
+        ]);
     }
 }
