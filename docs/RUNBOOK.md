@@ -135,23 +135,18 @@ npm run lint
 
 ## Checklist de saúde
 
-Acesse `GET /api/health` sem autenticação:
+Acesse `GET /api/health` sem autenticação para confirmar que a aplicação responde:
 
 ```bash
 curl http://localhost:8000/api/health
 ```
 
-Resposta esperada (`200 OK`):
+Resposta pública esperada (`200 OK`):
 ```json
-{
-  "status": "ok",
-  "checks": {
-    "database": true,
-    "queue_jobs": { "pending": 0 }
-  },
-  "timestamp": "..."
-}
+{"status":"ok"}
 ```
+
+A verificação detalhada do banco e da fila está em `GET /api/health/detailed`, exclusiva para a equipe de TI autenticada. Não exponha essa rota publicamente.
 
 Verificações adicionais:
 
@@ -178,7 +173,7 @@ tail -n 100 storage/logs/laravel.log
 ### Sintomas
 - E-mails não são enviados
 - Jobs acumulam na tabela `jobs`
-- `GET /api/health` retorna `queue_jobs.pending` alto
+- `GET /api/health/detailed` retorna `queue_jobs.pending` alto
 
 ### Diagnóstico
 

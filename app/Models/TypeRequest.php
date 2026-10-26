@@ -19,12 +19,16 @@ class TypeRequest extends Model
         'active',
         'requires_document',
         'document_instructions',
+        'duplicate_window_days',
+        'requires_decision',
     ];
 
     protected function casts(): array
     {
         return [
             'requires_document' => 'boolean',
+            'duplicate_window_days' => 'integer',
+            'requires_decision' => 'boolean',
         ];
     }
 

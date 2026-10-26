@@ -13,6 +13,7 @@ use App\Services\FormSchemaValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class FormSchemaController extends Controller
@@ -95,8 +96,24 @@ class FormSchemaController extends Controller
     public function drafts(Request $request)
     {
         $user = $this->student($request);
+        $drafts = RequestDraft::with(['type', 'schemaVersion'])->where('user_id', $user->id)->whereNull('discarded_at')->whereNull('submitted_at')->latest()->get();
+        $documentIds = $drafts->flatMap(fn (RequestDraft $draft) => $draft->document_ids ?? [])->unique()->all();
+        $documents = Document::where('user_id', $user->id)->whereIn('id', $documentIds)->get(['id', 'name', 'mime_type', 'file_size'])->keyBy('id');
+        $drafts->each(function (RequestDraft $draft) use ($documents) {
+            $draft->attached_documents = collect($draft->document_ids ?? [])->map(fn (string $id) => $documents->get($id))->filter()->values();
+        });
 
-        return response()->json(RequestDraft::with(['type', 'schemaVersion'])->where('user_id', $user->id)->whereNull('discarded_at')->whereNull('submitted_at')->latest()->get());
+        return response()->json($drafts);
+    }
+
+    public function activeEnrollments(Request $request, EnrollmentSnapshotService $snapshots)
+    {
+        $enrollments = $snapshots->activeForStudent($this->student($request));
+
+        return response()->json([
+            'enrollments' => $enrollments,
+            'requires_selection' => count($enrollments) > 1,
+        ]);
     }
 
     public function migrationPreview(Request $request, RequestDraft $draft, DraftVersionMigrator $migrator)
@@ -128,7 +145,7 @@ class FormSchemaController extends Controller
                 return response()->json(['message' => 'Este rascunho não está disponível.'], 409);
             }
             if ($current->revision !== $data['revision']) {
-                return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $current], 409);
+                return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $this->withAttachedDocuments($current, $user)], 409);
             }
             $target = FormSchemaVersion::where('type_request_id', $current->type_request_id)->where('status', 'published')->latest('version')->first();
             if (! $target || $current->form_schema_version_id === $target->id) {
@@ -141,7 +158,7 @@ class FormSchemaController extends Controller
                 'revision' => $current->revision + 1,
             ]);
 
-            return response()->json(['draft' => $current->fresh(['type', 'schemaVersion']), 'migration' => $preview]);
+            return response()->json(['draft' => $this->withAttachedDocuments($current->fresh(['type', 'schemaVersion']), $user), 'migration' => $preview]);
         });
     }
 
@@ -157,6 +174,7 @@ class FormSchemaController extends Controller
             'responses' => ['nullable', 'array'],
             'document_ids' => ['nullable', 'array'],
             'document_ids.*' => ['uuid', 'distinct', Rule::exists('documents', 'id')],
+            'enrollment_id' => ['nullable', 'uuid'],
             'revision' => [$draft ? 'required' : 'nullable', 'integer', 'min:1'],
         ]);
 
@@ -174,6 +192,10 @@ class FormSchemaController extends Controller
         if (Document::whereIn('id', $documentIds)->where('user_id', $user->id)->count() !== count($documentIds)) {
             return response()->json(['message' => 'Um ou mais documentos não pertencem ao usuário autenticado.'], 403);
         }
+        $missingFile = Document::whereIn('id', $documentIds)->get()->first(fn (Document $document) => ! Storage::disk('local')->exists($document->path) && ! Storage::disk('public')->exists($document->path));
+        if ($missingFile) {
+            return response()->json(['message' => 'Um anexo do rascunho não está mais disponível. Envie-o novamente.'], 422);
+        }
 
         return DB::transaction(function () use ($draft, $data, $user) {
             if ($draft) {
@@ -189,17 +211,26 @@ class FormSchemaController extends Controller
                     return response()->json(['message' => 'Revise a mudança de formulário antes de migrar o rascunho.'], 409);
                 }
                 if ((int) $data['revision'] !== (int) $draft->revision) {
-                    return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $draft], 409);
+                    return response()->json(['message' => 'O rascunho foi alterado em outra sessão.', 'draft' => $this->withAttachedDocuments($draft, $user)], 409);
+                }
+                if (! empty($data['enrollment_id']) && $data['enrollment_id'] !== $draft->enrollment_id) {
+                    if ($draft->enrollment_id) {
+                        return response()->json(['message' => 'A matrícula deste rascunho não pode ser trocada. Crie outro rascunho.'], 409);
+                    }
+                    $draft->fill(app(EnrollmentSnapshotService::class)->forStudent($user, $data['enrollment_id']));
                 }
             } else {
-                $draft = new RequestDraft(['user_id' => $user->id, ...app(EnrollmentSnapshotService::class)->forStudent($user)]);
+                $draft = new RequestDraft(['user_id' => $user->id, ...app(EnrollmentSnapshotService::class)->forStudent($user, $data['enrollment_id'] ?? null)]);
             }
 
             $created = ! $draft->exists;
+            unset($data['enrollment_id']);
             $draft->fill([...$data, 'revision' => $created ? 1 : $draft->revision + 1]);
             $draft->save();
 
-            return response()->json($draft->fresh(['type', 'schemaVersion']), $created ? 201 : 200);
+            $saved = $this->withAttachedDocuments($draft->fresh(['type', 'schemaVersion']), $user);
+
+            return response()->json($saved, $created ? 201 : 200);
         });
     }
 
@@ -215,6 +246,15 @@ class FormSchemaController extends Controller
     private function legacySchema(): array
     {
         return ['fields' => [['key' => 'subject', 'label' => 'Assunto', 'type' => 'short_text', 'required' => true], ['key' => 'description', 'label' => 'Descrição', 'type' => 'long_text', 'required' => true]]];
+    }
+
+    private function withAttachedDocuments(RequestDraft $draft, User $user): RequestDraft
+    {
+        $draft->attached_documents = Document::where('user_id', $user->id)
+            ->whereIn('id', $draft->document_ids ?? [])
+            ->get(['id', 'name', 'mime_type', 'file_size']);
+
+        return $draft;
     }
 
     private function actor(Request $request): mixed

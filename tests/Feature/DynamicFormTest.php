@@ -9,6 +9,8 @@ use App\Models\StaffAdmin;
 use App\Models\TypeRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DynamicFormTest extends TestCase
@@ -130,6 +132,72 @@ class DynamicFormTest extends TestCase
         $document = Document::create(['user_id' => $other->id, 'path' => 'private/qa.pdf', 'name' => 'qa.pdf', 'mime_type' => 'application/pdf', 'file_size' => 123]);
 
         $this->actingAs($student, 'api')->postJson('/api/drafts', ['type_request_id' => $type->id, 'document_ids' => [$document->id]])->assertForbidden();
+        $this->assertDatabaseCount('request_drafts', 0);
+    }
+
+    public function test_private_draft_attachment_is_resumable_and_linked_only_after_submission(): void
+    {
+        Storage::fake('local');
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001023', 'phone' => '81900001023', 'matricula' => 'QA023', 'birthday' => '2000-01-01']);
+        $other = User::factory()->create(['role' => 'student', 'cpf' => '90000001024', 'phone' => '81900001024', 'matricula' => 'QA024', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Serviço com anexo', 'requires_document' => true]);
+        $upload = $this->actingAs($student, 'api')->post('/api/documents/upload', [
+            'arquivo' => UploadedFile::fake()->create('comprovante.pdf', 100, 'application/pdf'),
+        ])->assertCreated();
+        $documentId = $upload->json('id');
+        $draft = $this->postJson('/api/drafts', [
+            'type_request_id' => $type->id,
+            'responses' => ['subject' => 'Pedido com anexo', 'description' => 'Descrição'],
+            'document_ids' => [$documentId],
+        ])->assertCreated()->json();
+        $this->getJson('/api/drafts')->assertOk()->assertJsonPath('0.document_ids.0', $documentId)
+            ->assertJsonPath('0.attached_documents.0.name', 'comprovante.pdf');
+        $url = '/api/drafts/'.$draft['id'].'/documents/'.$documentId;
+        $this->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->actingAs($other, 'api')->get($url)->assertForbidden();
+
+        $this->actingAs($student, 'api')->postJson('/api/requests', [
+            'type_id' => $type->id, 'subject' => 'Pedido com anexo', 'description' => 'Descrição',
+            'draft_id' => $draft['id'], 'document_ids' => [],
+        ])->assertConflict();
+        $created = $this->postJson('/api/requests', [
+            'type_id' => $type->id, 'subject' => 'Pedido com anexo', 'description' => 'Descrição',
+            'draft_id' => $draft['id'], 'document_ids' => [$documentId],
+        ])->assertCreated();
+        $this->assertDatabaseHas('requests_documents', ['request_id' => $created->json('id'), 'document_id' => $documentId]);
+        $this->get($url)->assertForbidden();
+        Storage::disk('local')->assertExists(Document::findOrFail($documentId)->path);
+    }
+
+    public function test_replacing_draft_attachment_requires_saving_the_new_selection(): void
+    {
+        Storage::fake('local');
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001025', 'phone' => '81900001025', 'matricula' => 'QA025', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Troca de anexo', 'requires_document' => true]);
+        $this->actingAs($student, 'api');
+        $firstId = $this->post('/api/documents/upload', ['arquivo' => UploadedFile::fake()->create('primeiro.pdf', 50, 'application/pdf')])->assertCreated()->json('id');
+        $secondId = $this->post('/api/documents/upload', ['arquivo' => UploadedFile::fake()->create('segundo.pdf', 50, 'application/pdf')])->assertCreated()->json('id');
+        $draft = $this->postJson('/api/drafts', ['type_request_id' => $type->id, 'responses' => ['subject' => 'Troca', 'description' => 'Detalhes'], 'document_ids' => [$firstId]])->assertCreated()->json();
+        $payload = ['type_id' => $type->id, 'subject' => 'Troca', 'description' => 'Detalhes', 'draft_id' => $draft['id']];
+
+        $this->postJson('/api/requests', [...$payload, 'document_ids' => [$secondId]])->assertConflict();
+        $this->putJson('/api/drafts/'.$draft['id'], ['type_request_id' => $type->id, 'responses' => $draft['responses'], 'revision' => $draft['revision'], 'document_ids' => [$secondId]])
+            ->assertOk()->assertJsonPath('attached_documents.0.name', 'segundo.pdf');
+        $created = $this->postJson('/api/requests', [...$payload, 'document_ids' => [$secondId]])->assertCreated();
+        $this->assertDatabaseHas('requests_documents', ['request_id' => $created->json('id'), 'document_id' => $secondId]);
+        $this->assertDatabaseMissing('requests_documents', ['request_id' => $created->json('id'), 'document_id' => $firstId]);
+        Storage::disk('local')->assertExists(Document::findOrFail($firstId)->path);
+    }
+
+    public function test_draft_rejects_reference_to_missing_private_file(): void
+    {
+        Storage::fake('local');
+        $student = User::factory()->create(['role' => 'student', 'cpf' => '90000001026', 'phone' => '81900001026', 'matricula' => 'QA026', 'birthday' => '2000-01-01']);
+        $type = TypeRequest::create(['name' => 'Arquivo ausente']);
+        $document = Document::create(['user_id' => $student->id, 'path' => 'private/missing.pdf', 'name' => 'missing.pdf', 'mime_type' => 'application/pdf', 'file_size' => 123]);
+
+        $this->actingAs($student, 'api')->postJson('/api/drafts', ['type_request_id' => $type->id, 'document_ids' => [$document->id]])
+            ->assertUnprocessable();
         $this->assertDatabaseCount('request_drafts', 0);
     }
 

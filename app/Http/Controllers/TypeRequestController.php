@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\TypeRequest;
-use App\Models\TypeDocument;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 class TypeRequestController extends Controller
 {
@@ -18,6 +16,7 @@ class TypeRequestController extends Controller
     public function index()
     {
         $typeRequests = TypeRequest::orderBy('name', 'asc')->get();
+
         return response()->json($typeRequests);
     }
 
@@ -33,17 +32,20 @@ class TypeRequestController extends Controller
                 'description' => 'nullable|string',
                 'icon' => 'nullable|string',
                 'requires_document' => 'nullable|boolean',
-                'document_instructions' => 'nullable|string'
+                'document_instructions' => 'nullable|string',
+                'duplicate_window_days' => 'nullable|integer|min:1|max:365',
+                'requires_decision' => 'nullable|boolean',
             ]);
 
             $validated['id'] = (string) Str::uuid();
             $typeRequest = TypeRequest::create($validated);
 
-            return response()->json($typeRequest, 201); 
+            return response()->json($typeRequest, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            Log::error("Erro ao criar TypeRequest: " . $e->getMessage());
+            Log::error('Erro ao criar TypeRequest: '.$e->getMessage());
+
             return response()->json(['error' => 'Erro ao criar tipo de requerimento.'], 500);
         }
     }
@@ -51,10 +53,13 @@ class TypeRequestController extends Controller
     /**
      * Exibe o tipo de requerimento especificado.
      */
-    public function show($id) 
+    public function show($id)
     {
         $typeRequest = TypeRequest::find($id);
-        if (!$typeRequest) return response()->json(['error' => 'Not found'], 404);
+        if (! $typeRequest) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
         return response()->json($typeRequest);
     }
 
@@ -65,15 +70,19 @@ class TypeRequestController extends Controller
     {
         try {
             $typeRequest = TypeRequest::find($id);
-            if (!$typeRequest) return response()->json(['error' => 'Not found'], 404);
+            if (! $typeRequest) {
+                return response()->json(['error' => 'Not found'], 404);
+            }
 
             // ✨ ATUALIZADO: Adicionado validações para os novos campos no update também
             $validated = $request->validate([
-                'name' => 'required|string|max:63|unique:type_requests,name,' . $id,
+                'name' => 'required|string|max:63|unique:type_requests,name,'.$id,
                 'description' => 'nullable|string',
                 'icon' => 'nullable|string',
                 'requires_document' => 'nullable|boolean',
-                'document_instructions' => 'nullable|string'
+                'document_instructions' => 'nullable|string',
+                'duplicate_window_days' => 'nullable|integer|min:1|max:365',
+                'requires_decision' => 'nullable|boolean',
             ]);
 
             $typeRequest->update($validated);
@@ -82,7 +91,8 @@ class TypeRequestController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            Log::error("Erro ao atualizar: " . $e->getMessage());
+            Log::error('Erro ao atualizar: '.$e->getMessage());
+
             return response()->json(['error' => 'Erro ao atualizar.'], 500);
         }
     }
@@ -94,22 +104,24 @@ class TypeRequestController extends Controller
     {
         try {
             $typeRequest = TypeRequest::find($id);
-            
-            if (!$typeRequest) {
+
+            if (! $typeRequest) {
                 return response()->json(['error' => 'Não encontrado'], 404);
             }
 
             if ($typeRequest->requests()->exists()) {
                 return response()->json([
-                    'error' => 'Erro ao excluir porque está em uso'
+                    'error' => 'Erro ao excluir porque está em uso',
                 ], 422);
             }
 
-            $typeRequest->delete(); 
+            $typeRequest->delete();
+
             return response()->json(['message' => 'Excluído com sucesso.'], 200);
 
         } catch (\Exception $e) {
-            Log::error("Erro ao excluir TypeRequest: " . $e->getMessage());
+            Log::error('Erro ao excluir TypeRequest: '.$e->getMessage());
+
             return response()->json(['error' => 'Erro ao excluir o registro.'], 500);
         }
     }
@@ -124,7 +136,7 @@ class TypeRequestController extends Controller
             [
                 'id' => 'required|exists:type_requests,id',
                 'document_type_ids' => 'required|array',
-                'document_type_ids.*' => 'required|exists:type_documents,id', 
+                'document_type_ids.*' => 'required|exists:type_documents,id',
             ]
         );
 
@@ -134,11 +146,12 @@ class TypeRequestController extends Controller
 
         try {
             $requestType = TypeRequest::findOrFail($requestTypeId);
-            $requestType->typeDocuments()->sync($request->document_type_ids); 
+            $requestType->typeDocuments()->sync($request->document_type_ids);
 
             return response()->json(['message' => 'Sincronizado com sucesso'], 200);
         } catch (\Exception $e) {
-            Log::error("Erro sync: " . $e->getMessage());
+            Log::error('Erro sync: '.$e->getMessage());
+
             return response()->json(['error' => 'Erro ao sincronizar'], 500);
         }
     }

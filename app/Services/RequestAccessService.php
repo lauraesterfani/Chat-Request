@@ -81,9 +81,10 @@ class RequestAccessService
 
     private function hasExplicitScopes(StaffAdmin $actor): bool
     {
-        return StaffAccessScope::where('staff_admin_id', $actor->id)
-            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->exists();
+        // A grant remains an explicit restriction after expiry. Treating only
+        // active grants as explicit would silently restore global admin access
+        // as soon as the last temporary grant expired.
+        return StaffAccessScope::where('staff_admin_id', $actor->id)->exists();
     }
 
     private function hasAbility(StaffAdmin $actor, RequestModel $request, string $ability): bool

@@ -13,7 +13,8 @@ Não exigem autenticação.
 | Método | Rota | Auth | Role | Descrição |
 |--------|------|------|------|-----------|
 | GET | `/` | ✗ | — | Status geral da API |
-| GET | `/health` | ✗ | — | Health check: banco e fila |
+| GET | `/health` | ✗ | — | Sinal público simples de disponibilidade |
+| GET | `/health/detailed` | ✓ | staff (TI) | Verifica banco e quantidade de jobs pendentes |
 | POST | `/login` | ✗ | — | Login do aluno (throttle: 5 req/min) |
 | POST | `/login/staff` | ✗ | — | Login de staff/admin |
 | POST | `/validate-token` | ✗ | — | Valida token de matrícula |
@@ -84,6 +85,9 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | POST | `/requests/{id}/forward` | ✓ | admin,cradt | Encaminha requerimento para outro setor |
 | POST | `/requests/{id}/return` | ✓ | admin,cradt | Devolve requerimento à etapa anterior |
 | POST | `/requests/{id}/decision` | ✓ | admin,cradt | Registra decisão final |
+| POST | `/type-requests` | ✓ | admin,cradt | Cria tipo de serviço e regra opcional de duplicidade |
+| PUT | `/type-requests/{id}` | ✓ | admin,cradt | Atualiza tipo de serviço e regra de duplicidade |
+| DELETE | `/type-requests/{id}` | ✓ | admin,cradt | Exclui tipo sem requerimentos associados |
 | POST | `/requests/{id}/assign` | ✓ | admin,cradt | Atribui requerimento a atendente |
 | GET | `/admin/queue` | ✓ | admin,cradt | Fila de atendimento |
 | GET | `/sla-policies` | ✓ | admin,cradt | Lista políticas de SLA |
@@ -119,9 +123,6 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 | DELETE | `/staff-admins/{id}` | ✓ | staff | Remove usuário staff-admin |
 | POST | `/staffs` | ✓ | staff | Cadastra atendente |
 | DELETE | `/staffs/{id}` | ✓ | staff | Remove atendente |
-| POST | `/type-requests` | ✓ | staff | Cria tipo de requerimento |
-| PUT | `/type-requests/{id}` | ✓ | staff | Atualiza tipo de requerimento |
-| DELETE | `/type-requests/{id}` | ✓ | staff | Remove tipo de requerimento |
 | POST | `/reset-password` | ✓ | staff_admins | Redefine senha (primeiro acesso) |
 | GET | `/admins` | ✓ | staff_admins | Lista admins |
 
@@ -131,7 +132,7 @@ Exigem token JWT de aluno + senha já alterada (`password.changed`).
 
 ### `POST /api/requests`
 
-Cria um novo requerimento. Requer token de aluno com senha já alterada.
+Cria um novo requerimento. Requer token de aluno com senha já alterada. Se o serviço tiver `duplicate_window_days` configurado, outro pedido aberto do mesmo aluno, serviço, matrícula e assunto normalizado dentro do prazo responde `409 Conflict` e inclui o ID e protocolo do pedido existente. A regra é configurada por tipo de serviço, aceita de 1 a 365 dias e fica desativada por padrão.
 
 **Request**
 ```http
@@ -140,30 +141,29 @@ Authorization: Bearer <jwt_token>
 Content-Type: application/json
 
 {
-  "type_request_id": 3,
-  "form_data": {
-    "justificativa": "Necessito de aproveitamento de disciplina cursada em outra instituição.",
-    "disciplina": "Cálculo I"
-  },
-  "document_ids": [42, 43]
+  "type_id": "8f7f2fbd-ec5d-4ae7-b075-98e11dd22000",
+  "subject": "Aproveitamento de disciplina",
+  "description": "Necessito de aproveitamento de disciplina cursada em outra instituição.",
+  "enrollment_id": "e7b32779-ea30-4940-bac3-8c5bba336ea0",
+  "document_ids": ["2d970bfc-7f31-4c16-9dd9-9df177d6996e"]
 }
 ```
 
 **Response `201 Created`**
 ```json
 {
-  "id": 128,
-  "protocol": "REQ-2026-00128",
-  "status": "pending",
-  "type_request": {
-    "id": 3,
-    "name": "Aproveitamento de Disciplina"
-  },
-  "created_at": "2026-09-28T22:00:00-03:00"
+  "message": "Sucesso",
+  "id": "4d7feb9a-1aa3-4810-949f-01649ba847bb"
 }
 ```
 
 ---
+
+### Transições e decisões de requerimentos
+
+`PUT /api/requests/{id}` aceita somente transições operacionais válidas. `pending` pode ir para `analyzing`; `analyzing` pode ir para `waiting` ou `solving`; `waiting` pode voltar para `analyzing` ou seguir para `solving`; `solving` pode ir para `waiting`. Estados abertos podem ir para `canceled` somente com motivo em `observation`. `waiting` exige uma orientação visível ao aluno. `completed` e `canceled` são estados finais nesta versão; resultado final deve ser gravado em `POST /api/requests/{id}/decision`.
+
+A decisão exige `result`, `justification` e `conclusion_summary`. Um deferimento é bloqueado quando o serviço exige documento e nenhum documento está vinculado. `result: "na"` só é permitido para serviços configurados com `requires_decision: false`; esse campo é `true` por padrão. A resposta final é registrada como mensagem no histórico do atendimento.
 
 ### `GET /api/notifications`
 
@@ -256,7 +256,9 @@ Authorization: Bearer <jwt_token_staff>
 
 ## Health Check
 
-**`GET /api/health`** — sem autenticação
+**`GET /api/health`** — sem autenticação; retorna somente `{"status":"ok"}`.
+
+**`GET /api/health/detailed`** — exige autenticação de staff da TI e senha inicial já alterada.
 
 **Response `200 OK`** (banco acessível)
 ```json
@@ -288,3 +290,11 @@ O servidor registra `course_id` e, quando há uma única matrícula ativa compat
 ## Revisão de rascunho após publicação de formulário
 
 `GET /api/drafts/{id}/migration` mostra a versão publicada atual, respostas que podem ser preservadas, respostas incompatíveis que serão removidas e campos obrigatórios ainda vazios. Só o dono do rascunho pode consultar a prévia. `POST /api/drafts/{id}/migration` com `{ "revision": 3 }` confirma a mudança, recalcula a proposta no servidor e incrementa a revisão em uma transação. Revisão desatualizada recebe `409`; rascunhos descartados ou enviados não podem ser migrados. A API não troca a versão implicitamente em `PUT /api/drafts/{id}`. Após a migração, o aluno completa os novos campos e revisa o requerimento antes de enviá-lo.
+
+## Anexos em rascunhos
+
+O aluno envia cada arquivo com `POST /api/documents/upload` (`arquivo`, multipart). A resposta inclui `id`, nome original e metadados; o arquivo fica no disco privado. `POST/PUT /api/drafts` aceita a lista `document_ids` do próprio aluno e devolve `attached_documents` para a retomada do rascunho. `GET /api/drafts/{id}/documents/{document}` entrega o arquivo apenas ao dono enquanto o rascunho estiver aberto. O envio final de `POST /api/requests` exige que a lista `document_ids` coincida com a lista salva no rascunho; a criação vincula esses documentos ao pedido na mesma transação. Um documento cujo arquivo físico sumiu é rejeitado. Remover um anexo do rascunho remove a referência, não apaga o arquivo privado imediatamente. A limpeza manual conservadora está descrita em `docs/DOCUMENT_CLEANUP.md`; o prazo institucional de retenção ainda precisa ser definido.
+
+## Matrícula acadêmica do requerimento
+
+`GET /api/enrollments/active` lista apenas as matrículas ativas do aluno autenticado e indica `requires_selection`. Quando há mais de uma, `POST /api/drafts` e o envio direto em `POST /api/requests` exigem `enrollment_id`. O rascunho preserva o vínculo; `PUT /api/drafts/{id}` não permite trocar uma matrícula já escolhida. No envio com rascunho, `enrollment_id`, quando fornecido, deve coincidir com o snapshot salvo. Um rascunho legado ambíguo precisa receber a seleção antes do envio.

@@ -19,6 +19,7 @@ test("aluno revisa a mudança de formulário antes de continuar o rascunho", asy
     if (url.pathname === "/api/me") return json({ user: { id: "qa", name: "Aluno QA", role: "student", must_change_password: false } });
     if (url.pathname === "/api/notifications") return json({ data: [] });
     if (url.pathname === "/api/notifications/count") return json({ unread: 0 });
+    if (url.pathname === "/api/enrollments/active") return json({ enrollments: [], requires_selection: false });
     if (url.pathname === "/api/type-requests") return json([{ id: typeId, name: "Ementa QA", requires_document: false }]);
     if (url.pathname === "/api/drafts" && route.request().method() === "GET") return json([draft]);
     if (url.pathname === `/api/type-requests/${typeId}/form`) return json({ type_id: typeId, version_id: newId, schema: { fields: newFields } });

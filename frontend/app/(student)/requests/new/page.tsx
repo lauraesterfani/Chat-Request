@@ -8,8 +8,10 @@ import { AlertCircle, Paperclip, Save, X } from "lucide-react";
 type RequestType = { id: string; name: string; requires_document: boolean; document_instructions?: string };
 type Condition = { field: string; operator: "equals" | "in" | "present"; value?: unknown };
 type Field = { key: string; label: string; type: string; required?: boolean; instruction?: string; options?: string[]; min?: number; max?: number; max_length?: number; max_items?: number; visible_if?: { all?: Condition[]; any?: Condition[] } };
-type Draft = { id: string; revision: number; type_request_id: string; form_schema_version_id?: string | null; responses?: Record<string, unknown>; schema_version?: { schema: { fields: Field[] } } | null };
-type DraftSnapshot = { type_request_id: string; form_schema_version_id: string | null; responses: Record<string, unknown> };
+type SavedDocument = { id: string; name: string; mime_type?: string; file_size?: number };
+type Enrollment = { id: string; enrollment: string; course_id: string; course_name?: string | null };
+type Draft = { id: string; revision: number; type_request_id: string; form_schema_version_id?: string | null; enrollment_id?: string | null; responses?: Record<string, unknown>; document_ids?: string[] | null; attached_documents?: SavedDocument[]; schema_version?: { schema: { fields: Field[] } } | null };
+type DraftSnapshot = { type_request_id: string; form_schema_version_id: string | null; enrollment_id: string | null; responses: Record<string, unknown>; document_ids: string[] };
 type MigrationPreview = { needed: boolean; to_version_id: string; to_version: number; schema: { fields: Field[] }; responses: Record<string, unknown>; retained_keys: string[]; reset_keys: string[]; required_keys: string[] };
 const baseFields: Field[] = [
   { key: "subject", label: "Assunto", type: "short_text", required: true, max_length: 255 },
@@ -34,6 +36,14 @@ function displayAnswer(value: unknown): string {
   return String(value ?? "Não informado");
 }
 
+function snapshotSignature(snapshot: DraftSnapshot): string {
+  return JSON.stringify([snapshot.type_request_id, snapshot.form_schema_version_id, snapshot.enrollment_id, snapshot.responses, snapshot.document_ids]);
+}
+
+function draftSignature(draft: Draft): string {
+  return snapshotSignature({ type_request_id: draft.type_request_id, form_schema_version_id: draft.form_schema_version_id ?? null, enrollment_id: draft.enrollment_id ?? null, responses: draft.responses ?? {}, document_ids: draft.document_ids ?? [] });
+}
+
 export default function NewRequestPage() {
   const router = useRouter();
   const [types, setTypes] = useState<RequestType[]>([]);
@@ -50,8 +60,7 @@ export default function NewRequestPage() {
   const savedSnapshot = useRef<string | null>(null);
   const activeType = useRef("");
   const submitted = useRef(false);
-  const uploadedFile = useRef<{ file: File; id: string } | null>(null);
-  const submissionAttempt = useRef<{ payload: string; file: File | null; draft: Draft; documentIds: string[] } | null>(null);
+  const submissionAttempt = useRef<{ payload: string; draft: Draft; documentIds: string[] } | null>(null);
   const [conflictDraft, setConflictDraft] = useState<Draft | null>(null);
   const [migration, setMigration] = useState<MigrationPreview | null>(null);
   const [migrationLoading, setMigrationLoading] = useState(false);
@@ -62,12 +71,17 @@ export default function NewRequestPage() {
   const [reviewing, setReviewing] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const [saveState, setSaveState] = useState(" ");
-  const [file, setFile] = useState<File | null>(null);
+  const [attachedDocuments, setAttachedDocuments] = useState<SavedDocument[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [enrollmentId, setEnrollmentId] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const token = () => sessionStorage.getItem("jwt_token") ?? "";
   const selected = useMemo(() => types.find((item) => item.id === typeId), [types, typeId]);
+  const selectedEnrollment = enrollments.find((item) => item.id === enrollmentId);
+  const requiresEnrollmentSelection = enrollments.length > 1;
   const subject = String(answers.subject ?? "");
   const description = String(answers.description ?? "");
   const displayFields = typeId ? [...baseFields.filter((base) => !fields.some((field) => field.key === base.key)), ...fields] : [];
@@ -78,6 +92,12 @@ export default function NewRequestPage() {
 
   useEffect(() => {
     fetch("/api/type-requests", { headers: { Authorization: `Bearer ${token()}` } }).then(async (response) => response.ok && setTypes(await response.json()));
+    fetch("/api/enrollments/active", { headers: { Authorization: `Bearer ${token()}` } }).then(async (response) => {
+      if (!response.ok) { setError("Não foi possível carregar suas matrículas. Atualize a página antes de enviar."); return; }
+      const data: { enrollments: Enrollment[] } = await response.json();
+      setEnrollments(data.enrollments);
+      if (data.enrollments.length === 1 && !draftRef.current?.enrollment_id) setEnrollmentId(data.enrollments[0].id);
+    }).catch(() => setError("Não foi possível carregar suas matrículas. Atualize a página antes de enviar."));
     fetch("/api/drafts", { headers: { Authorization: `Bearer ${token()}` } }).then(async (response) => {
       if (!response.ok) return;
       const drafts: Draft[] = await response.json();
@@ -87,8 +107,8 @@ export default function NewRequestPage() {
       if (selectedDraft) {
         activeType.current = selectedDraft.type_request_id;
         draftRef.current = selectedDraft;
-        savedSnapshot.current = JSON.stringify([selectedDraft.type_request_id, selectedDraft.form_schema_version_id ?? null, selectedDraft.responses ?? {}]);
-        setDraft(selectedDraft); setTypeId(selectedDraft.type_request_id); setVersionId(selectedDraft.form_schema_version_id ?? null); setAnswers(selectedDraft.responses ?? {});
+        savedSnapshot.current = draftSignature(selectedDraft);
+        setDraft(selectedDraft); setTypeId(selectedDraft.type_request_id); setVersionId(selectedDraft.form_schema_version_id ?? null); setEnrollmentId(selectedDraft.enrollment_id ?? ""); setAnswers(selectedDraft.responses ?? {}); setAttachedDocuments(selectedDraft.attached_documents ?? []);
       }
     });
   }, []);
@@ -101,7 +121,7 @@ export default function NewRequestPage() {
       const data = await response.json();
       if (controller.signal.aborted || activeType.current !== typeId) return;
       const currentDraft = draftRef.current;
-      if (currentDraft?.type_request_id === typeId && currentDraft.form_schema_version_id !== (data.version_id ?? null)) {
+      if (currentDraft?.type_request_id === typeId && (currentDraft.form_schema_version_id ?? null) !== (data.version_id ?? null)) {
         setMigrationLoading(true);
         setMigrationUnavailable(false);
         setFields(currentDraft.schema_version?.schema.fields ?? []);
@@ -140,7 +160,7 @@ export default function NewRequestPage() {
       if (!response.ok) throw new Error(response.status === 409 ? "O rascunho mudou em outra aba. Atualize a página antes de continuar." : data.message ?? "Não foi possível atualizar o rascunho.");
       const nextDraft: Draft = data.draft;
       draftRef.current = nextDraft;
-      savedSnapshot.current = JSON.stringify([nextDraft.type_request_id, nextDraft.form_schema_version_id ?? null, nextDraft.responses ?? {}]);
+      savedSnapshot.current = draftSignature(nextDraft);
       savedEditCount.current = editCount.current;
       setDraft(nextDraft);
       setFields(data.migration.schema.fields);
@@ -158,7 +178,7 @@ export default function NewRequestPage() {
   const persistDraft = useCallback(async (snapshot: DraftSnapshot): Promise<Draft | null> => {
     if (submitted.current || activeType.current !== snapshot.type_request_id) return null;
     const current = draftRef.current?.type_request_id === snapshot.type_request_id ? draftRef.current : null;
-    const signature = JSON.stringify([snapshot.type_request_id, snapshot.form_schema_version_id, snapshot.responses]);
+    const signature = snapshotSignature(snapshot);
     if (current && signature === savedSnapshot.current) return current;
     const savedThroughEdit = editCount.current;
     try {
@@ -191,15 +211,60 @@ export default function NewRequestPage() {
   }, []);
 
   useEffect(() => {
-    if (!typeId || !Object.keys(answers).length || conflictDraft || submitting || submitted.current || editCount.current === savedEditCount.current) return;
+    if (!typeId || !Object.keys(answers).length || (requiresEnrollmentSelection && !enrollmentId) || conflictDraft || submitting || submitted.current || editCount.current === savedEditCount.current) return;
     const sequence = ++editSequence.current;
-    const snapshot = { type_request_id: typeId, form_schema_version_id: versionId, responses: answers };
+    const snapshot = { type_request_id: typeId, form_schema_version_id: versionId, enrollment_id: enrollmentId || null, responses: answers, document_ids: attachedDocuments.map((document) => document.id) };
     setSaveState("Salvando rascunho…");
     const timeout = window.setTimeout(() => {
       saveQueue.current = saveQueue.current.then(() => sequence === editSequence.current ? persistDraft(snapshot) : null);
     }, 900);
     return () => window.clearTimeout(timeout);
-  }, [answers, typeId, versionId, conflictDraft, submitting, persistDraft]);
+  }, [answers, attachedDocuments, typeId, versionId, enrollmentId, requiresEnrollmentSelection, conflictDraft, submitting, persistDraft]);
+
+  const uploadDocuments = async (selectedFiles: File[]) => {
+    if (selectedFiles.length === 0) return;
+    setUploading(true);
+    setError("");
+    let currentDocuments = [...attachedDocuments];
+    try {
+      for (const selectedFile of selectedFiles) {
+        const body = new FormData();
+        body.append("arquivo", selectedFile);
+        const response = await fetch("/api/documents/upload", { method: "POST", headers: { Authorization: `Bearer ${token()}` }, body });
+        const data = await response.json();
+        if (!response.ok) throw new Error(response.status === 422 ? `O arquivo ${selectedFile.name} é inválido. Envie PDF, JPG ou PNG de até 10 MB.` : data.message ?? `Não foi possível salvar ${selectedFile.name}.`);
+        currentDocuments = [...currentDocuments, { id: data.id, name: data.name ?? selectedFile.name, mime_type: data.mime_type, file_size: data.file_size }];
+        editCount.current += 1;
+        submissionAttempt.current = null;
+        setAttachedDocuments(currentDocuments);
+        setSaveState("Anexo enviado. Salvando no rascunho…");
+        const snapshot = { type_request_id: typeId, form_schema_version_id: versionId, enrollment_id: enrollmentId || null, responses: answers, document_ids: currentDocuments.map((document) => document.id) };
+        saveQueue.current = saveQueue.current.then(() => persistDraft(snapshot));
+        if (!await saveQueue.current) throw new Error("Um anexo foi enviado, mas não foi vinculado ao rascunho. Tente revisar o requerimento para salvar novamente.");
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível salvar o anexo.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadDraftDocument = async (attachment: SavedDocument) => {
+    const currentDraft = draftRef.current;
+    if (!currentDraft) return;
+    try {
+      const response = await fetch(`/api/drafts/${currentDraft.id}/documents/${attachment.id}`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (!response.ok) throw new Error("Não foi possível abrir o anexo salvo.");
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = attachment.name;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível abrir o anexo salvo.");
+    }
+  };
 
   const setAnswer = (key: string, value: unknown) => {
     editCount.current += 1;
@@ -219,7 +284,7 @@ export default function NewRequestPage() {
     if (nextTypeId === typeId) return;
     if (typeId && !conflictDraft) {
       await saveQueue.current;
-      const saved = await persistDraft({ type_request_id: typeId, form_schema_version_id: versionId, responses: answers });
+      const saved = await persistDraft({ type_request_id: typeId, form_schema_version_id: versionId, enrollment_id: enrollmentId || null, responses: answers, document_ids: attachedDocuments.map((document) => document.id) });
       if (!saved) { setError("Salve ou resolva o rascunho atual antes de trocar de serviço."); return; }
     }
     activeType.current = nextTypeId;
@@ -228,14 +293,13 @@ export default function NewRequestPage() {
     savedSnapshot.current = null;
     editCount.current = 0;
     savedEditCount.current = 0;
-    uploadedFile.current = null;
     submissionAttempt.current = null;
     setDraft(null);
     setTypeId(nextTypeId);
     setVersionId(null);
     setFields([]);
     setAnswers({ subject: "", description: "" });
-    setFile(null);
+    setAttachedDocuments([]);
     setConflictDraft(null);
     setMigration(null);
     setMigrationUnavailable(false);
@@ -249,8 +313,9 @@ export default function NewRequestPage() {
   const reviewRequest = (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    if (selected?.requires_document && !file) { setError(`Anexe: ${selected.document_instructions ?? "documento comprobatório"}.`); return; }
-    if (migration || migrationLoading || migrationUnavailable) { setError("Revise a nova versão do formulário antes de enviar."); return; }
+    if (uploading) { setError("Aguarde o envio do anexo antes de continuar."); return; }
+    if (requiresEnrollmentSelection && !enrollmentId) { setError("Escolha a matrícula acadêmica deste requerimento."); return; }
+    if (selected?.requires_document && attachedDocuments.length === 0) { setError(`Anexe: ${selected.document_instructions ?? "documento comprobatório"}.`); return; }
     if (conflictDraft) { setError("Resolva o conflito do rascunho antes de enviar."); return; }
     if (migration || migrationLoading || migrationUnavailable) { setError("Revise a nova versão do formulário antes de enviar."); return; }
     setReviewing(true);
@@ -258,12 +323,14 @@ export default function NewRequestPage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setError("");
     if (conflictDraft) { setError("Resolva o conflito do rascunho antes de enviar."); return; }
-    if (selected?.requires_document && !file) { setError(`Anexe: ${selected.document_instructions ?? "documento comprobatório"}.`); return; }
+    if (uploading) { setError("Aguarde o envio do anexo antes de continuar."); return; }
+    if (requiresEnrollmentSelection && !enrollmentId) { setError("Escolha a matrícula acadêmica deste requerimento."); return; }
+    if (selected?.requires_document && attachedDocuments.length === 0) { setError(`Anexe: ${selected.document_instructions ?? "documento comprobatório"}.`); return; }
     setSubmitting(true);
     try {
       const formResponses = Object.fromEntries(fields.filter((field) => Object.prototype.hasOwnProperty.call(answers, field.key)).map((field) => [field.key, answers[field.key]]));
-      const payload = JSON.stringify([typeId, versionId, answers]);
-      const replay = submissionAttempt.current?.payload === payload && submissionAttempt.current.file === file ? submissionAttempt.current : null;
+      const payload = JSON.stringify([typeId, versionId, enrollmentId, answers, attachedDocuments.map((document) => document.id)]);
+      const replay = submissionAttempt.current?.payload === payload ? submissionAttempt.current : null;
       let saved: Draft;
       let documentIds: string[];
       if (replay) {
@@ -271,24 +338,14 @@ export default function NewRequestPage() {
         documentIds = replay.documentIds;
       } else {
         await saveQueue.current;
-        const latestDraft = await persistDraft({ type_request_id: typeId, form_schema_version_id: versionId, responses: answers });
+        const latestDraft = await persistDraft({ type_request_id: typeId, form_schema_version_id: versionId, enrollment_id: enrollmentId || null, responses: answers, document_ids: attachedDocuments.map((document) => document.id) });
         if (!latestDraft) throw new Error("Não foi possível salvar o rascunho. Revise o aviso acima e tente novamente.");
         saved = latestDraft;
-        documentIds = [];
-        if (file) {
-          if (uploadedFile.current?.file === file) {
-            documentIds.push(uploadedFile.current.id);
-          } else {
-            const upload = new FormData(); upload.append("arquivo", file);
-            const response = await fetch("/api/documents/upload", { method: "POST", headers: { Authorization: `Bearer ${token()}` }, body: upload });
-            const data = await response.json(); if (!response.ok) throw new Error(data.message);
-            uploadedFile.current = { file, id: data.id }; documentIds.push(data.id);
-          }
-        }
-        submissionAttempt.current = { payload, file, draft: saved, documentIds };
+        documentIds = attachedDocuments.map((document) => document.id);
+        submissionAttempt.current = { payload, draft: saved, documentIds };
       }
       const key = `draft:${saved.id}`;
-      const response = await fetch("/api/requests", { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify({ type_id: typeId, subject, description, form_schema_version_id: versionId, form_responses: formResponses, document_ids: documentIds, draft_id: saved.id, idempotency_key: key }) });
+      const response = await fetch("/api/requests", { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify({ type_id: typeId, subject, description, enrollment_id: enrollmentId || null, form_schema_version_id: versionId, form_responses: formResponses, document_ids: documentIds, draft_id: saved.id, idempotency_key: key }) });
       const data = await response.json();
       if (!response.ok) {
         if (data.errors) { setFieldErrors(data.errors); setReviewing(false); }
@@ -326,8 +383,8 @@ export default function NewRequestPage() {
             <div role="alert" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
               <p className="font-semibold">Este rascunho também foi alterado em outra aba. O texto desta aba não foi apagado.</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => { draftRef.current = conflictDraft; savedSnapshot.current = JSON.stringify([conflictDraft.type_request_id, conflictDraft.form_schema_version_id ?? null, conflictDraft.responses ?? {}]); savedEditCount.current = editCount.current; setDraft(conflictDraft); setAnswers(conflictDraft.responses ?? {}); setConflictDraft(null); }} className="min-h-11 rounded-lg border border-amber-600 px-3 font-semibold">Usar versão salva</button>
-                <button type="button" disabled={conflictDraft.type_request_id !== typeId || conflictDraft.form_schema_version_id !== versionId} onClick={() => { draftRef.current = conflictDraft; savedSnapshot.current = JSON.stringify([conflictDraft.type_request_id, conflictDraft.form_schema_version_id ?? null, conflictDraft.responses ?? {}]); editCount.current += 1; setDraft(conflictDraft); setConflictDraft(null); setAnswers({ ...answers }); }} className="min-h-11 rounded-lg bg-dark-green px-3 font-semibold text-white disabled:opacity-50">Salvar meu texto nesta aba</button>
+                <button type="button" onClick={() => { draftRef.current = conflictDraft; savedSnapshot.current = draftSignature(conflictDraft); savedEditCount.current = editCount.current; setDraft(conflictDraft); setEnrollmentId(conflictDraft.enrollment_id ?? ""); setAnswers(conflictDraft.responses ?? {}); setAttachedDocuments(conflictDraft.attached_documents ?? []); setConflictDraft(null); }} className="min-h-11 rounded-lg border border-amber-600 px-3 font-semibold">Usar versão salva</button>
+                <button type="button" disabled={conflictDraft.type_request_id !== typeId || conflictDraft.form_schema_version_id !== versionId} onClick={() => { draftRef.current = conflictDraft; savedSnapshot.current = draftSignature(conflictDraft); editCount.current += 1; setDraft(conflictDraft); setConflictDraft(null); setAnswers({ ...answers }); }} className="min-h-11 rounded-lg bg-dark-green px-3 font-semibold text-white disabled:opacity-50">Salvar meu texto nesta aba</button>
               </div>
             </div>
           )}
@@ -339,8 +396,9 @@ export default function NewRequestPage() {
               <p className="text-sm text-slate-600">O protocolo será gerado somente depois da confirmação.</p>
               <dl className="divide-y divide-slate-200 rounded-xl border border-slate-200 px-4">
                 <div className="py-3"><dt className="text-sm font-semibold text-slate-600">Serviço</dt><dd className="mt-1 break-words">{selected?.name}</dd></div>
+                {selectedEnrollment && <div className="py-3"><dt className="text-sm font-semibold text-slate-600">Matrícula</dt><dd className="mt-1 break-words">{selectedEnrollment.enrollment}{selectedEnrollment.course_name ? ` — ${selectedEnrollment.course_name}` : ""}</dd></div>}
                 {visibleFields.map((field) => <div key={field.key} className="py-3"><dt className="text-sm font-semibold text-slate-600">{field.label}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{displayAnswer(answers[field.key])}</dd></div>)}
-                {file && <div className="py-3"><dt className="text-sm font-semibold text-slate-600">Documento</dt><dd className="mt-1 break-all">{file.name}</dd></div>}
+                {attachedDocuments.map((document) => <div key={document.id} className="py-3"><dt className="text-sm font-semibold text-slate-600">Documento</dt><dd className="mt-1 break-all">{document.name}</dd></div>)}
               </dl>
               <div className="flex flex-col-reverse gap-3 sm:flex-row">
                 <button type="button" onClick={() => setReviewing(false)} className="min-h-12 flex-1 rounded-xl border border-slate-300 px-4 font-semibold">Voltar e editar</button>
@@ -349,9 +407,10 @@ export default function NewRequestPage() {
             </section>
           ) : (
             <>
+              {requiresEnrollmentSelection && <div><label htmlFor="request-enrollment" className="block text-sm font-semibold">Matrícula acadêmica <span aria-hidden="true">*</span></label><p id="request-enrollment-hint" className="mt-1 text-sm text-slate-600">Escolha o vínculo ao qual este requerimento pertence. Depois de salvar o rascunho, não será possível trocá-lo.</p><select id="request-enrollment" required value={enrollmentId} disabled={Boolean(draft?.enrollment_id) || uploading} onChange={(event) => { editCount.current += 1; submissionAttempt.current = null; setEnrollmentId(event.target.value); }} aria-describedby="request-enrollment-hint" className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white p-3 text-base disabled:bg-slate-100"><option value="">Selecione sua matrícula…</option>{enrollments.map((item) => <option key={item.id} value={item.id}>{item.enrollment}{item.course_name ? ` — ${item.course_name}` : ""}</option>)}</select></div>}
               <div>
                 <label htmlFor="request-type" className="block text-sm font-semibold">Tipo de solicitação <span aria-hidden="true">*</span></label>
-                <select id="request-type" required value={typeId} onChange={(event) => void changeType(event.target.value)} className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white p-3"><option value="">Selecione…</option>{types.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+                <select id="request-type" required disabled={uploading} value={typeId} onChange={(event) => void changeType(event.target.value)} className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white p-3"><option value="">Selecione…</option>{types.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
               </div>
               {visibleFields.map((field) => {
                 const inputId = `form-${field.key}`;
@@ -373,9 +432,9 @@ export default function NewRequestPage() {
                   {fieldError && <p id={`${inputId}-error`} role="alert" className="mt-2 text-sm font-medium text-red-700">{fieldError}</p>}
                 </div>;
               })}
-              {selected?.requires_document && <label className="block rounded-xl border border-dashed border-amber-400 bg-amber-50 p-4 text-sm font-semibold"><span className="flex items-center gap-2"><Paperclip aria-hidden="true" size={17} />Anexo obrigatório</span><span className="mt-1 block text-sm font-normal">{selected.document_instructions}</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => { uploadedFile.current = null; submissionAttempt.current = null; setFile(event.target.files?.[0] ?? null); }} className="mt-3 block w-full text-sm" /></label>}
+              {selected?.requires_document && <div className="rounded-xl border border-dashed border-amber-400 bg-amber-50 p-4 text-sm"><label htmlFor="request-document" className="block font-semibold"><span className="flex items-center gap-2"><Paperclip aria-hidden="true" size={17} />Anexos obrigatórios</span><span className="mt-1 block font-normal">{selected.document_instructions}</span><span className="mt-1 block font-normal">Você pode selecionar mais de um arquivo. Formatos: PDF, JPG ou PNG; até 10 MB por arquivo.</span></label><input id="request-document" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" disabled={uploading || (requiresEnrollmentSelection && !enrollmentId)} onChange={(event) => { const selectedFiles = Array.from(event.target.files ?? []); event.target.value = ""; void uploadDocuments(selectedFiles); }} className="mt-3 block w-full text-sm" />{uploading && <p role="status" className="mt-2 font-medium text-amber-900">Enviando anexos…</p>}{attachedDocuments.length > 0 && <p aria-live="polite" className="mt-3 font-medium text-slate-800">{attachedDocuments.length} {attachedDocuments.length === 1 ? "anexo salvo" : "anexos salvos"}</p>}{attachedDocuments.map((attachment) => <div key={attachment.id} className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-white p-3"><p className="min-w-0 break-all font-medium text-slate-800">Anexo salvo: {attachment.name}</p><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void downloadDraftDocument(attachment)} className="min-h-11 rounded-lg border border-emerald-700 px-3 font-semibold text-dark-green">Baixar anexo</button><button type="button" onClick={() => { editCount.current += 1; submissionAttempt.current = null; setAttachedDocuments((current) => current.filter((document) => document.id !== attachment.id)); }} className="min-h-11 rounded-lg border border-red-300 px-3 font-semibold text-red-800">Remover do rascunho</button></div></div>)}</div>}
               <p aria-live="polite" className="flex items-center gap-2 text-sm text-slate-600"><Save aria-hidden="true" size={16} />{saveState}{draft && <span className="sr-only">Revisão {draft.revision}</span>}</p>
-              <div className="flex flex-col-reverse gap-3 sm:flex-row"><button type="button" onClick={() => router.push("/me")} className="min-h-12 flex-1 rounded-xl bg-slate-100 px-4 font-bold"><X aria-hidden="true" size={17} className="mr-1 inline" />Cancelar</button><button disabled={submitting || Boolean(conflictDraft)} className="min-h-12 flex-[2] rounded-xl bg-dark-green px-4 font-bold text-white disabled:opacity-50">Revisar requerimento</button></div>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row"><button type="button" onClick={() => router.push("/me")} className="min-h-12 flex-1 rounded-xl bg-slate-100 px-4 font-bold"><X aria-hidden="true" size={17} className="mr-1 inline" />Cancelar</button><button disabled={submitting || uploading || Boolean(conflictDraft)} className="min-h-12 flex-[2] rounded-xl bg-dark-green px-4 font-bold text-white disabled:opacity-50">Revisar requerimento</button></div>
             </>
           )}
         </form>

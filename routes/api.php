@@ -30,33 +30,31 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::get('/', fn () => response()->json(['api' => 'Online', 'status' => 'OK']));
-Route::get('/health', function () {
-    if (request()->boolean('detailed')) {
-        $dbOk = true;
-        try {
-            DB::connection()->getPdo();
-        } catch (\Throwable $e) {
-            $dbOk = false;
-        }
-        $pendingJobs = 0;
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
-                $pendingJobs = DB::table('jobs')->count();
-            }
-        } catch (\Throwable $e) {
-        }
+Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
-        return response()->json([
-            'status' => $dbOk ? 'ok' : 'degraded',
-            'checks' => [
-                'database' => $dbOk,
-                'queue_jobs' => ['pending' => $pendingJobs],
-            ],
-            'timestamp' => now()->toIso8601String(),
-        ], $dbOk ? 200 : 503);
+Route::middleware(['auth:staff_admins', 'password.changed', 'role:staff'])->get('/health/detailed', function () {
+    $dbOk = true;
+    try {
+        DB::connection()->getPdo();
+    } catch (\Throwable $e) {
+        $dbOk = false;
+    }
+    $pendingJobs = 0;
+    try {
+        if (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+            $pendingJobs = DB::table('jobs')->count();
+        }
+    } catch (\Throwable $e) {
     }
 
-    return response()->json(['status' => 'ok']);
+    return response()->json([
+        'status' => $dbOk ? 'ok' : 'degraded',
+        'checks' => [
+            'database' => $dbOk,
+            'queue_jobs' => ['pending' => $pendingJobs],
+        ],
+        'timestamp' => now()->toIso8601String(),
+    ], $dbOk ? 200 : 503);
 });
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
@@ -92,13 +90,14 @@ Route::middleware(['auth:api,staff_admins', 'password.changed'])->group(function
     Route::get('/requests/{requestModel}/documents/{document}', [DocumentController::class, 'show']);
 
     Route::post('/requests', [RequestController::class, 'store']);
+    Route::get('/enrollments/active', [FormSchemaController::class, 'activeEnrollments']);
     Route::get('/drafts', [FormSchemaController::class, 'drafts']);
+    Route::get('/drafts/{draft}/documents/{document}', [DocumentController::class, 'showDraft']);
     Route::get('/drafts/{draft}/migration', [FormSchemaController::class, 'migrationPreview']);
     Route::post('/drafts/{draft}/migration', [FormSchemaController::class, 'migrateDraft']);
     Route::post('/drafts', [FormSchemaController::class, 'saveDraft']);
     Route::put('/drafts/{draft}', [FormSchemaController::class, 'saveDraft']);
     Route::delete('/drafts/{draft}', [FormSchemaController::class, 'discard']);
-    Route::post('/change-enrollment/{id}', [AuthController::class, 'changeEnrollment']);
 
     Route::get('/staffs', [StaffController::class, 'index']);
 });
@@ -117,6 +116,9 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:admin,staf
 });
 
 Route::middleware(['auth:staff_admins', 'role:admin,cradt'])->group(function () {
+    Route::post('/type-requests', [TypeRequestController::class, 'store']);
+    Route::put('/type-requests/{id}', [TypeRequestController::class, 'update']);
+    Route::delete('/type-requests/{id}', [TypeRequestController::class, 'destroy']);
     Route::post('/admin/knowledge-articles', [KnowledgeArticleController::class, 'store']);
     Route::put('/admin/knowledge-articles/{knowledgeArticle}', [KnowledgeArticleController::class, 'update']);
     Route::get('/admin/service-opening-windows', [ServiceOpeningWindowController::class, 'index']);
@@ -151,10 +153,6 @@ Route::middleware(['auth:api,staff_admins', 'password.changed', 'role:staff'])->
 
     Route::post('/staffs', [StaffController::class, 'store']);
     Route::delete('/staffs/{id}', [StaffController::class, 'destroy']);
-
-    Route::post('/type-requests', [TypeRequestController::class, 'store']);
-    Route::put('/type-requests/{id}', [TypeRequestController::class, 'update']);
-    Route::delete('/type-requests/{id}', [TypeRequestController::class, 'destroy']);
 
     Route::delete('/staff-admins/{id}', [StaffAdminController::class, 'destroy']);
 

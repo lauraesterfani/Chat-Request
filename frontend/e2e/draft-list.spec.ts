@@ -5,8 +5,8 @@ test("aluno escolhe, retoma e descarta seus rascunhos", async ({ page }) => {
   const firstId = "22222222-2222-4222-8222-222222222222";
   const secondId = "33333333-3333-4333-8333-333333333333";
   let drafts = [
-    { id: firstId, type_request_id: typeId, revision: 1, updated_at: "2026-10-12T12:00:00Z", type: { name: "Ementa QA" }, responses: { subject: "Primeiro assunto", description: "Primeira descrição" } },
-    { id: secondId, type_request_id: typeId, revision: 2, updated_at: "2026-10-12T13:00:00Z", type: { name: "Ementa QA" }, responses: { subject: "Segundo assunto", description: "Segunda descrição" } },
+    { id: firstId, type_request_id: typeId, form_schema_version_id: null, enrollment_id: null, revision: 1, updated_at: "2026-10-12T12:00:00Z", type: { name: "Ementa QA" }, responses: { subject: "Primeiro assunto", description: "Primeira descrição" } },
+    { id: secondId, type_request_id: typeId, form_schema_version_id: null, enrollment_id: null, revision: 2, updated_at: "2026-10-12T13:00:00Z", type: { name: "Ementa QA" }, responses: { subject: "Segundo assunto", description: "Segunda descrição" } },
   ];
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -18,6 +18,7 @@ test("aluno escolhe, retoma e descarta seus rascunhos", async ({ page }) => {
     if (url.pathname === "/api/me") return json({ user: { id: "qa", name: "Aluno QA", role: "student", must_change_password: false } });
     if (url.pathname === "/api/notifications") return json({ data: [] });
     if (url.pathname === "/api/notifications/count") return json({ unread: 0 });
+    if (url.pathname === "/api/enrollments/active") return json({ enrollments: [], requires_selection: false });
     if (url.pathname === "/api/type-requests") return json([{ id: typeId, name: "Ementa QA", requires_document: false }]);
     if (url.pathname === `/api/type-requests/${typeId}/form`) return json({ type_id: typeId, schema: { fields: [{ key: "subject", label: "Assunto", type: "short_text", required: true }, { key: "description", label: "Descrição", type: "long_text", required: true }] }, version_id: null });
     if (url.pathname === "/api/drafts" && route.request().method() === "GET") return json(drafts);

@@ -22,7 +22,9 @@ export default function TypeRequestsPage() {
     description: "",
     icon: "",
     requires_document: false,
-    document_instructions: ""
+    document_instructions: "",
+    duplicate_window_days: "",
+    requires_decision: true
   });
 
   const fetchTypes = async () => {
@@ -67,7 +69,9 @@ export default function TypeRequestsPage() {
         description: type.description || "", 
         icon: type.icon || "",
         requires_document: Boolean(type.requires_document),
-        document_instructions: type.document_instructions || ""
+        document_instructions: type.document_instructions || "",
+        duplicate_window_days: type.duplicate_window_days ? String(type.duplicate_window_days) : "",
+        requires_decision: type.requires_decision !== false
       });
     } else {
       setFormData({ 
@@ -75,7 +79,9 @@ export default function TypeRequestsPage() {
         description: "", 
         icon: "",
         requires_document: false,
-        document_instructions: ""
+        document_instructions: "",
+        duplicate_window_days: "",
+        requires_decision: true
       });
     }
     setModalOpen(true);
@@ -90,7 +96,8 @@ export default function TypeRequestsPage() {
       // Limpa as instruções caso o admin tenha mudado para "Não precisa" antes de salvar
       const dataToSave = {
         ...formData,
-        document_instructions: formData.requires_document ? formData.document_instructions : ""
+        document_instructions: formData.requires_document ? formData.document_instructions : "",
+        duplicate_window_days: formData.duplicate_window_days ? Number(formData.duplicate_window_days) : null
       };
 
       if (editingType) {
@@ -125,7 +132,7 @@ export default function TypeRequestsPage() {
     <div className="min-h-screen bg-[#fcfcfc] p-4 sm:p-6">
       <div className="max-w-5xl mx-auto">
         
-        <div className="flex justify-between items-center mb-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-800 tracking-tighter flex items-center gap-2">
               <FileType className="text-[#108542]" /> Tipos de Requerimento
@@ -133,10 +140,10 @@ export default function TypeRequestsPage() {
             <p className="text-slate-500 text-sm">Gerencie as opções disponíveis para os alunos</p>
           </div>
           
-          {userRole !== 'cradt' && (
+          {(userRole === 'admin' || userRole === 'cradt') && (
             <button 
                 onClick={() => openModal()}
-                className="bg-emerald-900 text-white px-4 py-2.5 rounded-2xl flex items-center gap-2 font-bold hover:bg-emerald-800 transition-all shadow-lg"
+                className="flex shrink-0 items-center gap-2 self-start whitespace-nowrap rounded-2xl bg-emerald-900 px-4 py-2.5 font-bold text-white shadow-lg transition-all hover:bg-emerald-800 sm:self-auto"
             >
                 <Plus size={20} /> Novo Tipo
             </button>
@@ -147,7 +154,8 @@ export default function TypeRequestsPage() {
             {loading ? (
                 <div className="p-8 text-center text-gray-500">Carregando...</div>
             ) : (
-                <table className="w-full text-left">
+              <div role="region" aria-label="Tabela de tipos de requerimento, deslize horizontalmente para ver todas as colunas" tabIndex={0} className="overflow-x-auto">
+                <table className="w-full min-w-[680px] text-left">
                     <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs border-b border-gray-100">
                         <tr>
                             <th className="px-6 py-4">Nome</th>
@@ -177,7 +185,7 @@ export default function TypeRequestsPage() {
                                             <ListChecks size={18} aria-hidden="true" />
                                         </Link>
                                     )}
-                                    {userRole !== 'cradt' && (
+                                    {(userRole === 'admin' || userRole === 'cradt') && (
                                         <>
                                             <button 
                                                 onClick={() => openModal(type)}
@@ -198,6 +206,7 @@ export default function TypeRequestsPage() {
                         ))}
                     </tbody>
                 </table>
+              </div>
             )}
         </div>
       </div>
@@ -217,8 +226,9 @@ export default function TypeRequestsPage() {
 
                 <form onSubmit={handleSave} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Nome do Requerimento</label>
+                            <label htmlFor="request-type-name" className="block text-sm font-bold text-gray-700 mb-1">Nome do Requerimento</label>
                         <input 
+                                id="request-type-name"
                             type="text" 
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -229,13 +239,13 @@ export default function TypeRequestsPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Mensagem Inicial (Pergunta do Robô)</label>
+                            <label htmlFor="request-type-description" className="block text-sm font-bold text-gray-700 mb-1">Mensagem Inicial (Pergunta do Robô)</label>
                         <textarea 
+                                id="request-type-description"
                             value={formData.description}
                             onChange={(e) => setFormData({...formData, description: e.target.value})}
                             placeholder="Ex: Descreva detalhadamente o motivo da sua solicitação:"
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-20 resize-none"
-                            required
                         />
                     </div>
 
@@ -263,8 +273,9 @@ export default function TypeRequestsPage() {
                     {/* 🔮 CAMPO CONDICIONAL: APARECE SE FOR "SIM" */}
                     {formData.requires_document && (
                         <div className="animate-in slide-in-from-top-2 duration-200">
-                            <label className="block text-sm font-bold text-amber-800 mb-1">Quais documentos são necessários?</label>
+                            <label htmlFor="request-type-document-instructions" className="block text-sm font-bold text-amber-800 mb-1">Quais documentos são necessários?</label>
                             <textarea 
+                                id="request-type-document-instructions"
                                 value={formData.document_instructions}
                                 onChange={(e) => setFormData({...formData, document_instructions: e.target.value})}
                                 placeholder="Ex: Anexe o atestado médico digitalizado ou o laudo carimbado."
@@ -273,6 +284,30 @@ export default function TypeRequestsPage() {
                             />
                         </div>
                     )}
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <label className="mb-4 flex items-start gap-3 text-sm font-semibold text-gray-700">
+                            <input type="checkbox" checked={formData.requires_decision} onChange={(e) => setFormData({...formData, requires_decision: e.target.checked})} className="mt-0.5 h-4 w-4 accent-emerald-700" />
+                            <span>Serviço exige resultado acadêmico de deferimento ou indeferimento<span className="mt-1 block text-xs font-normal text-slate-600">Desative somente para serviços que podem ser encerrados sem uma decisão desse tipo.</span></span>
+                        </label>
+                        <label htmlFor="duplicate-window-days" className="block text-sm font-bold text-gray-700 mb-1">Evitar requerimentos abertos repetidos</label>
+                        <p className="mb-3 text-sm text-slate-600">Quando ativado, o aluno verá um aviso se enviar o mesmo assunto para este serviço e matrícula enquanto já houver um pedido aberto no período.</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <input
+                                id="duplicate-window-days"
+                                type="number"
+                                min={1}
+                                max={365}
+                                value={formData.duplicate_window_days}
+                                onChange={(e) => setFormData({...formData, duplicate_window_days: e.target.value})}
+                                placeholder="Desativado"
+                                aria-describedby="duplicate-window-help"
+                                className="w-36 rounded-lg border border-gray-200 bg-white px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                            <span className="text-sm text-slate-600">dias (vazio desativa)</span>
+                        </div>
+                        <p id="duplicate-window-help" className="mt-2 text-xs text-slate-500">A comparação ignora maiúsculas e espaços repetidos. Pedidos concluídos ou cancelados não bloqueiam um novo envio.</p>
+                    </div>
                     
                     <div className="flex gap-3 pt-4">
                         <button 

@@ -21,7 +21,7 @@ function ModalConfirm({ status, onConfirm, onCancel, statusLabels }: any) {
         </button>
         <h2 className="text-lg font-bold text-slate-800 mb-4">Confirmar alteração</h2>
         <p className="text-sm text-slate-600 mb-6">
-          Tem certeza que deseja mudar o status para:{" "}
+          Tem certeza que deseja registrar:{" "}
           <span className="font-semibold text-[#004d40]">{statusLabels[status] || status}</span>?
         </p>
         <div className="flex justify-end gap-3">
@@ -48,6 +48,8 @@ export default function RequestDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [observation, setObservation] = useState("");
+  const [decisionJustification, setDecisionJustification] = useState("");
+  const [conclusionSummary, setConclusionSummary] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [nextStatus, setNextStatus] = useState("");
@@ -58,6 +60,8 @@ export default function RequestDetailsPage() {
   const statusColors: any = {
     pending: "bg-blue-100 text-blue-700 border-blue-200",
     analyzing: "bg-amber-100 text-amber-700 border-amber-200",
+    waiting: "bg-orange-100 text-orange-700 border-orange-200",
+    solving: "bg-violet-100 text-violet-700 border-violet-200",
     completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
     canceled: "bg-red-50 text-red-600 border-red-100",
   };
@@ -65,8 +69,13 @@ export default function RequestDetailsPage() {
   const statusLabels: any = {
     pending: "Pendente",
     analyzing: "Em Análise",
-    completed: "Deferido",
-    canceled: "Indeferido",
+    waiting: "Aguardando aluno",
+    solving: "Em execução",
+    completed: "Concluído",
+    canceled: "Cancelado",
+    deferido: "Decisão: deferido",
+    indeferido: "Decisão: indeferido",
+    na: "Decisão: não aplicável",
   };
 
   useEffect(() => {
@@ -125,24 +134,35 @@ export default function RequestDetailsPage() {
   };
 
   const confirmStatusChange = async () => {
+    const isDecision = ["deferido", "indeferido", "na"].includes(nextStatus);
+    if (isDecision && (!decisionJustification.trim() || !conclusionSummary.trim())) {
+      setShowConfirm(false);
+      handleFeedback("Preencha a justificativa e a resposta final para o aluno.", "error");
+      return;
+    }
     setShowConfirm(false);
     setUpdating(true);
     try {
       const token = sessionStorage.getItem("jwt_token");
-      const res = await fetch(`${API_BASE}/requests/${id}`, {
-        method: "PUT",
+      const res = await fetch(`${API_BASE}/requests/${id}${isDecision ? "/decision" : ""}`, {
+        method: isDecision ? "POST" : "PUT",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ status: nextStatus, observation }),
+        body: JSON.stringify(isDecision
+          ? { result: nextStatus, justification: decisionJustification, conclusion_summary: conclusionSummary }
+          : { status: nextStatus, observation }),
       });
 
       if (res.ok) {
-        setRequest((prev: any) => ({ ...prev, status: nextStatus, observation }));
-        handleFeedback("Status atualizado com sucesso!", "success");
+        setRequest((prev: any) => isDecision
+          ? ({ ...prev, status: "completed", result: nextStatus, observation: decisionJustification, conclusion_summary: conclusionSummary })
+          : ({ ...prev, status: nextStatus, observation }));
+        handleFeedback(isDecision ? "Decisão registrada com sucesso!" : "Status atualizado com sucesso!", "success");
       } else {
-        handleFeedback("Erro ao atualizar status.", "error");
+        const data = await res.json().catch(() => ({}));
+        handleFeedback(data.message || "Não foi possível registrar a alteração.", "error");
       }
     } catch (error) {
       handleFeedback("Erro de conexão.", "error");
@@ -161,7 +181,7 @@ export default function RequestDetailsPage() {
   }
 
   const isAdmin = ["admin", "staff", "cradt", "coordenacao"].includes(currentUser?.role);
-  const canChangeStatus = ["admin", "cradt"].includes(currentUser?.role);
+  const canChangeStatus = ["admin", "cradt"].includes(currentUser?.role) && !["completed", "canceled"].includes(request.status);
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] py-10 px-4">
@@ -185,9 +205,12 @@ export default function RequestDetailsPage() {
             <ChevronLeft size={24} />
           </button>
           <h1 className="text-xl font-bold truncate px-4">{request.type?.name}</h1>
-          <span className={`px-4 py-1 rounded-full text-[10px] font-black border uppercase tracking-widest ${statusColors[request.status]}`}>
-            {statusLabels[request.status] || request.status}
-          </span>
+          <div className="flex flex-wrap justify-end gap-2">
+            <span className={`px-4 py-1 rounded-full text-[10px] font-black border uppercase tracking-widest ${statusColors[request.status]}`}>
+              {statusLabels[request.status] || request.status}
+            </span>
+            {request.result && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-800">{statusLabels[request.result] || request.result}</span>}
+          </div>
         </div>
 
         <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -265,7 +288,7 @@ export default function RequestDetailsPage() {
                   </label>
                 )}
 
-                <label className="block text-xs font-bold text-slate-600 mb-2" htmlFor="request-observation">Mensagem de atendimento</label>
+                <label className="block text-xs font-bold text-slate-600 mb-2" htmlFor="request-observation">Orientação ao aluno ou motivo do cancelamento</label>
                 <textarea
                   id="request-observation"
                   className="w-full text-sm p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4 min-h-[120px] transition-all text-gray-700"
@@ -273,6 +296,15 @@ export default function RequestDetailsPage() {
                   value={observation}
                   onChange={(e) => setObservation(e.target.value)}
                 />
+
+                {canChangeStatus && <div className="mb-4 space-y-3">
+                  <label className="block text-xs font-bold text-slate-600" htmlFor="decision-justification">Justificativa da decisão
+                    <textarea id="decision-justification" className="mt-2 min-h-24 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 focus:ring-2 focus:ring-emerald-500 outline-none" value={decisionJustification} onChange={(e) => setDecisionJustification(e.target.value)} placeholder="Fundamente o deferimento ou indeferimento." />
+                  </label>
+                  <label className="block text-xs font-bold text-slate-600" htmlFor="conclusion-summary">Resposta final visível ao aluno
+                    <textarea id="conclusion-summary" className="mt-2 min-h-24 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 focus:ring-2 focus:ring-emerald-500 outline-none" value={conclusionSummary} onChange={(e) => setConclusionSummary(e.target.value)} placeholder="Escreva a mensagem que ficará no histórico do atendimento." />
+                  </label>
+                </div>}
 
                 {canChangeStatus && <div className="space-y-2">
                   <button onClick={() => handleStatusClick("analyzing")} disabled={updating}
@@ -282,18 +314,23 @@ export default function RequestDetailsPage() {
                   </button>
                   
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => handleStatusClick("canceled")} disabled={updating}
+                  <button onClick={() => handleStatusClick("indeferido")} disabled={updating}
                       className="flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-100 transition tracking-widest border border-red-100"
                     >
                       <Ban size={16} /> INDEFERIR
                     </button>
                     
-                    <button onClick={() => handleStatusClick("completed")} disabled={updating}
+                    <button onClick={() => handleStatusClick("deferido")} disabled={updating}
                       className="flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-xl hover:bg-emerald-100 transition tracking-widest border border-emerald-100"
                     >
                       <Check size={16} /> DEFERIR
                     </button>
                   </div>
+                  <button onClick={() => handleStatusClick("canceled")} disabled={updating}
+                    className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 text-[10px] font-black tracking-widest text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    CANCELAR PEDIDO
+                  </button>
                 </div>}
               </div>
             )}

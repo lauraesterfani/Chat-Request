@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\Request as RequestModel;
+use App\Models\RequestDraft;
 use App\Models\StaffAdmin;
 use App\Models\User;
 use App\Services\RequestAccessService;
@@ -23,7 +24,7 @@ class DocumentController extends Controller
         $user = Auth::guard('api')->user()
             ?? Auth::guard('staff_admins')->user()
             ?? $request->user();
-        if (! $user instanceof User) {
+        if (! $user instanceof User || $user->role !== User::ROLE_STUDENT) {
             return response()->json(['message' => 'Apenas alunos podem enviar documentos.'], 403);
         }
 
@@ -46,6 +47,9 @@ class DocumentController extends Controller
 
             return response()->json([
                 'id' => (string) $document->id, // Força a conversão explícita para string (UUID)
+                'name' => $document->name,
+                'mime_type' => $document->mime_type,
+                'file_size' => $document->file_size,
                 'url' => null,
             ], 201);
 
@@ -68,6 +72,24 @@ class DocumentController extends Controller
             return response()->json(['message' => 'Acesso não autorizado.'], 403);
         }
 
+        return $this->serve($document);
+    }
+
+    public function showDraft(Request $request, RequestDraft $draft, Document $document)
+    {
+        $actor = Auth::guard('api')->user() ?? $request->user();
+        if (! $actor instanceof User || $actor->id !== $draft->user_id
+            || $draft->discarded_at || $draft->submitted_at
+            || ! in_array($document->id, $draft->document_ids ?? [], true)
+            || $document->user_id !== $actor->id) {
+            return response()->json(['message' => 'Acesso não autorizado.'], 403);
+        }
+
+        return $this->serve($document);
+    }
+
+    private function serve(Document $document)
+    {
         $disk = Storage::disk('local')->exists($document->path) ? 'local' : 'public';
         if (! Storage::disk($disk)->exists($document->path)) {
             return response()->json(['message' => 'Documento não encontrado.'], 404);

@@ -39,6 +39,12 @@ class StaffAccessScopeTest extends TestCase
         $staff = $this->staff('cradt');
         StaffAccessScope::create(['staff_admin_id' => $staff->id, 'abilities' => ['view_request'], 'expires_at' => now()->subMinute(), 'reason' => 'Expirado']);
         $this->assertFalse($staff->accessScopes()->first()->active());
+
+        $course = Course::create(['name' => 'Curso expirado', 'code' => 'QAE']);
+        $student = User::create(['name' => 'Aluno', 'email' => 'expired@example.test', 'cpf' => '90000002099', 'phone' => '81900002099', 'matricula' => 'QAE02099', 'birthday' => '2000-01-01', 'password' => 'secret', 'role' => 'student', 'course_id' => $course->id]);
+        $type = TypeRequest::create(['name' => 'Tipo expirado']);
+        $request = RequestModel::create(['user_id' => $student->id, 'type_id' => $type->id, 'subject' => 'A', 'description' => 'B', 'status' => 'pending', 'protocol' => '20261026-123456', 'course_id' => $course->id]);
+        $this->assertFalse(app(RequestAccessService::class)->canView($staff, $request));
     }
 
     public function test_only_operational_administration_can_list_audit_records(): void

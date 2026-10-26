@@ -57,4 +57,19 @@ class MetricsTest extends TestCase
         $this->actingAs($admin, 'staff_admins')->getJson('/api/metrics')
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('open', 1);
     }
+
+    public function test_expired_scope_does_not_restore_global_dashboard_totals(): void
+    {
+        $course = Course::create(['name' => 'Curso visível somente antes do vencimento', 'code' => 'MEX']);
+        $student = User::create(['name' => 'Aluno', 'email' => 'expired-metrics@example.test', 'cpf' => '90000003198', 'phone' => '81900003198', 'matricula' => 'MEX001', 'birthday' => '2000-01-01', 'password' => 'secret', 'role' => 'student', 'course_id' => $course->id]);
+        $type = TypeRequest::create(['name' => 'Métrica expirada']);
+        RequestModel::create(['user_id' => $student->id, 'type_id' => $type->id, 'subject' => 'Privado', 'description' => 'D', 'status' => 'pending', 'protocol' => '20261026-000098', 'course_id' => $course->id]);
+        $admin = StaffAdmin::create(['name' => 'Admin expirado', 'email' => 'expired-admin@example.test', 'cpf' => '90000003197', 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        StaffAccessScope::create(['staff_admin_id' => $admin->id, 'course_id' => $course->id, 'abilities' => ['view_request'], 'expires_at' => now()->subMinute(), 'reason' => 'Expirado']);
+
+        $this->actingAs($admin, 'staff_admins')->getJson('/api/dashboard/requerimentos')->assertOk()
+            ->assertJsonPath('total_requerimentos', 0)->assertJsonPath('total_usuarios', 0)->assertJsonPath('pendentes', 0);
+        $this->getJson('/api/dashboard/graficos/status')->assertOk()->assertExactJson([]);
+        $this->getJson('/api/metrics')->assertOk()->assertJsonPath('total', 0);
+    }
 }

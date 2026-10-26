@@ -138,6 +138,8 @@ class RequestFlowTest extends TestCase
             ->putJson("/api/requests/{$request->id}", ['status' => 'not-a-status'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('status');
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'completed', 'observation' => 'Tentativa legada'])
+            ->assertConflict();
     }
 
     public function test_staff_decision_observation_is_added_to_chat_history(): void
@@ -150,16 +152,22 @@ class RequestFlowTest extends TestCase
             'role' => 'admin', 'password' => 'secret', 'must_change_password' => false,
         ]);
 
-        $this->actingAs($admin, 'staff_admins')->putJson("/api/requests/{$request->id}", [
-            'status' => 'completed', 'observation' => 'Seu requerimento foi deferido.',
+        $this->actingAs($admin, 'staff_admins')->postJson("/api/requests/{$request->id}/decision", [
+            'result' => 'deferido',
+            'justification' => 'Documentação conferida e solicitação regular.',
+            'conclusion_summary' => 'Seu requerimento foi deferido.',
         ])->assertOk();
 
         $this->assertDatabaseHas('messages', [
             'request_id' => $request->id, 'sender_id' => $admin->id,
             'sender_type' => 'staff_admin', 'content' => 'Seu requerimento foi deferido.',
         ]);
+        $this->assertDatabaseHas('requests', ['id' => $request->id, 'status' => 'completed', 'result' => 'deferido']);
         $this->actingAs($student, 'api')->getJson("/api/requests/{$request->id}/messages")
             ->assertJsonPath('data.0.content', 'Seu requerimento foi deferido.');
+        $this->getJson('/api/notifications')->assertOk()
+            ->assertJsonPath('data.0.title', 'Decisão registrada')
+            ->assertJsonPath('data.0.body', 'Seu requerimento foi deferido.');
     }
 
     public function test_authorized_staff_can_forward_and_return_request_with_history(): void
@@ -173,6 +181,61 @@ class RequestFlowTest extends TestCase
         $this->actingAs($admin, 'staff_admins')->postJson("/api/requests/{$request->id}/return", ['reason' => 'Parecer concluído'])->assertOk();
         $this->assertDatabaseHas('requests', ['id' => $request->id, 'responsible_sector' => 'CRADT']);
         $this->actingAs($student, 'api')->getJson("/api/requests/{$request->id}/events")->assertOk()->assertJsonCount(2);
+    }
+
+    public function test_status_transitions_require_reasons_and_cannot_bypass_final_decision(): void
+    {
+        $student = $this->student();
+        $request = $this->requestFor($student);
+        $admin = StaffAdmin::create(['name' => 'Admin status', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+
+        $this->actingAs($admin, 'staff_admins')->putJson("/api/requests/{$request->id}", ['status' => 'waiting'])->assertConflict();
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'analyzing'])->assertOk();
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'waiting'])->assertUnprocessable();
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'waiting', 'observation' => 'Envie o verso do documento.'])->assertOk();
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'canceled'])->assertUnprocessable();
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'canceled', 'observation' => 'Solicitação cancelada a pedido do aluno.'])->assertOk();
+        $this->putJson("/api/requests/{$request->id}", ['status' => 'analyzing'])->assertConflict();
+    }
+
+    public function test_forward_rejects_unknown_sectors_and_return_requires_operational_scope(): void
+    {
+        $student = $this->student();
+        $request = $this->requestFor($student);
+        $admin = StaffAdmin::create(['name' => 'Admin setor', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        $this->actingAs($admin, 'staff_admins')->postJson("/api/requests/{$request->id}/forward", ['sector' => 'QUALQUER', 'reason' => 'Teste'])->assertUnprocessable();
+        $this->postJson("/api/requests/{$request->id}/forward", ['sector' => 'COORDENACAO', 'reason' => 'Encaminhamento permitido'])->assertOk();
+
+        $scopedAdmin = StaffAdmin::create(['name' => 'Admin sem escopo', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        \App\Models\StaffAccessScope::create(['staff_admin_id' => $scopedAdmin->id, 'course_id' => $this->student()->course_id, 'abilities' => ['view_request'], 'reason' => 'Escopo não relacionado']);
+        $this->actingAs($scopedAdmin, 'staff_admins')->postJson("/api/requests/{$request->id}/return", ['reason' => 'Não autorizado'])->assertForbidden();
+    }
+
+    public function test_final_decision_cannot_defer_service_with_known_missing_required_document(): void
+    {
+        $student = $this->student();
+        $type = TypeRequest::create(['name' => 'Requer documento QA', 'requires_document' => true]);
+        $request = RequestModel::create(['user_id' => $student->id, 'type_id' => $type->id, 'subject' => 'Com anexo', 'description' => 'Descrição', 'status' => 'pending', 'protocol' => '20261026-123457']);
+        $admin = StaffAdmin::create(['name' => 'Admin documento', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+
+        $this->actingAs($admin, 'staff_admins')->postJson("/api/requests/{$request->id}/decision", [
+            'result' => 'deferido', 'justification' => 'Conferido.', 'conclusion_summary' => 'Deferido.',
+        ])->assertUnprocessable();
+        $this->assertDatabaseHas('requests', ['id' => $request->id, 'status' => 'pending', 'result' => null]);
+    }
+
+    public function test_not_applicable_result_requires_service_to_explicitly_allow_it(): void
+    {
+        $student = $this->student();
+        $requiredDecisionType = TypeRequest::create(['name' => 'Serviço exige decisão']);
+        $request = RequestModel::create(['user_id' => $student->id, 'type_id' => $requiredDecisionType->id, 'subject' => 'Pedido', 'description' => 'Descrição', 'status' => 'pending', 'protocol' => '20261026-123458']);
+        $admin = StaffAdmin::create(['name' => 'Admin resultado', 'email' => uniqid().'@example.test', 'cpf' => str_pad((string) random_int(1, 99999999999), 11, '0', STR_PAD_LEFT), 'role' => 'admin', 'password' => 'secret', 'must_change_password' => false]);
+        $payload = ['result' => 'na', 'justification' => 'Não aplicável.', 'conclusion_summary' => 'Pedido concluído sem decisão acadêmica.'];
+
+        $this->actingAs($admin, 'staff_admins')->postJson("/api/requests/{$request->id}/decision", $payload)->assertUnprocessable();
+        $requiredDecisionType->update(['requires_decision' => false]);
+        $this->postJson("/api/requests/{$request->id}/decision", $payload)->assertOk();
+        $this->assertDatabaseHas('requests', ['id' => $request->id, 'status' => 'completed', 'result' => 'na']);
     }
 
     public function test_document_upload_belongs_to_student_and_rejects_invalid_format(): void
