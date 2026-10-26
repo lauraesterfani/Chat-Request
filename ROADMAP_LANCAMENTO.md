@@ -1,6 +1,6 @@
 # Roadmap de lançamento
 
-## Fase 0 — Estabilização (atual)
+## Fase 0 — Estabilização (concluída)
 
 Prioridade máxima: fluxo de requerimentos, upload protegido, protocolos únicos, status centralizados, autorização no back-end, dashboard de atrasos, configuração única do Next, seeders fictícios, documentação e testes.
 
